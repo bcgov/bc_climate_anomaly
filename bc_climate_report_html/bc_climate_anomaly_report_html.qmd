@@ -68,6 +68,8 @@ if (any(installed_rqr_pkgs == FALSE)) {
 }
 # Load:
 lapply(rqr_pkgs , require, character.only = TRUE)
+
+# setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
 ```
 
 ```{r paths}
@@ -85,7 +87,7 @@ ano_dt_pth <-  '../ano_clm_data/'
 #| cache: true
 
 # Data files ------------------
-# Shape files --------------------------------------------------------------
+# Shape files --------------------------------
 # Domain Shape files
 xmi = -140
 xmx = -108
@@ -183,8 +185,6 @@ clm_dt_fl %<>%
   mutate(par = str_extract(clm_dt_fls,
                            paste(parameters, collapse = "|")))
 
-
-
 # Spatial average analysis for BC
 sel_area_shpfl <- bc_shp
 sel_area <- "BC"
@@ -263,7 +263,7 @@ months_nam
 #convert data frame to raster and clip the raster to defined shape file ( e.g., BC)
 # does spatial average and calculate spatial average trend and make a plot for Annual and each months.
 
-# i<-41
+# i <- 41
 ano_ana_plt_fun <- function(ano_dt_fls, spatial_plt=T, spatial_av = T,test_plt = F) {
 
   # ano_dt_fls <- ano_dt_fl[i,]
@@ -280,6 +280,54 @@ ano_ana_plt_fun <- function(ano_dt_fls, spatial_plt=T, spatial_av = T,test_plt =
   parr <- unique(ano_dt_fls$par)
   monn <- unique(ano_dt_fls$mon)
   mon <- unique(ano_dt_fls$mon)
+  
+    if (parr == 'tmin') {
+      parr_full = "Minimum temperature"
+    } else if (parr == 'tmax') {
+      parr_full = "Maximum temperature"
+    } else if (parr == 'tmean') {
+      parr_full = "Mean temperature"
+    } else if (parr == 'prcp') {
+      parr_full = "Total precipitation"
+    }
+    parr_full
+
+    if (monn == 'annual') {
+      monn_full = "Annual"
+    } else if (monn == 'spring') {
+      monn_full = "Spring"
+    } else if (monn == 'summer') {
+      monn_full = "Summer"
+    } else if (monn == 'fall') {
+      monn_full = "Fall"
+    } else if (monn == 'winter') {
+      monn_full = "Winter"
+    } else if (monn == 'Jan') {
+      monn_full = "Janaury"
+    } else if (monn == 'Feb') {
+      monn_full = "February"
+    } else if (monn == 'Mar') {
+      monn_full = "March"
+    } else if (monn == 'Apr') {
+      monn_full = "April"
+    } else if (monn == 'May') {
+      monn_full = "May"
+    } else if (monn == 'Jun') {
+      monn_full = "June"
+    } else if (monn == 'Jul') {
+      monn_full = "July"
+    } else if (monn == 'Aug') {
+      monn_full = "August"
+    } else if (monn == 'Sep') {
+      monn_full = "September"
+    } else if (monn == 'Oct') {
+      monn_full = "October"
+    } else if (monn == 'Nov') {
+      monn_full = "November"
+    } else if (monn == 'Dec') {
+      monn_full = "December"
+    }
+    monn_full
 
    # Anomaly plot by years
   minyr  <- min(yr_df$yr)
@@ -378,18 +426,18 @@ ano_ana_plt_fun <- function(ano_dt_fls, spatial_plt=T, spatial_av = T,test_plt =
     # Climate plot title ( use log for prcp)
     if (parr == "prcp") {
       par_title <-  paste0(
-                           parr, " anomaly (% of normal)",
+                           parr_full, " anomaly (% of normal)",
                            " : ",
-                           monn)
+                           monn_full)
     } else {
       par_title <-  paste0(
-                           parr, " anomaly ", unt,
+                           parr_full, " anomaly ", unt,
                            " : ",
-                           monn)
+                           monn_full)
     }
     
      plt_wtrmrk <-
-      "Created by Aseem Sharma, BC Ministry of Forests using ERA5-Land hourly data\nContact: Aseem.Sharma@gov.bc.ca"
+      "Created by Aseem Sharma, BC Ministry of Forests using ERA5-Land hourly data. Contact: Aseem.Sharma@gov.bc.ca"
     plt_wtrmrk
 
     spatial_ano_plt <-  ggplot() +
@@ -418,7 +466,13 @@ ano_ana_plt_fun <- function(ano_dt_fls, spatial_plt=T, spatial_av = T,test_plt =
     ) +
       geom_sf(
         data = wna_shp,
-        colour = "gray20",
+        colour = "gray40",
+        fill = NA,
+        alpha = 0.5
+      ) +
+      geom_sf(
+        data = bc_shp,
+        colour = "black",
         fill = NA,
         alpha = 0.8
       ) +
@@ -427,8 +481,7 @@ ano_ana_plt_fun <- function(ano_dt_fls, spatial_plt=T, spatial_av = T,test_plt =
         ylim = c(ymi, ymx),
         # datum = st_crs(3005),
         expand = F
-      ) +
-    labs(title = par_title, subtitle = "Baseline: 1981-2010") +
+      )+
       theme_bw() +
       theme(
         panel.spacing = unit(0.1, "lines"),
@@ -524,7 +577,6 @@ ano_ana_plt_fun <- function(ano_dt_fls, spatial_plt=T, spatial_av = T,test_plt =
         axis.text.y = element_blank(),
         axis.ticks.y = element_blank()
       )
-     spatial_ano_plt
     if (parr == "prcp" & maxval > 200) {
       spatial_ano_plt <- spatial_ano_plt +
         scale_fill_gradientn(
@@ -549,18 +601,18 @@ ano_ana_plt_fun <- function(ano_dt_fls, spatial_plt=T, spatial_av = T,test_plt =
           breaks = brks_seq
         )
     }
-    spatial_ano_plt
     spatial_ano_plt <- spatial_ano_plt +
-      labs(tag = plt_wtrmrk) +
+      labs(title = par_title, subtitle = "Baseline: 1981-2010",
+           tag = plt_wtrmrk) +
       theme(
         plot.tag.position = "bottom",
         plot.tag = element_text(
-          color = 'gray100',
+          color = 'gray85',
           hjust = 1,
-          size = 8
+          size = 7
         )
       )
-    spatial_ano_plt
+    # spatial_ano_plt
     # parr_ann_ano_plt
       # ggsave(
     #   paste0(
@@ -740,14 +792,14 @@ ano_ana_plt_fun <- function(ano_dt_fls, spatial_plt=T, spatial_av = T,test_plt =
 
     if (parr == "prcp") {
       par_title <-  paste0(region, " ",
-                           parr, " (% of normal)",
+                           parr_full, " (% of normal)",
                            " : ",
-                           monn)
+                           monn_full)
     } else{
       par_title <-  paste0(region, " ",
-                           parr, " ", unt,
+                           parr_full, " ", unt,
                            " : ",
-                           monn)
+                           monn_full)
     }
 
     if (parr == "prcp") {
@@ -758,15 +810,15 @@ ano_ana_plt_fun <- function(ano_dt_fls, spatial_plt=T, spatial_av = T,test_plt =
 
     ano_shp_trn_plt <-
       ggplot(data = ano_shp_av_dt, aes(x = yr, y = ano)) +
-              annotate(
+      annotate(
         geom = 'text',
         label = plt_wtrmrk,
         x = Inf,
         y = -Inf,
         hjust = 1,
         vjust = -0.3,
-        color = 'gray100',
-        size = 3.0,
+        color = 'gray80',
+        size = 3,
         alpha = 0.8
       ) +
       geom_bar(
@@ -808,7 +860,7 @@ ano_ana_plt_fun <- function(ano_dt_fls, spatial_plt=T, spatial_av = T,test_plt =
       ) +
       geom_label(
         aes(x = xs[[1]] + 20),
-        color = 'black',
+        color = 'deepskyblue',
         y = ymax - 0.05,
         fill = NA,
         label = ano_shp_av_dt$trn_lab[[1]],
@@ -831,7 +883,7 @@ ano_ana_plt_fun <- function(ano_dt_fls, spatial_plt=T, spatial_av = T,test_plt =
         aes(x = xs[[1]] + 38),
         y = ymax - 0.05,
         fill = NA,
-        color = 'deepskyblue2',
+        color = 'black',
         label = ano_shp_av_dt80$trn_lab[[1]],
         size = 4.0,
         parse = TRUE
@@ -849,8 +901,8 @@ ano_ana_plt_fun <- function(ano_dt_fls, spatial_plt=T, spatial_av = T,test_plt =
         " ",
         values = c(
           "3 years moving average" = "green",
-          "1950-trend line" = "black",
-          "1980-trend line" = "deepskyblue2"
+          "1950-trend line" = "deepskyblue",
+          "1980-trend line" = "black"
         ),
         labels =  c(
           "3 years moving average" = "3-years moving \n mean",
@@ -916,7 +968,7 @@ ano_ana_plt_fun <- function(ano_dt_fls, spatial_plt=T, spatial_av = T,test_plt =
           size = 14,
           colour = "Black"
         ),
-        legend.position = c(0.1, 0.95),
+        legend.position = c(0.09, 0.95),
         legend.direction = "vertical",
         legend.background = element_rect(fill = NA, color = NA),
         legend.margin = margin(0, 0, 0, 0),
@@ -941,7 +993,7 @@ ano_ana_plt_fun <- function(ano_dt_fls, spatial_plt=T, spatial_av = T,test_plt =
           breaks = ybrks_seq
         )
     }
-    ano_shp_trn_plt
+    # ano_shp_trn_plt
     
     # ggsave(
     #   paste0(
@@ -1020,7 +1072,7 @@ tmn_ano_plt_lst
 #| fig-height: 9.5
 #| fig-width: 15
 #| label: fig-ano_plt_Jan_tmean
-#| fig-cap: !expr paste("Spatial distribution of the",par_nam,"anomalies relative to the 1980 - 2010 mean:",full_month)
+#| fig-cap: !expr paste("Spatial distribution of ",par_nam,"anomalies relative to the 1980 - 2010 mean:",full_month)
 tmn_ano_plt_lst[[1]][[1]]
 ```
 
@@ -1032,7 +1084,7 @@ tmn_ano_plt_lst[[1]][[1]]
 #| fig-height: 6.5
 #| fig-width: 14
 #| label: fig-sp_av_ano_plt_Jan_tmean
-#| fig-cap: !expr paste("Spatially averaged",par_nam,"anomalies and trend for BC:",full_month,". The inset box indicates trend magnitude and significance.")
+#| fig-cap: !expr paste("Spatially averaged",par_nam,"anomalies and trend for BC:",full_month,". The inset box indicates trend magnitude and significance for 1950 and 1980 to present year.")
 tmn_ano_plt_lst[[1]][[2]]
 ```
 
@@ -1078,7 +1130,7 @@ prcp_ano_plt_lst
 #| fig-height: 9.5
 #| fig-width: 15
 #| label: fig-ano_plt_Jan_prcp
-#| fig-cap: !expr paste("Spatial distribution of the",par_nam,"anomalies relative to the 1980 - 2010 mean:",full_month)
+#| fig-cap: !expr paste("Spatial distribution of ",par_nam,"anomalies relative to the 1980 - 2010 mean:",full_month)
 prcp_ano_plt_lst[[1]][[1]]
 ```
 
@@ -1090,7 +1142,7 @@ prcp_ano_plt_lst[[1]][[1]]
 #| fig-height: 6.5
 #| fig-width: 14
 #| label: fig-sp_av_ano_plt_Jan_prcp
-#| fig-cap: !expr paste("Spatially averaged",par_nam,"anomalies and trend for BC:",full_month,". The inset box indicates trend magnitude and significance.")
+#| fig-cap: !expr paste("Spatially averaged",par_nam,"anomalies and trend for BC:",full_month,". The inset box indicates trend magnitude and significance for 1950 and 1980 to present year.")
 prcp_ano_plt_lst[[1]][[2]]
 ```
 
@@ -1136,7 +1188,7 @@ tmx_ano_plt_lst
 #| fig-height: 9.5
 #| fig-width: 15
 #| label: fig-ano_plt_Jan_tmax
-#| fig-cap: !expr paste("Spatial distribution of the",par_nam,"anomalies relative to the 1980 - 2010 mean:",full_month)
+#| fig-cap: !expr paste("Spatial distribution of ",par_nam,"anomalies relative to the 1980 - 2010 mean:",full_month)
 tmx_ano_plt_lst[[1]][[1]]
 ```
 
@@ -1148,7 +1200,7 @@ tmx_ano_plt_lst[[1]][[1]]
 #| fig-height: 6.5
 #| fig-width: 14
 #| label: fig-sp_av_ano_plt_Jan_tmax
-#| fig-cap: !expr paste("Spatially averaged",par_nam,"anomalies and trend for BC:",full_month,". The inset box indicates trend magnitude and significance.")
+#| fig-cap: !expr paste("Spatially averaged",par_nam,"anomalies and trend for BC:",full_month,". The inset box indicates trend magnitude and significance for 1950 and 1980 to present year.")
 tmx_ano_plt_lst[[1]][[2]]
 ```
 
@@ -1194,7 +1246,7 @@ tmi_ano_plt_lst
 #| fig-height: 9.5
 #| fig-width: 15
 #| label: fig-ano_plt_Jan_tmin
-#| fig-cap: !expr paste("Spatial distribution of the",par_nam,"anomalies relative to the 1980 - 2010 mean:",full_month)
+#| fig-cap: !expr paste("Spatial distribution of ",par_nam,"anomalies relative to the 1980 - 2010 mean:",full_month)
 tmi_ano_plt_lst[[1]][[1]]
 ```
 
@@ -1206,7 +1258,7 @@ tmi_ano_plt_lst[[1]][[1]]
 #| fig-height: 6.5
 #| fig-width: 14
 #| label: fig-sp_av_ano_plt_Jan_tmin
-#| fig-cap: !expr paste("Spatially averaged",par_nam,"anomalies and trend for BC:",full_month,". The inset box indicates trend magnitude and significance.")
+#| fig-cap: !expr paste("Spatially averaged",par_nam,"anomalies and trend for BC:",full_month,". The inset box indicates trend magnitude and significance for 1950 and 1980 to present year.")
 tmi_ano_plt_lst[[1]][[2]]
 ```
 
@@ -1254,7 +1306,7 @@ tmn_ano_plt_lst
 #| fig-height: 9.5
 #| fig-width: 15
 #| label: fig-ano_plt_Feb_tmean
-#| fig-cap: !expr paste("Spatial distribution of the",par_nam,"anomalies relative to the 1980 - 2010 mean:",full_month)
+#| fig-cap: !expr paste("Spatial distribution of ",par_nam,"anomalies relative to the 1980 - 2010 mean:",full_month)
 tmn_ano_plt_lst[[1]][[1]]
 ```
 
@@ -1266,7 +1318,7 @@ tmn_ano_plt_lst[[1]][[1]]
 #| fig-height: 6.5
 #| fig-width: 14
 #| label: fig-sp_av_ano_plt_Feb_tmean
-#| fig-cap: !expr paste("Spatially averaged",par_nam,"anomalies and trend for BC:",full_month,". The inset box indicates trend magnitude and significance.")
+#| fig-cap: !expr paste("Spatially averaged",par_nam,"anomalies and trend for BC:",full_month,". The inset box indicates trend magnitude and significance for 1950 and 1980 to present year.")
 tmn_ano_plt_lst[[1]][[2]]
 ```
 
@@ -1312,7 +1364,7 @@ prcp_ano_plt_lst
 #| fig-height: 9.5
 #| fig-width: 15
 #| label: fig-ano_plt_Feb_prcp
-#| fig-cap: !expr paste("Spatial distribution of the",par_nam,"anomalies relative to the 1980 - 2010 mean:",full_month)
+#| fig-cap: !expr paste("Spatial distribution of ",par_nam,"anomalies relative to the 1980 - 2010 mean:",full_month)
 prcp_ano_plt_lst[[1]][[1]]
 ```
 
@@ -1324,7 +1376,7 @@ prcp_ano_plt_lst[[1]][[1]]
 #| fig-height: 6.5
 #| fig-width: 14
 #| label: fig-sp_av_ano_plt_Feb_prcp
-#| fig-cap: !expr paste("Spatially averaged",par_nam,"anomalies and trend for BC:",full_month,". The inset box indicates trend magnitude and significance.")
+#| fig-cap: !expr paste("Spatially averaged",par_nam,"anomalies and trend for BC:",full_month,". The inset box indicates trend magnitude and significance for 1950 and 1980 to present year.")
 prcp_ano_plt_lst[[1]][[2]]
 ```
 
@@ -1370,7 +1422,7 @@ tmx_ano_plt_lst
 #| fig-height: 9.5
 #| fig-width: 15
 #| label: fig-ano_plt_Feb_tmax
-#| fig-cap: !expr paste("Spatial distribution of the",par_nam,"anomalies relative to the 1980 - 2010 mean:",full_month)
+#| fig-cap: !expr paste("Spatial distribution of ",par_nam,"anomalies relative to the 1980 - 2010 mean:",full_month)
 tmx_ano_plt_lst[[1]][[1]]
 ```
 
@@ -1382,7 +1434,7 @@ tmx_ano_plt_lst[[1]][[1]]
 #| fig-height: 6.5
 #| fig-width: 14
 #| label: fig-sp_av_ano_plt_Feb_tmax
-#| fig-cap: !expr paste("Spatially averaged",par_nam,"anomalies and trend for BC:",full_month,". The inset box indicates trend magnitude and significance.")
+#| fig-cap: !expr paste("Spatially averaged",par_nam,"anomalies and trend for BC:",full_month,". The inset box indicates trend magnitude and significance for 1950 and 1980 to present year.")
 tmx_ano_plt_lst[[1]][[2]]
 ```
 
@@ -1428,7 +1480,7 @@ tmi_ano_plt_lst
 #| fig-height: 9.5
 #| fig-width: 15
 #| label: fig-ano_plt_Feb_tmin
-#| fig-cap: !expr paste("Spatial distribution of the",par_nam,"anomalies relative to the 1980 - 2010 mean:",full_month)
+#| fig-cap: !expr paste("Spatial distribution of ",par_nam,"anomalies relative to the 1980 - 2010 mean:",full_month)
 tmi_ano_plt_lst[[1]][[1]]
 ```
 
@@ -1440,7 +1492,7 @@ tmi_ano_plt_lst[[1]][[1]]
 #| fig-height: 6.5
 #| fig-width: 14
 #| label: fig-sp_av_ano_plt_Feb_tmin
-#| fig-cap: !expr paste("Spatially averaged",par_nam,"anomalies and trend for BC:",full_month,". The inset box indicates trend magnitude and significance.")
+#| fig-cap: !expr paste("Spatially averaged",par_nam,"anomalies and trend for BC:",full_month,". The inset box indicates trend magnitude and significance for 1950 and 1980 to present year.")
 tmi_ano_plt_lst[[1]][[2]]
 ```
 
@@ -1488,7 +1540,7 @@ tmn_ano_plt_lst
 #| fig-height: 9.5
 #| fig-width: 15
 #| label: fig-ano_plt_Mar_tmean
-#| fig-cap: !expr paste("Spatial distribution of the",par_nam,"anomalies relative to the 1980 - 2010 mean:",full_month)
+#| fig-cap: !expr paste("Spatial distribution of ",par_nam,"anomalies relative to the 1980 - 2010 mean:",full_month)
 tmn_ano_plt_lst[[1]][[1]]
 ```
 
@@ -1500,7 +1552,7 @@ tmn_ano_plt_lst[[1]][[1]]
 #| fig-height: 6.5
 #| fig-width: 14
 #| label: fig-sp_av_ano_plt_Mar_tmean
-#| fig-cap: !expr paste("Spatially averaged",par_nam,"anomalies and trend for BC:",full_month,". The inset box indicates trend magnitude and significance.")
+#| fig-cap: !expr paste("Spatially averaged",par_nam,"anomalies and trend for BC:",full_month,". The inset box indicates trend magnitude and significance for 1950 and 1980 to present year.")
 tmn_ano_plt_lst[[1]][[2]]
 ```
 
@@ -1546,7 +1598,7 @@ prcp_ano_plt_lst
 #| fig-height: 9.5
 #| fig-width: 15
 #| label: fig-ano_plt_Mar_prcp
-#| fig-cap: !expr paste("Spatial distribution of the",par_nam,"anomalies relative to the 1980 - 2010 mean:",full_month)
+#| fig-cap: !expr paste("Spatial distribution of ",par_nam,"anomalies relative to the 1980 - 2010 mean:",full_month)
 prcp_ano_plt_lst[[1]][[1]]
 ```
 
@@ -1558,7 +1610,7 @@ prcp_ano_plt_lst[[1]][[1]]
 #| fig-height: 6.5
 #| fig-width: 14
 #| label: fig-sp_av_ano_plt_Mar_prcp
-#| fig-cap: !expr paste("Spatially averaged",par_nam,"anomalies and trend for BC:",full_month,". The inset box indicates trend magnitude and significance.")
+#| fig-cap: !expr paste("Spatially averaged",par_nam,"anomalies and trend for BC:",full_month,". The inset box indicates trend magnitude and significance for 1950 and 1980 to present year.")
 prcp_ano_plt_lst[[1]][[2]]
 ```
 
@@ -1604,7 +1656,7 @@ tmx_ano_plt_lst
 #| fig-height: 9.5
 #| fig-width: 15
 #| label: fig-ano_plt_Mar_tmax
-#| fig-cap: !expr paste("Spatial distribution of the",par_nam,"anomalies relative to the 1980 - 2010 mean:",full_month)
+#| fig-cap: !expr paste("Spatial distribution of ",par_nam,"anomalies relative to the 1980 - 2010 mean:",full_month)
 tmx_ano_plt_lst[[1]][[1]]
 ```
 
@@ -1616,7 +1668,7 @@ tmx_ano_plt_lst[[1]][[1]]
 #| fig-height: 6.5
 #| fig-width: 14
 #| label: fig-sp_av_ano_plt_Mar_tmax
-#| fig-cap: !expr paste("Spatially averaged",par_nam,"anomalies and trend for BC:",full_month,". The inset box indicates trend magnitude and significance.")
+#| fig-cap: !expr paste("Spatially averaged",par_nam,"anomalies and trend for BC:",full_month,". The inset box indicates trend magnitude and significance for 1950 and 1980 to present year.")
 tmx_ano_plt_lst[[1]][[2]]
 ```
 
@@ -1662,7 +1714,7 @@ tmi_ano_plt_lst
 #| fig-height: 9.5
 #| fig-width: 15
 #| label: fig-ano_plt_Mar_tmin
-#| fig-cap: !expr paste("Spatial distribution of the",par_nam,"anomalies relative to the 1980 - 2010 mean:",full_month)
+#| fig-cap: !expr paste("Spatial distribution of ",par_nam,"anomalies relative to the 1980 - 2010 mean:",full_month)
 tmi_ano_plt_lst[[1]][[1]]
 ```
 
@@ -1674,7 +1726,7 @@ tmi_ano_plt_lst[[1]][[1]]
 #| fig-height: 6.5
 #| fig-width: 14
 #| label: fig-sp_av_ano_plt_Mar_tmin
-#| fig-cap: !expr paste("Spatially averaged",par_nam,"anomalies and trend for BC:",full_month,". The inset box indicates trend magnitude and significance.")
+#| fig-cap: !expr paste("Spatially averaged",par_nam,"anomalies and trend for BC:",full_month,". The inset box indicates trend magnitude and significance for 1950 and 1980 to present year.")
 tmi_ano_plt_lst[[1]][[2]]
 ```
 
@@ -1722,7 +1774,7 @@ tmn_ano_plt_lst
 #| fig-height: 9.5
 #| fig-width: 15
 #| label: fig-ano_plt_Apr_tmean
-#| fig-cap: !expr paste("Spatial distribution of the",par_nam,"anomalies relative to the 1980 - 2010 mean:",full_month)
+#| fig-cap: !expr paste("Spatial distribution of ",par_nam,"anomalies relative to the 1980 - 2010 mean:",full_month)
 tmn_ano_plt_lst[[1]][[1]]
 ```
 
@@ -1734,7 +1786,7 @@ tmn_ano_plt_lst[[1]][[1]]
 #| fig-height: 6.5
 #| fig-width: 14
 #| label: fig-sp_av_ano_plt_Apr_tmean
-#| fig-cap: !expr paste("Spatially averaged",par_nam,"anomalies and trend for BC:",full_month,". The inset box indicates trend magnitude and significance.")
+#| fig-cap: !expr paste("Spatially averaged",par_nam,"anomalies and trend for BC:",full_month,". The inset box indicates trend magnitude and significance for 1950 and 1980 to present year.")
 tmn_ano_plt_lst[[1]][[2]]
 ```
 
@@ -1780,7 +1832,7 @@ prcp_ano_plt_lst
 #| fig-height: 9.5
 #| fig-width: 15
 #| label: fig-ano_plt_Apr_prcp
-#| fig-cap: !expr paste("Spatial distribution of the",par_nam,"anomalies relative to the 1980 - 2010 mean:",full_month)
+#| fig-cap: !expr paste("Spatial distribution of ",par_nam,"anomalies relative to the 1980 - 2010 mean:",full_month)
 prcp_ano_plt_lst[[1]][[1]]
 ```
 
@@ -1792,7 +1844,7 @@ prcp_ano_plt_lst[[1]][[1]]
 #| fig-height: 6.5
 #| fig-width: 14
 #| label: fig-sp_av_ano_plt_Apr_prcp
-#| fig-cap: !expr paste("Spatially averaged",par_nam,"anomalies and trend for BC:",full_month,". The inset box indicates trend magnitude and significance.")
+#| fig-cap: !expr paste("Spatially averaged",par_nam,"anomalies and trend for BC:",full_month,". The inset box indicates trend magnitude and significance for 1950 and 1980 to present year.")
 prcp_ano_plt_lst[[1]][[2]]
 ```
 
@@ -1838,7 +1890,7 @@ tmx_ano_plt_lst
 #| fig-height: 9.5
 #| fig-width: 15
 #| label: fig-ano_plt_Apr_tmax
-#| fig-cap: !expr paste("Spatial distribution of the",par_nam,"anomalies relative to the 1980 - 2010 mean:",full_month)
+#| fig-cap: !expr paste("Spatial distribution of ",par_nam,"anomalies relative to the 1980 - 2010 mean:",full_month)
 tmx_ano_plt_lst[[1]][[1]]
 ```
 
@@ -1850,7 +1902,7 @@ tmx_ano_plt_lst[[1]][[1]]
 #| fig-height: 6.5
 #| fig-width: 14
 #| label: fig-sp_av_ano_plt_Apr_tmax
-#| fig-cap: !expr paste("Spatially averaged",par_nam,"anomalies and trend for BC:",full_month,". The inset box indicates trend magnitude and significance.")
+#| fig-cap: !expr paste("Spatially averaged",par_nam,"anomalies and trend for BC:",full_month,". The inset box indicates trend magnitude and significance for 1950 and 1980 to present year.")
 tmx_ano_plt_lst[[1]][[2]]
 ```
 
@@ -1896,7 +1948,7 @@ tmi_ano_plt_lst
 #| fig-height: 9.5
 #| fig-width: 15
 #| label: fig-ano_plt_Apr_tmin
-#| fig-cap: !expr paste("Spatial distribution of the",par_nam,"anomalies relative to the 1980 - 2010 mean:",full_month)
+#| fig-cap: !expr paste("Spatial distribution of ",par_nam,"anomalies relative to the 1980 - 2010 mean:",full_month)
 tmi_ano_plt_lst[[1]][[1]]
 ```
 
@@ -1908,7 +1960,7 @@ tmi_ano_plt_lst[[1]][[1]]
 #| fig-height: 6.5
 #| fig-width: 14
 #| label: fig-sp_av_ano_plt_Apr_tmin
-#| fig-cap: !expr paste("Spatially averaged",par_nam,"anomalies and trend for BC:",full_month,". The inset box indicates trend magnitude and significance.")
+#| fig-cap: !expr paste("Spatially averaged",par_nam,"anomalies and trend for BC:",full_month,". The inset box indicates trend magnitude and significance for 1950 and 1980 to present year.")
 tmi_ano_plt_lst[[1]][[2]]
 ```
 
@@ -1956,7 +2008,7 @@ tmn_ano_plt_lst
 #| fig-height: 9.5
 #| fig-width: 15
 #| label: fig-ano_plt_May_tmean
-#| fig-cap: !expr paste("Spatial distribution of the",par_nam,"anomalies relative to the 1980 - 2010 mean:",full_month)
+#| fig-cap: !expr paste("Spatial distribution of ",par_nam,"anomalies relative to the 1980 - 2010 mean:",full_month)
 tmn_ano_plt_lst[[1]][[1]]
 ```
 
@@ -1968,7 +2020,7 @@ tmn_ano_plt_lst[[1]][[1]]
 #| fig-height: 6.5
 #| fig-width: 14
 #| label: fig-sp_av_ano_plt_May_tmean
-#| fig-cap: !expr paste("Spatially averaged",par_nam,"anomalies and trend for BC:",full_month,". The inset box indicates trend magnitude and significance.")
+#| fig-cap: !expr paste("Spatially averaged",par_nam,"anomalies and trend for BC:",full_month,". The inset box indicates trend magnitude and significance for 1950 and 1980 to present year.")
 tmn_ano_plt_lst[[1]][[2]]
 ```
 
@@ -2014,7 +2066,7 @@ prcp_ano_plt_lst
 #| fig-height: 9.5
 #| fig-width: 15
 #| label: fig-ano_plt_May_prcp
-#| fig-cap: !expr paste("Spatial distribution of the",par_nam,"anomalies relative to the 1980 - 2010 mean:",full_month)
+#| fig-cap: !expr paste("Spatial distribution of ",par_nam,"anomalies relative to the 1980 - 2010 mean:",full_month)
 prcp_ano_plt_lst[[1]][[1]]
 ```
 
@@ -2026,7 +2078,7 @@ prcp_ano_plt_lst[[1]][[1]]
 #| fig-height: 6.5
 #| fig-width: 14
 #| label: fig-sp_av_ano_plt_May_prcp
-#| fig-cap: !expr paste("Spatially averaged",par_nam,"anomalies and trend for BC:",full_month,". The inset box indicates trend magnitude and significance.")
+#| fig-cap: !expr paste("Spatially averaged",par_nam,"anomalies and trend for BC:",full_month,". The inset box indicates trend magnitude and significance for 1950 and 1980 to present year.")
 prcp_ano_plt_lst[[1]][[2]]
 ```
 
@@ -2072,7 +2124,7 @@ tmx_ano_plt_lst
 #| fig-height: 9.5
 #| fig-width: 15
 #| label: fig-ano_plt_May_tmax
-#| fig-cap: !expr paste("Spatial distribution of the",par_nam,"anomalies relative to the 1980 - 2010 mean:",full_month)
+#| fig-cap: !expr paste("Spatial distribution of ",par_nam,"anomalies relative to the 1980 - 2010 mean:",full_month)
 tmx_ano_plt_lst[[1]][[1]]
 ```
 
@@ -2084,7 +2136,7 @@ tmx_ano_plt_lst[[1]][[1]]
 #| fig-height: 6.5
 #| fig-width: 14
 #| label: fig-sp_av_ano_plt_May_tmax
-#| fig-cap: !expr paste("Spatially averaged",par_nam,"anomalies and trend for BC:",full_month,". The inset box indicates trend magnitude and significance.")
+#| fig-cap: !expr paste("Spatially averaged",par_nam,"anomalies and trend for BC:",full_month,". The inset box indicates trend magnitude and significance for 1950 and 1980 to present year.")
 tmx_ano_plt_lst[[1]][[2]]
 ```
 
@@ -2130,7 +2182,7 @@ tmi_ano_plt_lst
 #| fig-height: 9.5
 #| fig-width: 15
 #| label: fig-ano_plt_May_tmin
-#| fig-cap: !expr paste("Spatial distribution of the",par_nam,"anomalies relative to the 1980 - 2010 mean:",full_month)
+#| fig-cap: !expr paste("Spatial distribution of ",par_nam,"anomalies relative to the 1980 - 2010 mean:",full_month)
 tmi_ano_plt_lst[[1]][[1]]
 ```
 
@@ -2142,7 +2194,7 @@ tmi_ano_plt_lst[[1]][[1]]
 #| fig-height: 6.5
 #| fig-width: 14
 #| label: fig-sp_av_ano_plt_May_tmin
-#| fig-cap: !expr paste("Spatially averaged",par_nam,"anomalies and trend for BC:",full_month,". The inset box indicates trend magnitude and significance.")
+#| fig-cap: !expr paste("Spatially averaged",par_nam,"anomalies and trend for BC:",full_month,". The inset box indicates trend magnitude and significance for 1950 and 1980 to present year.")
 tmi_ano_plt_lst[[1]][[2]]
 ```
 
@@ -2190,7 +2242,7 @@ tmn_ano_plt_lst
 #| fig-height: 9.5
 #| fig-width: 15
 #| label: fig-ano_plt_Jun_tmean
-#| fig-cap: !expr paste("Spatial distribution of the",par_nam,"anomalies relative to the 1980 - 2010 mean:",full_month)
+#| fig-cap: !expr paste("Spatial distribution of ",par_nam,"anomalies relative to the 1980 - 2010 mean:",full_month)
 tmn_ano_plt_lst[[1]][[1]]
 ```
 
@@ -2202,7 +2254,7 @@ tmn_ano_plt_lst[[1]][[1]]
 #| fig-height: 6.5
 #| fig-width: 14
 #| label: fig-sp_av_ano_plt_Jun_tmean
-#| fig-cap: !expr paste("Spatially averaged",par_nam,"anomalies and trend for BC:",full_month,". The inset box indicates trend magnitude and significance.")
+#| fig-cap: !expr paste("Spatially averaged",par_nam,"anomalies and trend for BC:",full_month,". The inset box indicates trend magnitude and significance for 1950 and 1980 to present year.")
 tmn_ano_plt_lst[[1]][[2]]
 ```
 
@@ -2248,7 +2300,7 @@ prcp_ano_plt_lst
 #| fig-height: 9.5
 #| fig-width: 15
 #| label: fig-ano_plt_Jun_prcp
-#| fig-cap: !expr paste("Spatial distribution of the",par_nam,"anomalies relative to the 1980 - 2010 mean:",full_month)
+#| fig-cap: !expr paste("Spatial distribution of ",par_nam,"anomalies relative to the 1980 - 2010 mean:",full_month)
 prcp_ano_plt_lst[[1]][[1]]
 ```
 
@@ -2260,7 +2312,7 @@ prcp_ano_plt_lst[[1]][[1]]
 #| fig-height: 6.5
 #| fig-width: 14
 #| label: fig-sp_av_ano_plt_Jun_prcp
-#| fig-cap: !expr paste("Spatially averaged",par_nam,"anomalies and trend for BC:",full_month,". The inset box indicates trend magnitude and significance.")
+#| fig-cap: !expr paste("Spatially averaged",par_nam,"anomalies and trend for BC:",full_month,". The inset box indicates trend magnitude and significance for 1950 and 1980 to present year.")
 prcp_ano_plt_lst[[1]][[2]]
 ```
 
@@ -2306,7 +2358,7 @@ tmx_ano_plt_lst
 #| fig-height: 9.5
 #| fig-width: 15
 #| label: fig-ano_plt_Jun_tmax
-#| fig-cap: !expr paste("Spatial distribution of the",par_nam,"anomalies relative to the 1980 - 2010 mean:",full_month)
+#| fig-cap: !expr paste("Spatial distribution of ",par_nam,"anomalies relative to the 1980 - 2010 mean:",full_month)
 tmx_ano_plt_lst[[1]][[1]]
 ```
 
@@ -2318,7 +2370,7 @@ tmx_ano_plt_lst[[1]][[1]]
 #| fig-height: 6.5
 #| fig-width: 14
 #| label: fig-sp_av_ano_plt_Jun_tmax
-#| fig-cap: !expr paste("Spatially averaged",par_nam,"anomalies and trend for BC:",full_month,". The inset box indicates trend magnitude and significance.")
+#| fig-cap: !expr paste("Spatially averaged",par_nam,"anomalies and trend for BC:",full_month,". The inset box indicates trend magnitude and significance for 1950 and 1980 to present year.")
 tmx_ano_plt_lst[[1]][[2]]
 ```
 
@@ -2364,7 +2416,7 @@ tmi_ano_plt_lst
 #| fig-height: 9.5
 #| fig-width: 15
 #| label: fig-ano_plt_Jun_tmin
-#| fig-cap: !expr paste("Spatial distribution of the",par_nam,"anomalies relative to the 1980 - 2010 mean:",full_month)
+#| fig-cap: !expr paste("Spatial distribution of ",par_nam,"anomalies relative to the 1980 - 2010 mean:",full_month)
 tmi_ano_plt_lst[[1]][[1]]
 ```
 
@@ -2376,7 +2428,7 @@ tmi_ano_plt_lst[[1]][[1]]
 #| fig-height: 6.5
 #| fig-width: 14
 #| label: fig-sp_av_ano_plt_Jun_tmin
-#| fig-cap: !expr paste("Spatially averaged",par_nam,"anomalies and trend for BC:",full_month,". The inset box indicates trend magnitude and significance.")
+#| fig-cap: !expr paste("Spatially averaged",par_nam,"anomalies and trend for BC:",full_month,". The inset box indicates trend magnitude and significance for 1950 and 1980 to present year.")
 tmi_ano_plt_lst[[1]][[2]]
 ```
 
@@ -2424,7 +2476,7 @@ tmn_ano_plt_lst
 #| fig-height: 9.5
 #| fig-width: 15
 #| label: fig-ano_plt_Jul_tmean
-#| fig-cap: !expr paste("Spatial distribution of the",par_nam,"anomalies relative to the 1980 - 2010 mean:",full_month)
+#| fig-cap: !expr paste("Spatial distribution of ",par_nam,"anomalies relative to the 1980 - 2010 mean:",full_month)
 tmn_ano_plt_lst[[1]][[1]]
 ```
 
@@ -2436,7 +2488,7 @@ tmn_ano_plt_lst[[1]][[1]]
 #| fig-height: 6.5
 #| fig-width: 14
 #| label: fig-sp_av_ano_plt_Jul_tmean
-#| fig-cap: !expr paste("Spatially averaged",par_nam,"anomalies and trend for BC:",full_month,". The inset box indicates trend magnitude and significance.")
+#| fig-cap: !expr paste("Spatially averaged",par_nam,"anomalies and trend for BC:",full_month,". The inset box indicates trend magnitude and significance for 1950 and 1980 to present year.")
 tmn_ano_plt_lst[[1]][[2]]
 ```
 
@@ -2482,7 +2534,7 @@ prcp_ano_plt_lst
 #| fig-height: 9.5
 #| fig-width: 15
 #| label: fig-ano_plt_Jul_prcp
-#| fig-cap: !expr paste("Spatial distribution of the",par_nam,"anomalies relative to the 1980 - 2010 mean:",full_month)
+#| fig-cap: !expr paste("Spatial distribution of ",par_nam,"anomalies relative to the 1980 - 2010 mean:",full_month)
 prcp_ano_plt_lst[[1]][[1]]
 ```
 
@@ -2494,7 +2546,7 @@ prcp_ano_plt_lst[[1]][[1]]
 #| fig-height: 6.5
 #| fig-width: 14
 #| label: fig-sp_av_ano_plt_Jul_prcp
-#| fig-cap: !expr paste("Spatially averaged",par_nam,"anomalies and trend for BC:",full_month,". The inset box indicates trend magnitude and significance.")
+#| fig-cap: !expr paste("Spatially averaged",par_nam,"anomalies and trend for BC:",full_month,". The inset box indicates trend magnitude and significance for 1950 and 1980 to present year.")
 prcp_ano_plt_lst[[1]][[2]]
 ```
 
@@ -2540,7 +2592,7 @@ tmx_ano_plt_lst
 #| fig-height: 9.5
 #| fig-width: 15
 #| label: fig-ano_plt_Jul_tmax
-#| fig-cap: !expr paste("Spatial distribution of the",par_nam,"anomalies relative to the 1980 - 2010 mean:",full_month)
+#| fig-cap: !expr paste("Spatial distribution of ",par_nam,"anomalies relative to the 1980 - 2010 mean:",full_month)
 tmx_ano_plt_lst[[1]][[1]]
 ```
 
@@ -2552,7 +2604,7 @@ tmx_ano_plt_lst[[1]][[1]]
 #| fig-height: 6.5
 #| fig-width: 14
 #| label: fig-sp_av_ano_plt_Jul_tmax
-#| fig-cap: !expr paste("Spatially averaged",par_nam,"anomalies and trend for BC:",full_month,". The inset box indicates trend magnitude and significance.")
+#| fig-cap: !expr paste("Spatially averaged",par_nam,"anomalies and trend for BC:",full_month,". The inset box indicates trend magnitude and significance for 1950 and 1980 to present year.")
 tmx_ano_plt_lst[[1]][[2]]
 ```
 
@@ -2598,7 +2650,7 @@ tmi_ano_plt_lst
 #| fig-height: 9.5
 #| fig-width: 15
 #| label: fig-ano_plt_Jul_tmin
-#| fig-cap: !expr paste("Spatial distribution of the",par_nam,"anomalies relative to the 1980 - 2010 mean:",full_month)
+#| fig-cap: !expr paste("Spatial distribution of ",par_nam,"anomalies relative to the 1980 - 2010 mean:",full_month)
 tmi_ano_plt_lst[[1]][[1]]
 ```
 
@@ -2610,7 +2662,7 @@ tmi_ano_plt_lst[[1]][[1]]
 #| fig-height: 6.5
 #| fig-width: 14
 #| label: fig-sp_av_ano_plt_Jul_tmin
-#| fig-cap: !expr paste("Spatially averaged",par_nam,"anomalies and trend for BC:",full_month,". The inset box indicates trend magnitude and significance.")
+#| fig-cap: !expr paste("Spatially averaged",par_nam,"anomalies and trend for BC:",full_month,". The inset box indicates trend magnitude and significance for 1950 and 1980 to present year.")
 tmi_ano_plt_lst[[1]][[2]]
 ```
 
@@ -2658,7 +2710,7 @@ tmn_ano_plt_lst
 #| fig-height: 9.5
 #| fig-width: 15
 #| label: fig-ano_plt_Aug_tmean
-#| fig-cap: !expr paste("Spatial distribution of the",par_nam,"anomalies relative to the 1980 - 2010 mean:",full_month)
+#| fig-cap: !expr paste("Spatial distribution of ",par_nam,"anomalies relative to the 1980 - 2010 mean:",full_month)
 tmn_ano_plt_lst[[1]][[1]]
 ```
 
@@ -2670,7 +2722,7 @@ tmn_ano_plt_lst[[1]][[1]]
 #| fig-height: 6.5
 #| fig-width: 14
 #| label: fig-sp_av_ano_plt_Aug_tmean
-#| fig-cap: !expr paste("Spatially averaged",par_nam,"anomalies and trend for BC:",full_month,". The inset box indicates trend magnitude and significance.")
+#| fig-cap: !expr paste("Spatially averaged",par_nam,"anomalies and trend for BC:",full_month,". The inset box indicates trend magnitude and significance for 1950 and 1980 to present year.")
 tmn_ano_plt_lst[[1]][[2]]
 ```
 
@@ -2716,7 +2768,7 @@ prcp_ano_plt_lst
 #| fig-height: 9.5
 #| fig-width: 15
 #| label: fig-ano_plt_Aug_prcp
-#| fig-cap: !expr paste("Spatial distribution of the",par_nam,"anomalies relative to the 1980 - 2010 mean:",full_month)
+#| fig-cap: !expr paste("Spatial distribution of ",par_nam,"anomalies relative to the 1980 - 2010 mean:",full_month)
 prcp_ano_plt_lst[[1]][[1]]
 ```
 
@@ -2728,7 +2780,7 @@ prcp_ano_plt_lst[[1]][[1]]
 #| fig-height: 6.5
 #| fig-width: 14
 #| label: fig-sp_av_ano_plt_Aug_prcp
-#| fig-cap: !expr paste("Spatially averaged",par_nam,"anomalies and trend for BC:",full_month,". The inset box indicates trend magnitude and significance.")
+#| fig-cap: !expr paste("Spatially averaged",par_nam,"anomalies and trend for BC:",full_month,". The inset box indicates trend magnitude and significance for 1950 and 1980 to present year.")
 prcp_ano_plt_lst[[1]][[2]]
 ```
 
@@ -2774,7 +2826,7 @@ tmx_ano_plt_lst
 #| fig-height: 9.5
 #| fig-width: 15
 #| label: fig-ano_plt_Aug_tmax
-#| fig-cap: !expr paste("Spatial distribution of the",par_nam,"anomalies relative to the 1980 - 2010 mean:",full_month)
+#| fig-cap: !expr paste("Spatial distribution of ",par_nam,"anomalies relative to the 1980 - 2010 mean:",full_month)
 tmx_ano_plt_lst[[1]][[1]]
 ```
 
@@ -2786,7 +2838,7 @@ tmx_ano_plt_lst[[1]][[1]]
 #| fig-height: 6.5
 #| fig-width: 14
 #| label: fig-sp_av_ano_plt_Aug_tmax
-#| fig-cap: !expr paste("Spatially averaged",par_nam,"anomalies and trend for BC:",full_month,". The inset box indicates trend magnitude and significance.")
+#| fig-cap: !expr paste("Spatially averaged",par_nam,"anomalies and trend for BC:",full_month,". The inset box indicates trend magnitude and significance for 1950 and 1980 to present year.")
 tmx_ano_plt_lst[[1]][[2]]
 ```
 
@@ -2832,7 +2884,7 @@ tmi_ano_plt_lst
 #| fig-height: 9.5
 #| fig-width: 15
 #| label: fig-ano_plt_Aug_tmin
-#| fig-cap: !expr paste("Spatial distribution of the",par_nam,"anomalies relative to the 1980 - 2010 mean:",full_month)
+#| fig-cap: !expr paste("Spatial distribution of ",par_nam,"anomalies relative to the 1980 - 2010 mean:",full_month)
 tmi_ano_plt_lst[[1]][[1]]
 ```
 
@@ -2844,7 +2896,7 @@ tmi_ano_plt_lst[[1]][[1]]
 #| fig-height: 6.5
 #| fig-width: 14
 #| label: fig-sp_av_ano_plt_Aug_tmin
-#| fig-cap: !expr paste("Spatially averaged",par_nam,"anomalies and trend for BC:",full_month,". The inset box indicates trend magnitude and significance.")
+#| fig-cap: !expr paste("Spatially averaged",par_nam,"anomalies and trend for BC:",full_month,". The inset box indicates trend magnitude and significance for 1950 and 1980 to present year.")
 tmi_ano_plt_lst[[1]][[2]]
 ```
 
@@ -2892,7 +2944,7 @@ tmn_ano_plt_lst
 #| fig-height: 9.5
 #| fig-width: 15
 #| label: fig-ano_plt_Sep_tmean
-#| fig-cap: !expr paste("Spatial distribution of the",par_nam,"anomalies relative to the 1980 - 2010 mean:",full_month)
+#| fig-cap: !expr paste("Spatial distribution of ",par_nam,"anomalies relative to the 1980 - 2010 mean:",full_month)
 tmn_ano_plt_lst[[1]][[1]]
 ```
 
@@ -2904,7 +2956,7 @@ tmn_ano_plt_lst[[1]][[1]]
 #| fig-height: 6.5
 #| fig-width: 14
 #| label: fig-sp_av_ano_plt_Sep_tmean
-#| fig-cap: !expr paste("Spatially averaged",par_nam,"anomalies and trend for BC:",full_month,". The inset box indicates trend magnitude and significance.")
+#| fig-cap: !expr paste("Spatially averaged",par_nam,"anomalies and trend for BC:",full_month,". The inset box indicates trend magnitude and significance for 1950 and 1980 to present year.")
 tmn_ano_plt_lst[[1]][[2]]
 ```
 
@@ -2950,7 +3002,7 @@ prcp_ano_plt_lst
 #| fig-height: 9.5
 #| fig-width: 15
 #| label: fig-ano_plt_Sep_prcp
-#| fig-cap: !expr paste("Spatial distribution of the",par_nam,"anomalies relative to the 1980 - 2010 mean:",full_month)
+#| fig-cap: !expr paste("Spatial distribution of ",par_nam,"anomalies relative to the 1980 - 2010 mean:",full_month)
 prcp_ano_plt_lst[[1]][[1]]
 ```
 
@@ -2962,7 +3014,7 @@ prcp_ano_plt_lst[[1]][[1]]
 #| fig-height: 6.5
 #| fig-width: 14
 #| label: fig-sp_av_ano_plt_Sep_prcp
-#| fig-cap: !expr paste("Spatially averaged",par_nam,"anomalies and trend for BC:",full_month,". The inset box indicates trend magnitude and significance.")
+#| fig-cap: !expr paste("Spatially averaged",par_nam,"anomalies and trend for BC:",full_month,". The inset box indicates trend magnitude and significance for 1950 and 1980 to present year.")
 prcp_ano_plt_lst[[1]][[2]]
 ```
 
@@ -3008,7 +3060,7 @@ tmx_ano_plt_lst
 #| fig-height: 9.5
 #| fig-width: 15
 #| label: fig-ano_plt_Sep_tmax
-#| fig-cap: !expr paste("Spatial distribution of the",par_nam,"anomalies relative to the 1980 - 2010 mean:",full_month)
+#| fig-cap: !expr paste("Spatial distribution of ",par_nam,"anomalies relative to the 1980 - 2010 mean:",full_month)
 tmx_ano_plt_lst[[1]][[1]]
 ```
 
@@ -3020,7 +3072,7 @@ tmx_ano_plt_lst[[1]][[1]]
 #| fig-height: 6.5
 #| fig-width: 14
 #| label: fig-sp_av_ano_plt_Sep_tmax
-#| fig-cap: !expr paste("Spatially averaged",par_nam,"anomalies and trend for BC:",full_month,". The inset box indicates trend magnitude and significance.")
+#| fig-cap: !expr paste("Spatially averaged",par_nam,"anomalies and trend for BC:",full_month,". The inset box indicates trend magnitude and significance for 1950 and 1980 to present year.")
 tmx_ano_plt_lst[[1]][[2]]
 ```
 
@@ -3066,7 +3118,7 @@ tmi_ano_plt_lst
 #| fig-height: 9.5
 #| fig-width: 15
 #| label: fig-ano_plt_Sep_tmin
-#| fig-cap: !expr paste("Spatial distribution of the",par_nam,"anomalies relative to the 1980 - 2010 mean:",full_month)
+#| fig-cap: !expr paste("Spatial distribution of ",par_nam,"anomalies relative to the 1980 - 2010 mean:",full_month)
 tmi_ano_plt_lst[[1]][[1]]
 ```
 
@@ -3078,7 +3130,7 @@ tmi_ano_plt_lst[[1]][[1]]
 #| fig-height: 6.5
 #| fig-width: 14
 #| label: fig-sp_av_ano_plt_Sep_tmin
-#| fig-cap: !expr paste("Spatially averaged",par_nam,"anomalies and trend for BC:",full_month,". The inset box indicates trend magnitude and significance.")
+#| fig-cap: !expr paste("Spatially averaged",par_nam,"anomalies and trend for BC:",full_month,". The inset box indicates trend magnitude and significance for 1950 and 1980 to present year.")
 tmi_ano_plt_lst[[1]][[2]]
 ```
 
@@ -3126,7 +3178,7 @@ tmn_ano_plt_lst
 #| fig-height: 9.5
 #| fig-width: 15
 #| label: fig-ano_plt_Nov_tmean
-#| fig-cap: !expr paste("Spatial distribution of the",par_nam,"anomalies relative to the 1980 - 2010 mean:",full_month)
+#| fig-cap: !expr paste("Spatial distribution of ",par_nam,"anomalies relative to the 1980 - 2010 mean:",full_month)
 tmn_ano_plt_lst[[1]][[1]]
 ```
 
@@ -3138,7 +3190,7 @@ tmn_ano_plt_lst[[1]][[1]]
 #| fig-height: 6.5
 #| fig-width: 14
 #| label: fig-sp_av_ano_plt_Nov_tmean
-#| fig-cap: !expr paste("Spatially averaged",par_nam,"anomalies and trend for BC:",full_month,". The inset box indicates trend magnitude and significance.")
+#| fig-cap: !expr paste("Spatially averaged",par_nam,"anomalies and trend for BC:",full_month,". The inset box indicates trend magnitude and significance for 1950 and 1980 to present year.")
 tmn_ano_plt_lst[[1]][[2]]
 ```
 
@@ -3184,7 +3236,7 @@ prcp_ano_plt_lst
 #| fig-height: 9.5
 #| fig-width: 15
 #| label: fig-ano_plt_Nov_prcp
-#| fig-cap: !expr paste("Spatial distribution of the",par_nam,"anomalies relative to the 1980 - 2010 mean:",full_month)
+#| fig-cap: !expr paste("Spatial distribution of ",par_nam,"anomalies relative to the 1980 - 2010 mean:",full_month)
 prcp_ano_plt_lst[[1]][[1]]
 ```
 
@@ -3196,7 +3248,7 @@ prcp_ano_plt_lst[[1]][[1]]
 #| fig-height: 6.5
 #| fig-width: 14
 #| label: fig-sp_av_ano_plt_Nov_prcp
-#| fig-cap: !expr paste("Spatially averaged",par_nam,"anomalies and trend for BC:",full_month,". The inset box indicates trend magnitude and significance.")
+#| fig-cap: !expr paste("Spatially averaged",par_nam,"anomalies and trend for BC:",full_month,". The inset box indicates trend magnitude and significance for 1950 and 1980 to present year.")
 prcp_ano_plt_lst[[1]][[2]]
 ```
 
@@ -3242,7 +3294,7 @@ tmx_ano_plt_lst
 #| fig-height: 9.5
 #| fig-width: 15
 #| label: fig-ano_plt_Nov_tmax
-#| fig-cap: !expr paste("Spatial distribution of the",par_nam,"anomalies relative to the 1980 - 2010 mean:",full_month)
+#| fig-cap: !expr paste("Spatial distribution of ",par_nam,"anomalies relative to the 1980 - 2010 mean:",full_month)
 tmx_ano_plt_lst[[1]][[1]]
 ```
 
@@ -3254,7 +3306,7 @@ tmx_ano_plt_lst[[1]][[1]]
 #| fig-height: 6.5
 #| fig-width: 14
 #| label: fig-sp_av_ano_plt_Nov_tmax
-#| fig-cap: !expr paste("Spatially averaged",par_nam,"anomalies and trend for BC:",full_month,". The inset box indicates trend magnitude and significance.")
+#| fig-cap: !expr paste("Spatially averaged",par_nam,"anomalies and trend for BC:",full_month,". The inset box indicates trend magnitude and significance for 1950 and 1980 to present year.")
 tmx_ano_plt_lst[[1]][[2]]
 ```
 
@@ -3300,7 +3352,7 @@ tmi_ano_plt_lst
 #| fig-height: 9.5
 #| fig-width: 15
 #| label: fig-ano_plt_Nov_tmin
-#| fig-cap: !expr paste("Spatial distribution of the",par_nam,"anomalies relative to the 1980 - 2010 mean:",full_month)
+#| fig-cap: !expr paste("Spatial distribution of ",par_nam,"anomalies relative to the 1980 - 2010 mean:",full_month)
 tmi_ano_plt_lst[[1]][[1]]
 ```
 
@@ -3312,7 +3364,7 @@ tmi_ano_plt_lst[[1]][[1]]
 #| fig-height: 6.5
 #| fig-width: 14
 #| label: fig-sp_av_ano_plt_Nov_tmin
-#| fig-cap: !expr paste("Spatially averaged",par_nam,"anomalies and trend for BC:",full_month,". The inset box indicates trend magnitude and significance.")
+#| fig-cap: !expr paste("Spatially averaged",par_nam,"anomalies and trend for BC:",full_month,". The inset box indicates trend magnitude and significance for 1950 and 1980 to present year.")
 tmi_ano_plt_lst[[1]][[2]]
 ```
 
@@ -3360,7 +3412,7 @@ tmn_ano_plt_lst
 #| fig-height: 9.5
 #| fig-width: 15
 #| label: fig-ano_plt_Dec_tmean
-#| fig-cap: !expr paste("Spatial distribution of the",par_nam,"anomalies relative to the 1980 - 2010 mean:",full_month)
+#| fig-cap: !expr paste("Spatial distribution of ",par_nam,"anomalies relative to the 1980 - 2010 mean:",full_month)
 tmn_ano_plt_lst[[1]][[1]]
 ```
 
@@ -3372,7 +3424,7 @@ tmn_ano_plt_lst[[1]][[1]]
 #| fig-height: 6.5
 #| fig-width: 14
 #| label: fig-sp_av_ano_plt_Dec_tmean
-#| fig-cap: !expr paste("Spatially averaged",par_nam,"anomalies and trend for BC:",full_month,". The inset box indicates trend magnitude and significance.")
+#| fig-cap: !expr paste("Spatially averaged",par_nam,"anomalies and trend for BC:",full_month,". The inset box indicates trend magnitude and significance for 1950 and 1980 to present year.")
 tmn_ano_plt_lst[[1]][[2]]
 ```
 
@@ -3418,7 +3470,7 @@ prcp_ano_plt_lst
 #| fig-height: 9.5
 #| fig-width: 15
 #| label: fig-ano_plt_Dec_prcp
-#| fig-cap: !expr paste("Spatial distribution of the",par_nam,"anomalies relative to the 1980 - 2010 mean:",full_month)
+#| fig-cap: !expr paste("Spatial distribution of ",par_nam,"anomalies relative to the 1980 - 2010 mean:",full_month)
 prcp_ano_plt_lst[[1]][[1]]
 ```
 
@@ -3430,7 +3482,7 @@ prcp_ano_plt_lst[[1]][[1]]
 #| fig-height: 6.5
 #| fig-width: 14
 #| label: fig-sp_av_ano_plt_Dec_prcp
-#| fig-cap: !expr paste("Spatially averaged",par_nam,"anomalies and trend for BC:",full_month,". The inset box indicates trend magnitude and significance.")
+#| fig-cap: !expr paste("Spatially averaged",par_nam,"anomalies and trend for BC:",full_month,". The inset box indicates trend magnitude and significance for 1950 and 1980 to present year.")
 prcp_ano_plt_lst[[1]][[2]]
 ```
 
@@ -3476,7 +3528,7 @@ tmx_ano_plt_lst
 #| fig-height: 9.5
 #| fig-width: 15
 #| label: fig-ano_plt_Dec_tmax
-#| fig-cap: !expr paste("Spatial distribution of the",par_nam,"anomalies relative to the 1980 - 2010 mean:",full_month)
+#| fig-cap: !expr paste("Spatial distribution of ",par_nam,"anomalies relative to the 1980 - 2010 mean:",full_month)
 tmx_ano_plt_lst[[1]][[1]]
 ```
 
@@ -3488,7 +3540,7 @@ tmx_ano_plt_lst[[1]][[1]]
 #| fig-height: 6.5
 #| fig-width: 14
 #| label: fig-sp_av_ano_plt_Dec_tmax
-#| fig-cap: !expr paste("Spatially averaged",par_nam,"anomalies and trend for BC:",full_month,". The inset box indicates trend magnitude and significance.")
+#| fig-cap: !expr paste("Spatially averaged",par_nam,"anomalies and trend for BC:",full_month,". The inset box indicates trend magnitude and significance for 1950 and 1980 to present year.")
 tmx_ano_plt_lst[[1]][[2]]
 ```
 
@@ -3534,7 +3586,7 @@ tmi_ano_plt_lst
 #| fig-height: 9.5
 #| fig-width: 15
 #| label: fig-ano_plt_Dec_tmin
-#| fig-cap: !expr paste("Spatial distribution of the",par_nam,"anomalies relative to the 1980 - 2010 mean:",full_month)
+#| fig-cap: !expr paste("Spatial distribution of ",par_nam,"anomalies relative to the 1980 - 2010 mean:",full_month)
 tmi_ano_plt_lst[[1]][[1]]
 ```
 
@@ -3546,7 +3598,7 @@ tmi_ano_plt_lst[[1]][[1]]
 #| fig-height: 6.5
 #| fig-width: 14
 #| label: fig-sp_av_ano_plt_Dec_tmin
-#| fig-cap: !expr paste("Spatially averaged",par_nam,"anomalies and trend for BC:",full_month,". The inset box indicates trend magnitude and significance.")
+#| fig-cap: !expr paste("Spatially averaged",par_nam,"anomalies and trend for BC:",full_month,". The inset box indicates trend magnitude and significance for 1950 and 1980 to present year.")
 tmi_ano_plt_lst[[1]][[2]]
 ```
 
@@ -3594,7 +3646,7 @@ tmn_ano_plt_lst
 #| fig-height: 9.5
 #| fig-width: 15
 #| label: fig-ano_plt_winter_tmean
-#| fig-cap: !expr paste("Spatial distribution of the",par_nam,"anomalies relative to the 1980 - 2010 mean:",full_month)
+#| fig-cap: !expr paste("Spatial distribution of ",par_nam,"anomalies relative to the 1980 - 2010 mean:",full_month)
 tmn_ano_plt_lst[[1]][[1]]
 ```
 
@@ -3606,7 +3658,7 @@ tmn_ano_plt_lst[[1]][[1]]
 #| fig-height: 6.5
 #| fig-width: 14
 #| label: fig-sp_av_ano_plt_winter_tmean
-#| fig-cap: !expr paste("Spatially averaged",par_nam,"anomalies and trend for BC:",full_month,". The inset box indicates trend magnitude and significance.")
+#| fig-cap: !expr paste("Spatially averaged",par_nam,"anomalies and trend for BC:",full_month,". The inset box indicates trend magnitude and significance for 1950 and 1980 to present year.")
 tmn_ano_plt_lst[[1]][[2]]
 ```
 
@@ -3652,7 +3704,7 @@ prcp_ano_plt_lst
 #| fig-height: 9.5
 #| fig-width: 15
 #| label: fig-ano_plt_winter_prcp
-#| fig-cap: !expr paste("Spatial distribution of the",par_nam,"anomalies relative to the 1980 - 2010 mean:",full_month)
+#| fig-cap: !expr paste("Spatial distribution of ",par_nam,"anomalies relative to the 1980 - 2010 mean:",full_month)
 prcp_ano_plt_lst[[1]][[1]]
 ```
 
@@ -3664,7 +3716,7 @@ prcp_ano_plt_lst[[1]][[1]]
 #| fig-height: 6.5
 #| fig-width: 14
 #| label: fig-sp_av_ano_plt_winter_prcp
-#| fig-cap: !expr paste("Spatially averaged",par_nam,"anomalies and trend for BC:",full_month,". The inset box indicates trend magnitude and significance.")
+#| fig-cap: !expr paste("Spatially averaged",par_nam,"anomalies and trend for BC:",full_month,". The inset box indicates trend magnitude and significance for 1950 and 1980 to present year.")
 prcp_ano_plt_lst[[1]][[2]]
 ```
 
@@ -3710,7 +3762,7 @@ tmx_ano_plt_lst
 #| fig-height: 9.5
 #| fig-width: 15
 #| label: fig-ano_plt_winter_tmax
-#| fig-cap: !expr paste("Spatial distribution of the",par_nam,"anomalies relative to the 1980 - 2010 mean:",full_month)
+#| fig-cap: !expr paste("Spatial distribution of ",par_nam,"anomalies relative to the 1980 - 2010 mean:",full_month)
 tmx_ano_plt_lst[[1]][[1]]
 ```
 
@@ -3722,7 +3774,7 @@ tmx_ano_plt_lst[[1]][[1]]
 #| fig-height: 6.5
 #| fig-width: 14
 #| label: fig-sp_av_ano_plt_winter_tmax
-#| fig-cap: !expr paste("Spatially averaged",par_nam,"anomalies and trend for BC:",full_month,". The inset box indicates trend magnitude and significance.")
+#| fig-cap: !expr paste("Spatially averaged",par_nam,"anomalies and trend for BC:",full_month,". The inset box indicates trend magnitude and significance for 1950 and 1980 to present year.")
 tmx_ano_plt_lst[[1]][[2]]
 ```
 
@@ -3768,7 +3820,7 @@ tmi_ano_plt_lst
 #| fig-height: 9.5
 #| fig-width: 15
 #| label: fig-ano_plt_winter_tmin
-#| fig-cap: !expr paste("Spatial distribution of the",par_nam,"anomalies relative to the 1980 - 2010 mean:",full_month)
+#| fig-cap: !expr paste("Spatial distribution of ",par_nam,"anomalies relative to the 1980 - 2010 mean:",full_month)
 tmi_ano_plt_lst[[1]][[1]]
 ```
 
@@ -3780,7 +3832,7 @@ tmi_ano_plt_lst[[1]][[1]]
 #| fig-height: 6.5
 #| fig-width: 14
 #| label: fig-sp_av_ano_plt_winter_tmin
-#| fig-cap: !expr paste("Spatially averaged",par_nam,"anomalies and trend for BC:",full_month,". The inset box indicates trend magnitude and significance.")
+#| fig-cap: !expr paste("Spatially averaged",par_nam,"anomalies and trend for BC:",full_month,". The inset box indicates trend magnitude and significance for 1950 and 1980 to present year.")
 tmi_ano_plt_lst[[1]][[2]]
 ```
 
@@ -3828,7 +3880,7 @@ tmn_ano_plt_lst
 #| fig-height: 9.5
 #| fig-width: 15
 #| label: fig-ano_plt_spring_tmean
-#| fig-cap: !expr paste("Spatial distribution of the",par_nam,"anomalies relative to the 1980 - 2010 mean:",full_month)
+#| fig-cap: !expr paste("Spatial distribution of ",par_nam,"anomalies relative to the 1980 - 2010 mean:",full_month)
 tmn_ano_plt_lst[[1]][[1]]
 ```
 
@@ -3840,7 +3892,7 @@ tmn_ano_plt_lst[[1]][[1]]
 #| fig-height: 6.5
 #| fig-width: 14
 #| label: fig-sp_av_ano_plt_spring_tmean
-#| fig-cap: !expr paste("Spatially averaged",par_nam,"anomalies and trend for BC:",full_month,". The inset box indicates trend magnitude and significance.")
+#| fig-cap: !expr paste("Spatially averaged",par_nam,"anomalies and trend for BC:",full_month,". The inset box indicates trend magnitude and significance for 1950 and 1980 to present year.")
 tmn_ano_plt_lst[[1]][[2]]
 ```
 
@@ -3886,7 +3938,7 @@ prcp_ano_plt_lst
 #| fig-height: 9.5
 #| fig-width: 15
 #| label: fig-ano_plt_spring_prcp
-#| fig-cap: !expr paste("Spatial distribution of the",par_nam,"anomalies relative to the 1980 - 2010 mean:",full_month)
+#| fig-cap: !expr paste("Spatial distribution of ",par_nam,"anomalies relative to the 1980 - 2010 mean:",full_month)
 prcp_ano_plt_lst[[1]][[1]]
 ```
 
@@ -3898,7 +3950,7 @@ prcp_ano_plt_lst[[1]][[1]]
 #| fig-height: 6.5
 #| fig-width: 14
 #| label: fig-sp_av_ano_plt_spring_prcp
-#| fig-cap: !expr paste("Spatially averaged",par_nam,"anomalies and trend for BC:",full_month,". The inset box indicates trend magnitude and significance.")
+#| fig-cap: !expr paste("Spatially averaged",par_nam,"anomalies and trend for BC:",full_month,". The inset box indicates trend magnitude and significance for 1950 and 1980 to present year.")
 prcp_ano_plt_lst[[1]][[2]]
 ```
 
@@ -3944,7 +3996,7 @@ tmx_ano_plt_lst
 #| fig-height: 9.5
 #| fig-width: 15
 #| label: fig-ano_plt_spring_tmax
-#| fig-cap: !expr paste("Spatial distribution of the",par_nam,"anomalies relative to the 1980 - 2010 mean:",full_month)
+#| fig-cap: !expr paste("Spatial distribution of ",par_nam,"anomalies relative to the 1980 - 2010 mean:",full_month)
 tmx_ano_plt_lst[[1]][[1]]
 ```
 
@@ -3956,7 +4008,7 @@ tmx_ano_plt_lst[[1]][[1]]
 #| fig-height: 6.5
 #| fig-width: 14
 #| label: fig-sp_av_ano_plt_spring_tmax
-#| fig-cap: !expr paste("Spatially averaged",par_nam,"anomalies and trend for BC:",full_month,". The inset box indicates trend magnitude and significance.")
+#| fig-cap: !expr paste("Spatially averaged",par_nam,"anomalies and trend for BC:",full_month,". The inset box indicates trend magnitude and significance for 1950 and 1980 to present year.")
 tmx_ano_plt_lst[[1]][[2]]
 ```
 
@@ -4002,7 +4054,7 @@ tmi_ano_plt_lst
 #| fig-height: 9.5
 #| fig-width: 15
 #| label: fig-ano_plt_spring_tmin
-#| fig-cap: !expr paste("Spatial distribution of the",par_nam,"anomalies relative to the 1980 - 2010 mean:",full_month)
+#| fig-cap: !expr paste("Spatial distribution of ",par_nam,"anomalies relative to the 1980 - 2010 mean:",full_month)
 tmi_ano_plt_lst[[1]][[1]]
 ```
 
@@ -4014,7 +4066,7 @@ tmi_ano_plt_lst[[1]][[1]]
 #| fig-height: 6.5
 #| fig-width: 14
 #| label: fig-sp_av_ano_plt_spring_tmin
-#| fig-cap: !expr paste("Spatially averaged",par_nam,"anomalies and trend for BC:",full_month,". The inset box indicates trend magnitude and significance.")
+#| fig-cap: !expr paste("Spatially averaged",par_nam,"anomalies and trend for BC:",full_month,". The inset box indicates trend magnitude and significance for 1950 and 1980 to present year.")
 tmi_ano_plt_lst[[1]][[2]]
 ```
 
@@ -4062,7 +4114,7 @@ tmn_ano_plt_lst
 #| fig-height: 9.5
 #| fig-width: 15
 #| label: fig-ano_plt_summer_tmean
-#| fig-cap: !expr paste("Spatial distribution of the",par_nam,"anomalies relative to the 1980 - 2010 mean:",full_month)
+#| fig-cap: !expr paste("Spatial distribution of ",par_nam,"anomalies relative to the 1980 - 2010 mean:",full_month)
 tmn_ano_plt_lst[[1]][[1]]
 ```
 
@@ -4074,7 +4126,7 @@ tmn_ano_plt_lst[[1]][[1]]
 #| fig-height: 6.5
 #| fig-width: 14
 #| label: fig-sp_av_ano_plt_summer_tmean
-#| fig-cap: !expr paste("Spatially averaged",par_nam,"anomalies and trend for BC:",full_month,". The inset box indicates trend magnitude and significance.")
+#| fig-cap: !expr paste("Spatially averaged",par_nam,"anomalies and trend for BC:",full_month,". The inset box indicates trend magnitude and significance for 1950 and 1980 to present year.")
 tmn_ano_plt_lst[[1]][[2]]
 ```
 
@@ -4120,7 +4172,7 @@ prcp_ano_plt_lst
 #| fig-height: 9.5
 #| fig-width: 15
 #| label: fig-ano_plt_summer_prcp
-#| fig-cap: !expr paste("Spatial distribution of the",par_nam,"anomalies relative to the 1980 - 2010 mean:",full_month)
+#| fig-cap: !expr paste("Spatial distribution of ",par_nam,"anomalies relative to the 1980 - 2010 mean:",full_month)
 prcp_ano_plt_lst[[1]][[1]]
 ```
 
@@ -4132,7 +4184,7 @@ prcp_ano_plt_lst[[1]][[1]]
 #| fig-height: 6.5
 #| fig-width: 14
 #| label: fig-sp_av_ano_plt_summer_prcp
-#| fig-cap: !expr paste("Spatially averaged",par_nam,"anomalies and trend for BC:",full_month,". The inset box indicates trend magnitude and significance.")
+#| fig-cap: !expr paste("Spatially averaged",par_nam,"anomalies and trend for BC:",full_month,". The inset box indicates trend magnitude and significance for 1950 and 1980 to present year.")
 prcp_ano_plt_lst[[1]][[2]]
 ```
 
@@ -4178,7 +4230,7 @@ tmx_ano_plt_lst
 #| fig-height: 9.5
 #| fig-width: 15
 #| label: fig-ano_plt_summer_tmax
-#| fig-cap: !expr paste("Spatial distribution of the",par_nam,"anomalies relative to the 1980 - 2010 mean:",full_month)
+#| fig-cap: !expr paste("Spatial distribution of ",par_nam,"anomalies relative to the 1980 - 2010 mean:",full_month)
 tmx_ano_plt_lst[[1]][[1]]
 ```
 
@@ -4190,7 +4242,7 @@ tmx_ano_plt_lst[[1]][[1]]
 #| fig-height: 6.5
 #| fig-width: 14
 #| label: fig-sp_av_ano_plt_summer_tmax
-#| fig-cap: !expr paste("Spatially averaged",par_nam,"anomalies and trend for BC:",full_month,". The inset box indicates trend magnitude and significance.")
+#| fig-cap: !expr paste("Spatially averaged",par_nam,"anomalies and trend for BC:",full_month,". The inset box indicates trend magnitude and significance for 1950 and 1980 to present year.")
 tmx_ano_plt_lst[[1]][[2]]
 ```
 
@@ -4236,7 +4288,7 @@ tmi_ano_plt_lst
 #| fig-height: 9.5
 #| fig-width: 15
 #| label: fig-ano_plt_summer_tmin
-#| fig-cap: !expr paste("Spatial distribution of the",par_nam,"anomalies relative to the 1980 - 2010 mean:",full_month)
+#| fig-cap: !expr paste("Spatial distribution of ",par_nam,"anomalies relative to the 1980 - 2010 mean:",full_month)
 tmi_ano_plt_lst[[1]][[1]]
 ```
 
@@ -4248,7 +4300,7 @@ tmi_ano_plt_lst[[1]][[1]]
 #| fig-height: 6.5
 #| fig-width: 14
 #| label: fig-sp_av_ano_plt_summer_tmin
-#| fig-cap: !expr paste("Spatially averaged",par_nam,"anomalies and trend for BC:",full_month,". The inset box indicates trend magnitude and significance.")
+#| fig-cap: !expr paste("Spatially averaged",par_nam,"anomalies and trend for BC:",full_month,". The inset box indicates trend magnitude and significance for 1950 and 1980 to present year.")
 tmi_ano_plt_lst[[1]][[2]]
 ```
 
@@ -4296,7 +4348,7 @@ tmn_ano_plt_lst
 #| fig-height: 9.5
 #| fig-width: 15
 #| label: fig-ano_plt_fall_tmean
-#| fig-cap: !expr paste("Spatial distribution of the",par_nam,"anomalies relative to the 1980 - 2010 mean:",full_month)
+#| fig-cap: !expr paste("Spatial distribution of ",par_nam,"anomalies relative to the 1980 - 2010 mean:",full_month)
 tmn_ano_plt_lst[[1]][[1]]
 ```
 
@@ -4308,7 +4360,7 @@ tmn_ano_plt_lst[[1]][[1]]
 #| fig-height: 6.5
 #| fig-width: 14
 #| label: fig-sp_av_ano_plt_fall_tmean
-#| fig-cap: !expr paste("Spatially averaged",par_nam,"anomalies and trend for BC:",full_month,". The inset box indicates trend magnitude and significance.")
+#| fig-cap: !expr paste("Spatially averaged",par_nam,"anomalies and trend for BC:",full_month,". The inset box indicates trend magnitude and significance for 1950 and 1980 to present year.")
 tmn_ano_plt_lst[[1]][[2]]
 ```
 
@@ -4354,7 +4406,7 @@ prcp_ano_plt_lst
 #| fig-height: 9.5
 #| fig-width: 15
 #| label: fig-ano_plt_fall_prcp
-#| fig-cap: !expr paste("Spatial distribution of the",par_nam,"anomalies relative to the 1980 - 2010 mean:",full_month)
+#| fig-cap: !expr paste("Spatial distribution of ",par_nam,"anomalies relative to the 1980 - 2010 mean:",full_month)
 prcp_ano_plt_lst[[1]][[1]]
 ```
 
@@ -4366,7 +4418,7 @@ prcp_ano_plt_lst[[1]][[1]]
 #| fig-height: 6.5
 #| fig-width: 14
 #| label: fig-sp_av_ano_plt_fall_prcp
-#| fig-cap: !expr paste("Spatially averaged",par_nam,"anomalies and trend for BC:",full_month,". The inset box indicates trend magnitude and significance.")
+#| fig-cap: !expr paste("Spatially averaged",par_nam,"anomalies and trend for BC:",full_month,". The inset box indicates trend magnitude and significance for 1950 and 1980 to present year.")
 prcp_ano_plt_lst[[1]][[2]]
 ```
 
@@ -4412,7 +4464,7 @@ tmx_ano_plt_lst
 #| fig-height: 9.5
 #| fig-width: 15
 #| label: fig-ano_plt_fall_tmax
-#| fig-cap: !expr paste("Spatial distribution of the",par_nam,"anomalies relative to the 1980 - 2010 mean:",full_month)
+#| fig-cap: !expr paste("Spatial distribution of ",par_nam,"anomalies relative to the 1980 - 2010 mean:",full_month)
 tmx_ano_plt_lst[[1]][[1]]
 ```
 
@@ -4424,7 +4476,7 @@ tmx_ano_plt_lst[[1]][[1]]
 #| fig-height: 6.5
 #| fig-width: 14
 #| label: fig-sp_av_ano_plt_fall_tmax
-#| fig-cap: !expr paste("Spatially averaged",par_nam,"anomalies and trend for BC:",full_month,". The inset box indicates trend magnitude and significance.")
+#| fig-cap: !expr paste("Spatially averaged",par_nam,"anomalies and trend for BC:",full_month,". The inset box indicates trend magnitude and significance for 1950 and 1980 to present year.")
 tmx_ano_plt_lst[[1]][[2]]
 ```
 
@@ -4470,7 +4522,7 @@ tmi_ano_plt_lst
 #| fig-height: 9.5
 #| fig-width: 15
 #| label: fig-ano_plt_fall_tmin
-#| fig-cap: !expr paste("Spatial distribution of the",par_nam,"anomalies relative to the 1980 - 2010 mean:",full_month)
+#| fig-cap: !expr paste("Spatial distribution of ",par_nam,"anomalies relative to the 1980 - 2010 mean:",full_month)
 tmi_ano_plt_lst[[1]][[1]]
 ```
 
@@ -4482,7 +4534,7 @@ tmi_ano_plt_lst[[1]][[1]]
 #| fig-height: 6.5
 #| fig-width: 14
 #| label: fig-sp_av_ano_plt_fall_tmin
-#| fig-cap: !expr paste("Spatially averaged",par_nam,"anomalies and trend for BC:",full_month,". The inset box indicates trend magnitude and significance.")
+#| fig-cap: !expr paste("Spatially averaged",par_nam,"anomalies and trend for BC:",full_month,". The inset box indicates trend magnitude and significance for 1950 and 1980 to present year.")
 tmi_ano_plt_lst[[1]][[2]]
 ```
 
@@ -4530,7 +4582,7 @@ tmn_ano_plt_lst
 #| fig-height: 9.5
 #| fig-width: 15
 #| label: fig-ano_plt_annual_tmean
-#| fig-cap: !expr paste("Spatial distribution of the",par_nam,"anomalies relative to the 1980 - 2010 mean:",full_month)
+#| fig-cap: !expr paste("Spatial distribution of ",par_nam,"anomalies relative to the 1980 - 2010 mean:",full_month)
 tmn_ano_plt_lst[[1]][[1]]
 ```
 
@@ -4542,7 +4594,7 @@ tmn_ano_plt_lst[[1]][[1]]
 #| fig-height: 6.5
 #| fig-width: 14
 #| label: fig-sp_av_ano_plt_annual_tmean
-#| fig-cap: !expr paste("Spatially averaged",par_nam,"anomalies and trend for BC:",full_month,". The inset box indicates trend magnitude and significance.")
+#| fig-cap: !expr paste("Spatially averaged",par_nam,"anomalies and trend for BC:",full_month,". The inset box indicates trend magnitude and significance for 1950 and 1980 to present year.")
 tmn_ano_plt_lst[[1]][[2]]
 ```
 
@@ -4588,7 +4640,7 @@ prcp_ano_plt_lst
 #| fig-height: 9.5
 #| fig-width: 15
 #| label: fig-ano_plt_annual_prcp
-#| fig-cap: !expr paste("Spatial distribution of the",par_nam,"anomalies relative to the 1980 - 2010 mean:",full_month)
+#| fig-cap: !expr paste("Spatial distribution of ",par_nam,"anomalies relative to the 1980 - 2010 mean:",full_month)
 prcp_ano_plt_lst[[1]][[1]]
 ```
 
@@ -4600,7 +4652,7 @@ prcp_ano_plt_lst[[1]][[1]]
 #| fig-height: 6.5
 #| fig-width: 14
 #| label: fig-sp_av_ano_plt_annual_prcp
-#| fig-cap: !expr paste("Spatially averaged",par_nam,"anomalies and trend for BC:",full_month,". The inset box indicates trend magnitude and significance.")
+#| fig-cap: !expr paste("Spatially averaged",par_nam,"anomalies and trend for BC:",full_month,". The inset box indicates trend magnitude and significance for 1950 and 1980 to present year.")
 prcp_ano_plt_lst[[1]][[2]]
 ```
 
@@ -4646,7 +4698,7 @@ tmx_ano_plt_lst
 #| fig-height: 9.5
 #| fig-width: 15
 #| label: fig-ano_plt_annual_tmax
-#| fig-cap: !expr paste("Spatial distribution of the",par_nam,"anomalies relative to the 1980 - 2010 mean:",full_month)
+#| fig-cap: !expr paste("Spatial distribution of ",par_nam,"anomalies relative to the 1980 - 2010 mean:",full_month)
 tmx_ano_plt_lst[[1]][[1]]
 ```
 
@@ -4658,7 +4710,7 @@ tmx_ano_plt_lst[[1]][[1]]
 #| fig-height: 6.5
 #| fig-width: 14
 #| label: fig-sp_av_ano_plt_annual_tmax
-#| fig-cap: !expr paste("Spatially averaged",par_nam,"anomalies and trend for BC:",full_month,". The inset box indicates trend magnitude and significance.")
+#| fig-cap: !expr paste("Spatially averaged",par_nam,"anomalies and trend for BC:",full_month,". The inset box indicates trend magnitude and significance for 1950 and 1980 to present year.")
 tmx_ano_plt_lst[[1]][[2]]
 ```
 
@@ -4704,7 +4756,7 @@ tmi_ano_plt_lst
 #| fig-height: 9.5
 #| fig-width: 15
 #| label: fig-ano_plt_annual_tmin
-#| fig-cap: !expr paste("Spatial distribution of the",par_nam,"anomalies relative to the 1980 - 2010 mean:",full_month)
+#| fig-cap: !expr paste("Spatial distribution of ",par_nam,"anomalies relative to the 1980 - 2010 mean:",full_month)
 tmi_ano_plt_lst[[1]][[1]]
 ```
 
@@ -4716,6 +4768,6 @@ tmi_ano_plt_lst[[1]][[1]]
 #| fig-height: 6.5
 #| fig-width: 14
 #| label: fig-sp_av_ano_plt_annual_tmin
-#| fig-cap: !expr paste("Spatially averaged",par_nam,"anomalies and trend for BC:",full_month,". The inset box indicates trend magnitude and significance.")
+#| fig-cap: !expr paste("Spatially averaged",par_nam,"anomalies and trend for BC:",full_month,". The inset box indicates trend magnitude and significance for 1950 and 1980 to present year.")
 tmi_ano_plt_lst[[1]][[2]]
 ```

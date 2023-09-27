@@ -2,7 +2,7 @@ library(quarto)
 library(tictoc)
 setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
 getwd()
-# tic()
+tic()
 
 # Render the anomaly quarto file in the www app folder of the shiny app with date.
 
@@ -15,7 +15,7 @@ html_file_name = paste0("BC_climate_anomaly_",update_month,"_",update_year,".htm
 
 # html_render
 quarto::quarto_render(
-  input="bc_eral_climate_anomaly_report_html.qmd",
+  input="bc_climate_anomaly_report_html.qmd",
   output_file = html_file_name, output_format = "html"
 )
 
@@ -31,6 +31,7 @@ quarto::quarto_render(
 
  file.copy(from = html_output_file_name, to = "../www/", overwrite = T)
  # file.copy(from = pdf_output_file_name, to = "../www/", overwrite = T)
+ toc()
 
  #Remove files and folders from original
  file.remove(html_output_file_name)
@@ -39,5 +40,3 @@ quarto::quarto_render(
  # file.remove('bc_eral_climate_anomaly_report_html_pdf.fdb_latexmk')
 
  # unlink("bc_eral_climate_anomaly_report_html_pdf_files", recursive = TRUE)
-
-toc()

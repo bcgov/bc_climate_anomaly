@@ -159,10 +159,10 @@ ui <- fluidPage(
         width = 12,
         wellPanel(
           HTML(
-            "<h3><b>Climate Anomaly-BC</b>: Monthly, seasonal and annual climate anomalies </h2>"
+            "<h3><b>Climate Anomaly-BC</b>: Monthly, seasonal, and annual climate anomalies </h2>"
           ),
           HTML(
-            "<h4>This tool offers spatial visualizations and reports on the monthly, seasonal and annual historical climate change.
+            "<h4>This tool offers spatial visualizations and reports on the monthly, seasonal, and annual historical climate change.
             The climate parameters encompass minimum, maximum, and mean surface air temperatures, and precipitation.
             The app shows climate anomalies in comparison to the average climate conditions across western North America, British Columbia (BC),
             and various sub-regions of BC, including eco-province regions and major watersheds. Additionally, the application
@@ -182,9 +182,9 @@ ui <- fluidPage(
             Please navigate to <b>About</b> page to learn more about the app, data, and methods.
             The <b>Anomaly App</b> page generates the spatial anomaly map and time-series plot with trend magnitude and significance of the selected region of interest, parameter, and month/season.
             There are options to download plots and/or data.
-            The <b>Full Report</b> page has link to full reports on BC climate anomalies in HTML format that can be downloaded.
-            The <b>Feedback & Links</b> page has link to a form where you can provide your comments/feedback on the app.
-            Also it provide links to other similar apps developed and maintained by the Future Forest Ecosystems Centre (FFEC) team.
+            The <b>Full Report</b> page has a link to full reports on BC climate anomalies in HTML format that can be downloaded.
+            The <b>Feedback & Links</b> page has a link to a form where you can provide your comments/feedback on the app.
+            Also, it provide links to other similar apps developed and maintained by the Future Forest Ecosystems Centre (FFEC) team.
             "
           )
         ),
@@ -2851,10 +2851,6 @@ server <- function(session, input, output) {
                   overwrite = TRUE)
     }
   )
-
-
-
-
 
     # Reset  selection /filters -----
   observeEvent(input$reset_input, {
