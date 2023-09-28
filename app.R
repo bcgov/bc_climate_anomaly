@@ -210,7 +210,7 @@ ui <- fluidPage(
               <a href= 'mailto: Aseem.Sharma@gov.bc.ca'>Aseem.Sharma@gov.bc.ca</a> <br>
               <br>
               <h4><b>Code</b></h4>
-              <h5> The code and data of this app are available through GitHub at <a href='https://github.com/bcgov/bc_climate_anomaly.git'> https://github.com/bcgov/bc_climate_anomaly</a></h5>."
+              <h5> The code and data of this app are available through GitHub at <a href='https://github.com/bcgov/bc_climate_anomaly.git'> https://github.com/bcgov/bc_climate_anomaly.</a></h5>"
           )
         ),
         column(width = 12,
@@ -490,16 +490,16 @@ ui <- fluidPage(
       )
     ),
 
-    ## Reports ----
+    ## Report ----
     tabPanel(
       title = "Report",
       value = "report",
       column(width = 12,
              wellPanel(
-               HTML("<h3><b>Climate Anomaly-BC</b>: Full report </h2>"),
+               HTML("<h3><b>BC climate anomaly report</b></h2>"),
                HTML(
-                 "<h4>The following link provide a report on HTML  format that shows the spatial cliamte anomaly maps of
-            for western North America and timeseries and trend on BC's spatially averaged anomalies along with summary notes.</h>"
+                 "<h4>The following link provide a report on HTML  format that shows the spatial climate anomaly maps of
+            western North America and timeseries plot and trend of BC's spatially averaged anomalies along with summary notes.</h>"
                )
              ),
             fluidPage(#   fluidRow(
