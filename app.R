@@ -2786,6 +2786,19 @@ server <- function(session, input, output) {
     }
     region
 
+    # units
+    if (parr == "tmax" | parr == "tmin" | parr == "tmean") {
+      unt <- "°C"
+    } else if (parr == "prcp") {
+      unt <- "mm"
+      parr_pr <- "prcp"
+    } else if (parr == "RH") {
+      unt <- "%"
+    } else {
+      unt <- ""
+    }
+    unt
+
       plt_wtrmrk <-
         "Created by Aseem Sharma BC Ministry of Forests using ERA5-Land hourly data\nContact: Aseem.Sharma@gov.bc.ca"
         plt_wtrmrk
@@ -2802,7 +2815,7 @@ server <- function(session, input, output) {
                              monn)
       }
 
-    dwn_clm_plt <- reactive_clm_dt_fl() +
+    dwn_clm_plt <- reactive_clm_dt_plt() +
     labs(tag = plt_wtrmrk,title = par_title) +
     theme(
       plot.tag.position = 'bottom',
