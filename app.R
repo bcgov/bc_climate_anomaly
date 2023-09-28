@@ -314,7 +314,7 @@ ui <- fluidPage(
         sidebarPanel(
           shinyjs::useShinyjs(),
           id = "selection-panel",
-          style = "position:fixed; width:24%; max-height: 100vh;",
+          # style = "position:fixed; width:24%; max-height: 100vh;",
           width = 3,
           ##### filters -----
           helpText(HTML("<h4><b> Filter/Selections</b> </h4>",)),
@@ -1087,7 +1087,7 @@ server <- function(session, input, output) {
         plot.title = element_text(
           angle = 0,
           face = "bold",
-          size = 15,
+          size = 13,
           colour = "Black"
         ),
         legend.position = 'right',
@@ -1109,7 +1109,7 @@ server <- function(session, input, output) {
       guides(
         fill = guide_colorbar(
           barwidth = 1.7,
-          barheight = 25,
+          barheight = 20,
           label.vjust = 0.5,
           label.hjust = 0.0,
           title.vjust = 0.5,
@@ -1530,7 +1530,7 @@ server <- function(session, input, output) {
       guides(
         fill = guide_colorbar(
           barwidth = 1.0,
-          barheight = 12,
+          barheight = 10,
           label.vjust = 0.5,
           label.hjust = 0.0,
           title.vjust = 0.5,
@@ -2143,7 +2143,7 @@ server <- function(session, input, output) {
     if (parr == "prcp") {
       y_axis_lab <- paste0(parr, " average anomaly (% of normal)")
     } else{
-      y_axis_lab <- paste0(parr, " average anomaly ", unt)
+      y_axis_lab <- paste0(parr, " average anomaly ", "(", unt, ")")
     }
 
     ano_shp_trn_plt <-
@@ -2227,7 +2227,7 @@ server <- function(session, input, output) {
       ) +
       scale_x_continuous(
         name = " ",
-        breaks = seq(minyr, maxyr, 3),
+        breaks = seq(1950, maxyr, 5),
         expand = c(0.02, 0.02)
       ) +
       scale_y_continuous(name = y_axis_lab,
@@ -2262,14 +2262,14 @@ server <- function(session, input, output) {
         axis.title.y = element_text(
           angle = 90,
           face = "plain",
-          size = 14,
+          size = 13,
           colour = "Black",
           margin = unit(c(1, 1, 1, 1), "mm")
         ),
         axis.title.x = element_text(
           angle = 0,
           face = "plain",
-          size = 14,
+          size = 13,
           colour = "Black",
           margin = unit(c(1, 1, 1, 1), "mm")
         ),
@@ -2278,7 +2278,7 @@ server <- function(session, input, output) {
           hjust = 0.5,
           vjust = 0.5,
           colour = "black",
-          size = 13,
+          size = 12,
           margin = margin(
             t = 2,
             r = 2,
@@ -2291,7 +2291,7 @@ server <- function(session, input, output) {
           hjust = 0.5,
           vjust = 0.5,
           colour = "black",
-          size = 13,
+          size = 12,
           margin = margin(
             t = 2,
             r = 2,
@@ -2302,10 +2302,10 @@ server <- function(session, input, output) {
         plot.title = element_text(
           angle = 0,
           face = "bold",
-          size = 14,
+          size = 13,
           colour = "Black"
         ),
-        legend.position = c(0.95, 0.95),
+        legend.position = c(0.90, 0.94),
         legend.direction = "vertical",
         legend.background = element_rect(fill = NA, color = NA),
         legend.margin = margin(0, 0, 0, 0),
