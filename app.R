@@ -159,20 +159,19 @@ ui <- fluidPage(
         width = 12,
         wellPanel(
           HTML(
-            "<h3><b>Climate Anomaly-BC</b>: Monthly, seasonal, and annual climate anomalies </h2>"
+            "<h3><b>BC climate anomaly app</b>: monthly, seasonal, and annual climate anomalies and trends </h2>"
           ),
           HTML(
-            "<h4>This tool offers spatial visualizations and reports on the monthly, seasonal, and annual historical climate change.
+            "<h4>This tool offers spatial visualizations and report on the monthly, seasonal, and annual historical climate change.
             The climate parameters encompass minimum, maximum, and mean surface air temperatures, and precipitation.
             The app shows climate anomalies in comparison to the average climate conditions across western North America, British Columbia (BC),
             and various sub-regions of BC, including eco-province regions and major watersheds. Additionally, the application
             offers insights into the trends and significance of the spatially averaged anomalies for selected regions and parameters.
             The analysis covers the timeframe from 1951 to 2023, with monthly updates to incorporate the most recent data. We used <a href='https://cds.climate.copernicus.eu/cdsapp#!/dataset/reanalysis-era5-land?tab=overview'>
-            ERA5-Land hourly data</a> for calculating the climatological mean and anomalies. These anomalies are computed as deviations from the average climatic conditions observed between 1980 and 2010.
-
+            ERA5-Land hourly data</a> for calculating the climatological mean and anomalies. The anomalies are computed as deviations from the average climatic conditions observed between 1981 and 2010 (30-years).
             <br>
             <br>
-            This is a product of the Future Forest Ecosystems Centre (FFEC).
+            This is a product of the <a href ='https://www2.gov.bc.ca/gov/content/environment/natural-resource-stewardship/natural-resources-climate-change/future-forest-ecosystems-centre#:~:text=The%20Future%20Forest%20Ecosystems%20Centre%20(FFEC)%20was%20officially%20established%20in,on%20B.C.%27s%20forest%20ecosystems.'> Future Forest Ecosystems Center (FFEC) </a>.
             The FFEC is a scientific team that forecasts climate change impacts on B.C.’s forest ecosystems.
             The core role of the FFEC is to translate ecological knowledge into data, tools, and guidance to help ecosystem managers account for climate risks.
 
@@ -182,9 +181,9 @@ ui <- fluidPage(
             Please navigate to <b>About</b> page to learn more about the app, data, and methods.
             The <b>Anomaly App</b> page generates the spatial anomaly map and time-series plot with trend magnitude and significance of the selected region of interest, parameter, and month/season.
             There are options to download plots and/or data.
-            The <b>Full Report</b> page has a link to full reports on BC climate anomalies in HTML format that can be downloaded.
-            The <b>Feedback & Links</b> page has a link to a form where you can provide your comments/feedback on the app.
-            Also, it provide links to other similar apps developed and maintained by the Future Forest Ecosystems Centre (FFEC) team.
+            The <b>Report</b> page has a link to full report on BC climate anomalies in HTML format that can be downloaded.
+            The <b>Feedback & Links</b> page has a link to a form where users can provide their comments/feedback related to the app.
+            Also, this page has links to other similar apps developed and maintained by the FFEC team.
             "
           )
         ),
@@ -192,8 +191,9 @@ ui <- fluidPage(
           width = 12,
           HTML(
             "<h4><b>Citation</b></h4>
-                            <h5> <u>Please cite the contents of this app as:</u> <br>
-                            Sharma, A.R. 2023. Monthly, seasonal and annual climate anomalies of BC: A shiny app.</a>
+                            <h5> <u>Please cite the contents of this app as:</u>
+                            <br>
+                            Sharma, A.R. 2023. Monthly, seasonal, and annual climate anomalies of BC: A shiny app.</a>
                             British Columbia Ministry of Forests.
                   <a href='https://bcgov-env.shinyapps.io/bc_climate_anomaly/'
             target='_blank'>https://bcgov-env.shinyapps.io/bc_climate_anomaly/</a> </h5>"
@@ -202,14 +202,15 @@ ui <- fluidPage(
         column(
           width = 12,
           HTML(
-            "<h5> <u>App created by:</u><br>
-             <b>Aseem Sharma</b><br>
+            "<h5> <u>App created by:</u>
+             <br>
+             <b>Aseem R. Sharma, PhD</b><br>
               Research Climatologist<br>
               FFEC, FCCSB, OCF, BC Ministry of Forests<br>
               <a href= 'mailto: Aseem.Sharma@gov.bc.ca'>Aseem.Sharma@gov.bc.ca</a> <br>
               <br>
               <h4><b>Code</b></h4>
-              <h5> The code and data for this tool are available at <a href='https://github.com/bcgov/bc_climate_anomaly.git'> https://github.com/bcgov/bc_climate_anomaly</a></h5>"
+              <h5> The code and data of this app are available through GitHub at <a href='https://github.com/bcgov/bc_climate_anomaly.git'> https://github.com/bcgov/bc_climate_anomaly</a></h5>."
           )
         ),
         column(width = 12,
@@ -497,8 +498,8 @@ ui <- fluidPage(
              wellPanel(
                HTML("<h3><b>Climate Anomaly-BC</b>: Full report </h2>"),
                HTML(
-                 "<h4>The following links provide HTML of the climate anomaly that indicate spatial anomalies
-            for western North America and trend on BC's spatially averaged anomalies along with summary notes.</h>"
+                 "<h4>The following link provide a report on HTML  format that shows the spatial cliamte anomaly maps of
+            for western North America and timeseries and trend on BC's spatially averaged anomalies along with summary notes.</h>"
                )
              ),
             fluidPage(#   fluidRow(
