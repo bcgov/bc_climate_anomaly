@@ -2885,7 +2885,7 @@ max_year <- 2023
     HTML(
       "<p>We used <a href='https://cds.climate.copernicus.eu/cdsapp#!/dataset/reanalysis-era5-land?tab=overview'>
       ERA5-Land hourly data</a> to calculate the anomalies and climatology.
-      Anomalies are calculated as the measure of departure from the climatological averages spanning from 1980 to 2010.
+      Anomalies are calculated as the measure of departure from the climatological averages spanning from 1981 to 2010.
       Should you have any inquiries or wish to provide feedback, please do not hesitate to use
       <a href=https://forms.office.com/r/wN0QYAvSTZ'> this feedback form </a> or write to Aseem Sharma @ <a href= 'mailto: Aseem.Sharma@gov.bc.ca'>Aseem.Sharma@gov.bc.ca</a> . </p>"
     )
