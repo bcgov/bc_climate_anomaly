@@ -440,7 +440,7 @@ ui <- fluidPage(
               ),
               tabPanel(
                 status = 'primary',
-                title = "Dynamic trend plot",
+                title = "Timeseries line plot",
                 echarts4rOutput("echarts_trn_plt", height = "50vh")
               )
             )
@@ -719,17 +719,27 @@ server <- function(session, input, output) {
       sep = ""
     )
   })
-
+max_year <- 2023
   # Filter by year of choice
   output$year_specific <- renderUI({
     yr_choices <- sort(years, decreasing = T)
     selectInput("year_specific",
                 "year(s)",
                 choices = yr_choices,
-                multiple = T)
+                multiple = T,
+                selected = max_year)
   })
 
-  # Area, month and year reactive data for spatial anomaly plot
+  #interactive years choices
+   get_years <- reactive({
+     if (input$ab_years_choose %% 2 == 0) {
+       sel_yrs <- seq(input$year_range[1], input$year_range[2], 1)
+     } else{
+       sel_yrs <- input$year_specific
+     }
+   })
+
+  # Area shape file interactive
 
   get_shapefile <- reactive({
     if (input$major_area == "BC") {
@@ -788,18 +798,14 @@ server <- function(session, input, output) {
     # plot(ano_dt_sel_rast)
 
     # Filter for selected year (s)
-    if (input$ab_years_choose %% 2 == 0) {
-      sel_yrs <- seq(input$year_range[1], input$year_range[2], 1)
-    } else{
-      sel_yrs <- input$year_specific
-    }
+     sel_yrs <- get_years()
 
     if (length(sel_yrs) > 30) {
       sel_yrs <- sel_yrs[1:30]
       shinyalert(
         html = T,
         text = tagList(h3(
-          "Too many years selected, maximum 30 allowed"
+          "Too many years selected, maximum 30 allowed."
         )),
         showCancelButton = T
       )
@@ -2338,7 +2344,7 @@ server <- function(session, input, output) {
     spatial_av_trnd_plt_rct()
   })
 
-  # Dynamic echart4r trend plot ----
+  # Time series line plot ----
 
   output$echarts_trn_plt <- renderEcharts4r({
     reactive_ano_dt_fl_sp() -> ano_shp_dt
@@ -2871,7 +2877,7 @@ server <- function(session, input, output) {
   })
 
   # observeEvent(input$reset_input, {
-  #   shinyjs::reset("yrs_sel")
+  #   shinyjs::reset("sel_yrs")
   # })
 
   # Feedback text -------
