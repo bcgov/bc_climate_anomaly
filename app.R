@@ -353,18 +353,20 @@ ui <- fluidPage(
                    uiOutput("month_picker")),
           br(),
           fluidRow(
-            id = "yrs_sel",
-            title = "Year(s)",
+            helpText(HTML("<h5><b> Choose specific year (s) or range of years</b> </h5>",)),
+            actionButton("ab_years_choose", "Specific year(s)"),
+            actionButton("rng_years_choose", "Range of years"),
+            uiOutput("year_range"),
             chooseSliderSkin(skin = "Shiny"),
             tags$style(
               HTML(
                 ".js-irs-0 .irs-single, .js-irs-0 .irs-bar-edge, .js-irs-0 .irs-bar {background: purple}"
               )
             ),
-            uiOutput("year_range"),
-            actionButton("ab_years_choose", "Select Specific Years"),
             uiOutput("year_specific"),
             # Reset selection
+            br(),
+            br(),
             actionButton("reset_input", "Reset")
           ),
           fluidRow(column(
@@ -681,9 +683,10 @@ server <- function(session, input, output) {
     mon_choices <- list(
       "Annual" = 'annual',
       "Summer" = 'summer',
-      "Spring" = 'spring',
       "Fall" = 'fall',
-      "Janaury" = 'Jan',
+      "Winter" = 'winter',
+      "Spring" = 'spring',
+      "January" = 'Jan',
       "February" = 'Feb',
       "March" = 'Mar',
       "April" = 'Apr',
@@ -701,44 +704,86 @@ server <- function(session, input, output) {
       "Select month or season or annual"
       ,
       choices = mon_choices,
-      selected = "Jan"
+      selected = "summer"
     )
   })
 
   # Filter year range or specific year (s)
-  output$year_range <- renderUI({
-    min_year <- min_year
-    max_year <- max_year
-    sliderInput(
-      "year_range",
-      "Select range of years or specific year (s)"
-      ,
-      min_year,
-      max_year
-      ,
-      value = c((max_year - 5), (max_year)),
-      sep = ""
-    )
-  })
-max_year <- 2023
-  # Filter by year of choice
-  output$year_specific <- renderUI({
-    yr_choices <- sort(years, decreasing = T)
-    selectInput("year_specific",
-                "year(s)",
-                choices = yr_choices,
-                multiple = T,
-                selected = max_year)
-  })
+  # output$year_range <- renderUI({
+  #   min_year <- min_year
+  #   max_year <- max_year
+  #   sliderInput(
+  #     "year_range",
+  #     "Select range of years or specific year (s)"
+  #     ,
+  #     min_year,
+  #     max_year
+  #     ,
+  #     value = c((max_year - 5), (max_year)),
+  #     sep = ""
+  #   )
+  # })
+
+  # # Filter by year of choice
+  # output$year_specific <- renderUI({
+  #   yr_choices <- sort(years, decreasing = T)
+  #   selectInput("year_specific",
+  #               "year(s)",
+  #               choices = yr_choices,
+  #               multiple = T,
+  #               selected = max_year)
+  # })
 
   #interactive years choices
-   get_years <- reactive({
-     if (input$ab_years_choose %% 2 == 0) {
-       sel_yrs <- seq(input$year_range[1], input$year_range[2], 1)
-     } else{
-       sel_yrs <- input$year_specific
-     }
-   })
+
+  observeEvent(input$rng_years_choose, {
+    showElement("year_range")
+    hideElement("year_specific")
+    output$year_range <- renderUI({
+      min_year <- min_year
+      max_year <- max_year
+      sliderInput(
+        "year_range",
+        "range",
+        min_year,
+        max_year
+        ,
+        value = c((max_year - 5), (max_year)),
+        sep = ""
+      )
+    })
+  })
+
+  observeEvent(input$ab_years_choose, {
+    showElement("year_specific")
+    hideElement("year_range")
+    output$year_specific <- renderUI({
+      yr_choices <- sort(years, decreasing = T)
+      selectInput("year_specific",
+                  "year(s)",
+                  choices = yr_choices,
+                  multiple = T,
+                  selected = max_year)
+    })
+  })
+
+
+#
+#  get_years <- reactive({
+#     if (input$ab_years_choose) {
+#       sel_yrs <- input$year_specific
+#     } else {
+#       sel_yrs <- seq(input$year_range[1], input$year_range[2], 1)
+#     }
+#  })
+
+ get_years <- function()({
+   if (input$ab_years_choose %% 2 == 0) {
+     sel_yrs <- seq(input$year_range[1], input$year_range[2], 1)
+   } else{
+     sel_yrs <- input$year_specific
+   }
+ })
 
   # Area shape file interactive
 
@@ -923,7 +968,7 @@ max_year <- 2023
     } else if (monn == 'winter') {
       monn_full = "winter"
     } else if (monn == 'Jan') {
-      monn_full = "Janaury"
+      monn_full = "January"
     } else if (monn == 'Feb') {
       monn_full = "February"
     } else if (monn == 'Mar') {
@@ -1304,7 +1349,7 @@ max_year <- 2023
     } else if (monn == 'winter') {
       monn_full = "winter"
     } else if (monn == 'Jan') {
-      monn_full = "Janaury"
+      monn_full = "January"
     } else if (monn == 'Feb') {
       monn_full = "February"
     } else if (monn == 'Mar') {
@@ -1731,7 +1776,7 @@ max_year <- 2023
     } else if (monn == 'winter') {
       monn_full = "winter"
     } else if (monn == 'Jan') {
-      monn_full = "Janaury"
+      monn_full = "January"
     } else if (monn == 'Feb') {
       monn_full = "February"
     } else if (monn == 'Mar') {
@@ -2005,7 +2050,7 @@ max_year <- 2023
     } else if (monn == 'winter') {
       monn_full = "winter"
     } else if (monn == 'Jan') {
-      monn_full = "Janaury"
+      monn_full = "January"
     } else if (monn == 'Feb') {
       monn_full = "February"
     } else if (monn == 'Mar') {
@@ -2392,7 +2437,7 @@ max_year <- 2023
     } else if (monn == 'winter') {
       monn_full = "winter"
     } else if (monn == 'Jan') {
-      monn_full = "Janaury"
+      monn_full = "January"
     } else if (monn == 'Feb') {
       monn_full = "February"
     } else if (monn == 'Mar') {
@@ -2736,7 +2781,7 @@ max_year <- 2023
     } else if (monn == 'winter') {
       monn_full = "winter"
     } else if (monn == 'Jan') {
-      monn_full = "Janaury"
+      monn_full = "January"
     } else if (monn == 'Feb') {
       monn_full = "February"
     } else if (monn == 'Mar') {
