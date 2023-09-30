@@ -118,7 +118,7 @@ update_month <- "August"
 update_year <- "2023"
 
 years <- seq(min_year, max_year, 1)
-years
+yr_choices <- sort(years, decreasing = T)
 
 ## Anomalies Data files -----
 list.files(path = ano_dt_pth,
@@ -356,16 +356,27 @@ ui <- fluidPage(
             helpText(HTML("<h5><b> Choose specific year (s) or range of years</b> </h5>",)),
             actionButton("ab_years_choose", "Specific year(s)"),
             actionButton("rng_years_choose", "Range of years"),
-            uiOutput("year_range"),
+           sliderInput(
+              "year_range",
+              "year range",
+              min_year,
+              max_year
+              ,
+              value = c((max_year - 5), (max_year)),
+              sep = ""
+            ),
             chooseSliderSkin(skin = "Shiny"),
             tags$style(
               HTML(
                 ".js-irs-0 .irs-single, .js-irs-0 .irs-bar-edge, .js-irs-0 .irs-bar {background: purple}"
               )
             ),
-            uiOutput("year_specific"),
+            hidden(selectInput("year_specific",
+                        "year(s)",
+                        choices = yr_choices,
+                        multiple = T,
+                        selected = max_year)),
             # Reset selection
-            br(),
             br(),
             actionButton("reset_input", "Reset")
           ),
@@ -736,54 +747,33 @@ server <- function(session, input, output) {
 
   #interactive years choices
 
+  whichInput <- reactiveValues(type = "specific")
+
+
   observeEvent(input$rng_years_choose, {
+
     showElement("year_range")
     hideElement("year_specific")
-    output$year_range <- renderUI({
-      min_year <- min_year
-      max_year <- max_year
-      sliderInput(
-        "year_range",
-        "range",
-        min_year,
-        max_year
-        ,
-        value = c((max_year - 5), (max_year)),
-        sep = ""
-      )
-    })
+    whichInput$type <- "range"
+
   })
 
   observeEvent(input$ab_years_choose, {
     showElement("year_specific")
     hideElement("year_range")
-    output$year_specific <- renderUI({
-      yr_choices <- sort(years, decreasing = T)
-      selectInput("year_specific",
-                  "year(s)",
-                  choices = yr_choices,
-                  multiple = T,
-                  selected = max_year)
-    })
+    whichInput$type <- "specific"
+
   })
 
 
-#
-#  get_years <- reactive({
-#     if (input$ab_years_choose) {
-#       sel_yrs <- input$year_specific
-#     } else {
-#       sel_yrs <- seq(input$year_range[1], input$year_range[2], 1)
-#     }
-#  })
-
- get_years <- function()({
-   if (input$ab_years_choose %% 2 == 0) {
-     sel_yrs <- seq(input$year_range[1], input$year_range[2], 1)
-   } else{
-     sel_yrs <- input$year_specific
-   }
- })
+  get_years <- reactive({
+    if (whichInput$type == "specific") {
+      sel_yrs <- input$year_specific
+      #print(sel_yrs)
+    } else{
+      sel_yrs <- seq(input$year_range[1], input$year_range[2], 1)
+    }
+  })
 
   # Area shape file interactive
 
