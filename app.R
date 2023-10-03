@@ -118,7 +118,7 @@ update_month <- "August"
 update_year <- "2023"
 
 years <- seq(min_year, max_year, 1)
-years
+yr_choices <- sort(years, decreasing = T)
 
 ## Anomalies Data files -----
 list.files(path = ano_dt_pth,
@@ -159,32 +159,31 @@ ui <- fluidPage(
         width = 12,
         wellPanel(
           HTML(
-            "<h3><b>Climate Anomaly-BC</b>: Monthly, seasonal and annual climate anomalies </h2>"
+            "<h3><b>BC climate anomaly app</b>: monthly, seasonal, and annual climate anomalies and trends </h2>"
           ),
           HTML(
-            "<h4>This tool offers spatial visualizations and reports on the monthly, seasonal and annual historical climate change.
+            "<h4>This tool offers spatial visualizations and reports on monthly, seasonal, and annual historical climate changes.
             The climate parameters encompass minimum, maximum, and mean surface air temperatures, and precipitation.
             The app shows climate anomalies in comparison to the average climate conditions across western North America, British Columbia (BC),
-            and various sub-regions of BC, including eco-province regions and major watersheds. Additionally, the application
+            and the ecoprovinces and major watersheds of BC. Additionally, the application
             offers insights into the trends and significance of the spatially averaged anomalies for selected regions and parameters.
             The analysis covers the timeframe from 1951 to 2023, with monthly updates to incorporate the most recent data. We used <a href='https://cds.climate.copernicus.eu/cdsapp#!/dataset/reanalysis-era5-land?tab=overview'>
-            ERA5-Land hourly data</a> for calculating the climatological mean and anomalies. These anomalies are computed as deviations from the average climatic conditions observed between 1980 and 2010.
-
+            ERA5-Land hourly data</a> for calculating the climatological mean and anomalies. The anomalies are computed as deviations from the average climatic conditions observed between 1981 and 2010 (30-years).
             <br>
             <br>
-            This is a product of the Future Forest Ecosystems Centre (FFEC).
+            This is a product of the <a href ='https://www2.gov.bc.ca/gov/content/environment/natural-resource-stewardship/natural-resources-climate-change/future-forest-ecosystems-centre#:~:text=The%20Future%20Forest%20Ecosystems%20Centre%20(FFEC)%20was%20officially%20established%20in,on%20B.C.%27s%20forest%20ecosystems.'> Future Forest Ecosystems Center (FFEC)</a>.
             The FFEC is a scientific team that forecasts climate change impacts on B.C.’s forest ecosystems.
             The core role of the FFEC is to translate ecological knowledge into data, tools, and guidance to help ecosystem managers account for climate risks.
 
             <br>
             <br>
 
-            Please navigate to <b>About</b> page to learn more about the app, data, and methods.
-            The <b>Anomaly App</b> page generates the spatial anomaly map and time-series plot with trend magnitude and significance of the selected region of interest, parameter, and month/season.
+            Please navigate to the <b>About</b> page to learn more about the app, data, and methods.
+            The <b>Anomaly App</b> page generates the spatial anomaly map and time series plot with trend magnitude and significance of the selected region of interest, parameter, and month/season.
             There are options to download plots and/or data.
-            The <b>Full Report</b> page has link to full reports on BC climate anomalies in HTML format that can be downloaded.
-            The <b>Feedback & Links</b> page has link to a form where you can provide your comments/feedback on the app.
-            Also it provide links to other similar apps developed and maintained by the Future Forest Ecosystems Centre (FFEC) team.
+            The <b>Report</b> page has a link to full report on BC climate anomalies in HTML format that can be downloaded.
+            The <b>Feedback & Links</b> page has a link to a form where users can provide their comments/feedback related to the app.
+            Also, this page has links to other similar apps developed and maintained by the FFEC team.
             "
           )
         ),
@@ -192,8 +191,9 @@ ui <- fluidPage(
           width = 12,
           HTML(
             "<h4><b>Citation</b></h4>
-                            <h5> <u>Please cite the contents of this app as:</u> <br>
-                            Sharma, A.R. 2023. Monthly, seasonal and annual climate anomalies of BC: A shiny app.</a>
+                            <h5> <u>Please cite the contents of this app as:</u>
+                            <br>
+                            Sharma, A.R. 2023. Monthly, seasonal, and annual climate anomalies of BC: A shiny app.</a>
                             British Columbia Ministry of Forests.
                   <a href='https://bcgov-env.shinyapps.io/bc_climate_anomaly/'
             target='_blank'>https://bcgov-env.shinyapps.io/bc_climate_anomaly/</a> </h5>"
@@ -202,14 +202,15 @@ ui <- fluidPage(
         column(
           width = 12,
           HTML(
-            "<h5> <u>App created by:</u><br>
-             <b>Aseem Sharma</b><br>
+            "<h5> <u>App created by:</u>
+             <br>
+             <b>Aseem R. Sharma, PhD</b><br>
               Research Climatologist<br>
               FFEC, FCCSB, OCF, BC Ministry of Forests<br>
               <a href= 'mailto: Aseem.Sharma@gov.bc.ca'>Aseem.Sharma@gov.bc.ca</a> <br>
               <br>
               <h4><b>Code</b></h4>
-              <h5> The code and data for this tool are available at <a href='https://github.com/bcgov/bc_climate_anomaly.git'> https://github.com/bcgov/bc_climate_anomaly</a></h5>"
+              <h5> The code and data of this app are available through GitHub at <a href='https://github.com/bcgov/bc_climate_anomaly.git'> https://github.com/bcgov/bc_climate_anomaly.</a></h5>"
           )
         ),
         column(width = 12,
@@ -314,7 +315,7 @@ ui <- fluidPage(
         sidebarPanel(
           shinyjs::useShinyjs(),
           id = "selection-panel",
-          style = "position:fixed; width:24%; max-height: 100vh;",
+          # style = "position:fixed; width:24%; max-height: 100vh;",
           width = 3,
           ##### filters -----
           helpText(HTML("<h4><b> Filter/Selections</b> </h4>",)),
@@ -352,18 +353,31 @@ ui <- fluidPage(
                    uiOutput("month_picker")),
           br(),
           fluidRow(
-            id = "yrs_sel",
-            title = "Year(s)",
+            helpText(HTML("<h5><b> Choose specific year (s) or range of years</b> </h5>",)),
+            actionButton("ab_years_choose", "Specific year(s)"),
+            actionButton("rng_years_choose", "Range of years"),
+           sliderInput(
+              "year_range",
+              "year range",
+              min_year,
+              max_year
+              ,
+              value = c((max_year - 5), (max_year)),
+              sep = ""
+            ),
             chooseSliderSkin(skin = "Shiny"),
             tags$style(
               HTML(
                 ".js-irs-0 .irs-single, .js-irs-0 .irs-bar-edge, .js-irs-0 .irs-bar {background: purple}"
               )
             ),
-            uiOutput("year_range"),
-            actionButton("ab_years_choose", "Select Specific Years"),
-            uiOutput("year_specific"),
+            hidden(selectInput("year_specific",
+                        "year(s)",
+                        choices = yr_choices,
+                        multiple = T,
+                        selected = max_year)),
             # Reset selection
+            br(),
             actionButton("reset_input", "Reset")
           ),
           fluidRow(column(
@@ -399,10 +413,16 @@ ui <- fluidPage(
           fluidRow(
             box(
               width = 6,
+              align="left",
               wellPanel(HTML(
                 "<h5><b>Climate Normal (1981-2010)</b> </h5>"
               )),
+              uiOutput("clm_nor_title", height = "30vh"),
               plotOutput("clm_nor_map", width = "100%", height = "30vh"),
+              downloadButton(outputId = "download_clm_nor_plt",
+                             label = "Download plot"),
+              downloadButton(outputId = "download_clm_nor_data",
+                             label = "Download raster data"),
             ),
             box(
               width = 6,
@@ -434,7 +454,7 @@ ui <- fluidPage(
               ),
               tabPanel(
                 status = 'primary',
-                title = "Dynamic trend plot",
+                title = "Timeseries line plot",
                 echarts4rOutput("echarts_trn_plt", height = "50vh")
               )
             )
@@ -483,16 +503,16 @@ ui <- fluidPage(
       )
     ),
 
-    ## Reports ----
+    ## Report ----
     tabPanel(
       title = "Report",
       value = "report",
       column(width = 12,
              wellPanel(
-               HTML("<h3><b>Climate Anomaly-BC</b>: Full report </h2>"),
+               HTML("<h3><b>BC climate anomaly report</b></h2>"),
                HTML(
-                 "<h4>The following links provide HTML of the climate anomaly that indicate spatial anomalies
-            for western North America and trend on BC's spatially averaged anomalies along with summary notes.</h>"
+                 "<h4>The following link provide a report on HTML  format that shows the spatial climate anomaly maps of
+            western North America and timeseries plot and trend of BC's spatially averaged anomalies along with summary notes.</h>"
                )
              ),
             fluidPage(#   fluidRow(
@@ -674,9 +694,10 @@ server <- function(session, input, output) {
     mon_choices <- list(
       "Annual" = 'annual',
       "Summer" = 'summer',
-      "Spring" = 'spring',
       "Fall" = 'fall',
-      "Janaury" = 'Jan',
+      "Winter" = 'winter',
+      "Spring" = 'spring',
+      "January" = 'Jan',
       "February" = 'Feb',
       "March" = 'Mar',
       "April" = 'Apr',
@@ -694,36 +715,67 @@ server <- function(session, input, output) {
       "Select month or season or annual"
       ,
       choices = mon_choices,
-      selected = "Jan"
+      selected = "summer"
     )
   })
 
   # Filter year range or specific year (s)
-  output$year_range <- renderUI({
-    min_year <- min_year
-    max_year <- max_year
-    sliderInput(
-      "year_range",
-      "Select range of years or specific year (s)"
-      ,
-      min_year,
-      max_year
-      ,
-      value = c((max_year - 5), (max_year)),
-      sep = ""
-    )
+  # output$year_range <- renderUI({
+  #   min_year <- min_year
+  #   max_year <- max_year
+  #   sliderInput(
+  #     "year_range",
+  #     "Select range of years or specific year (s)"
+  #     ,
+  #     min_year,
+  #     max_year
+  #     ,
+  #     value = c((max_year - 5), (max_year)),
+  #     sep = ""
+  #   )
+  # })
+
+  # # Filter by year of choice
+  # output$year_specific <- renderUI({
+  #   yr_choices <- sort(years, decreasing = T)
+  #   selectInput("year_specific",
+  #               "year(s)",
+  #               choices = yr_choices,
+  #               multiple = T,
+  #               selected = max_year)
+  # })
+
+  #interactive years choices
+
+  whichInput <- reactiveValues(type = "specific")
+
+
+  observeEvent(input$rng_years_choose, {
+
+    showElement("year_range")
+    hideElement("year_specific")
+    whichInput$type <- "range"
+
   })
 
-  # Filter by year of choice
-  output$year_specific <- renderUI({
-    yr_choices <- sort(years, decreasing = T)
-    selectInput("year_specific",
-                "year(s)",
-                choices = yr_choices,
-                multiple = T)
+  observeEvent(input$ab_years_choose, {
+    showElement("year_specific")
+    hideElement("year_range")
+    whichInput$type <- "specific"
+
   })
 
-  # Area, month and year reactive data for spatial anomaly plot
+
+  get_years <- reactive({
+    if (whichInput$type == "specific") {
+      sel_yrs <- input$year_specific
+      #print(sel_yrs)
+    } else{
+      sel_yrs <- seq(input$year_range[1], input$year_range[2], 1)
+    }
+  })
+
+  # Area shape file interactive
 
   get_shapefile <- reactive({
     if (input$major_area == "BC") {
@@ -769,7 +821,6 @@ server <- function(session, input, output) {
     # sel_yrs
     # sel_area_shpfl <- bc_shp
     # region = "BC"
-
     # ano_dt_fl %>%
     #   filter(mon == monn &
     #            par == parr) -> ano_dt_fl_mon
@@ -783,18 +834,14 @@ server <- function(session, input, output) {
     # plot(ano_dt_sel_rast)
 
     # Filter for selected year (s)
-    if (input$ab_years_choose %% 2 == 0) {
-      sel_yrs <- seq(input$year_range[1], input$year_range[2], 1)
-    } else{
-      sel_yrs <- input$year_specific
-    }
+     sel_yrs <- get_years()
 
     if (length(sel_yrs) > 30) {
       sel_yrs <- sel_yrs[1:30]
       shinyalert(
         html = T,
         text = tagList(h3(
-          "Too many years selected, maximum 30 allowed"
+          "Too many years selected, maximum 30 allowed."
         )),
         showCancelButton = T
       )
@@ -819,8 +866,6 @@ server <- function(session, input, output) {
     # other requirements
     monn = input$month_picker
     parr = input$par_picker
-
-
 
     # Clip by shapefile of the selected area
     sel_area_shpfl <- get_shapefile()
@@ -880,14 +925,14 @@ server <- function(session, input, output) {
 
     # units
     if (parr == "tmax" | parr == "tmin" | parr == "tmean") {
-      unt <- "(°C)"
+      unt <- "°C"
     } else if (parr == "prcp") {
-      unt <- "(mm)"
+      unt <- "mm"
       parr_pr <- "prcp"
     } else if (parr == "RH") {
-      unt <- "(%)"
+      unt <- "%"
     } else {
-      unt <- ""
+      unt <- " "
     }
     unt
 
@@ -913,7 +958,7 @@ server <- function(session, input, output) {
     } else if (monn == 'winter') {
       monn_full = "winter"
     } else if (monn == 'Jan') {
-      monn_full = "Janaury"
+      monn_full = "January"
     } else if (monn == 'Feb') {
       monn_full = "February"
     } else if (monn == 'Mar') {
@@ -994,7 +1039,7 @@ server <- function(session, input, output) {
                            monn_full)
     } else {
       par_title <-  paste0(region, " ",
-                           parr_full, " anomaly", unt,
+                           parr_full, " anomaly (", unt,")",
                            " : ",
                            monn_full)
     }
@@ -1084,7 +1129,7 @@ server <- function(session, input, output) {
         plot.title = element_text(
           angle = 0,
           face = "bold",
-          size = 15,
+          size = 13,
           colour = "Black"
         ),
         legend.position = 'right',
@@ -1106,7 +1151,7 @@ server <- function(session, input, output) {
       guides(
         fill = guide_colorbar(
           barwidth = 1.7,
-          barheight = 25,
+          barheight = 20,
           label.vjust = 0.5,
           label.hjust = 0.0,
           title.vjust = 0.5,
@@ -1129,8 +1174,9 @@ server <- function(session, input, output) {
         axis.text.y = element_blank(),
         axis.ticks.y = element_blank()
       )
+
     if (parr == "prcp" & maxval > 200) {
-      spatial_ano_plt <- spatial_ano_plt +
+     spatial_ano_plt <- spatial_ano_plt +
         scale_fill_gradientn(
           name = paste0(parr, " anomaly ", unt),
           colours = cpt(pal = "cmocean_curl",
@@ -1153,8 +1199,6 @@ server <- function(session, input, output) {
           breaks = brks_seq
         )
     }
-    spatial_ano_plt
-
     spatial_ano_plt <- spatial_ano_plt +
       labs(tag = plt_wtrmrk, title = par_title,subtitle = "Baseline: 1981-2010") +
       theme(
@@ -1162,6 +1206,7 @@ server <- function(session, input, output) {
         plot.tag = element_text(
           color = 'gray50',
           hjust = 1,
+          vjust = 0,
           size = 8
         )
       )
@@ -1236,18 +1281,30 @@ server <- function(session, input, output) {
   })
 
   # Climate normal plot ----
-  # Climate normal data : reactive to selection
-  reactive_clm_dt_fl <- reactive({
-    req(input$major_area)
+   ## Climate normal map title ----
+  clm_plot_title_info <- reactive({
     req(input$par_picker)
     req(input$month_picker)
-    req(input$year_range)
 
     # other requirements
     monn = input$month_picker
     parr = input$par_picker
 
+    # units
+    if (parr == "tmax" | parr == "tmin" | parr == "tmean") {
+      unt <- "°C"
+    } else if (parr == "prcp") {
+      unt <- "mm"
+      parr_pr <- "prcp"
+    } else if (parr == "RH") {
+      unt <- "%"
+    } else {
+      unt <- " "
+    }
+    unt
+
     sel_area_shpfl <- get_shapefile()
+
     if (input$major_area == "BC") {
       region = "BC"
     } else if (input$major_area == "Western North America") {
@@ -1259,18 +1316,6 @@ server <- function(session, input, output) {
     }
     region
 
-    # units
-    if (parr == "tmax" | parr == "tmin" | parr == "tmean") {
-      unt <- "(°C)"
-    } else if (parr == "prcp") {
-      unt <- "(mm)"
-      parr_pr <- "prcp"
-    } else if (parr == "RH") {
-      unt <- "(%)"
-    } else {
-      unt <- ""
-    }
-    unt
 
     if (parr == 'tmin') {
       parr_full = "minimum temperature"
@@ -1294,7 +1339,7 @@ server <- function(session, input, output) {
     } else if (monn == 'winter') {
       monn_full = "winter"
     } else if (monn == 'Jan') {
-      monn_full = "Janaury"
+      monn_full = "January"
     } else if (monn == 'Feb') {
       monn_full = "February"
     } else if (monn == 'Mar') {
@@ -1319,6 +1364,62 @@ server <- function(session, input, output) {
       monn_full = "December"
     }
     monn_full
+
+    if (parr == "prcp") {
+      clm_nor_title_txt <-
+        # Climate plot title ( use log for prcp)
+        paste0(region, " mean ",
+               parr_full," (average of  1981-2010)","(", unt,")" ," (log-scale)",
+               "  : ",
+               monn_full)
+    } else{
+      clm_nor_title_txt <-  paste0(region, " ",
+                                   parr_full, " (average of  1981-2010) ", "(", unt,")" ,
+                                   " : ",
+                                   monn_full)
+    }
+    clm_nor_title_txt
+  })
+
+  output$clm_nor_title <- renderText({
+    clm_plot_title_info()
+  })
+
+  # Climate normal data plot : for normal plot
+  reactive_clm_dt_plt <- reactive({
+    req(input$major_area)
+    req(input$par_picker)
+    req(input$month_picker)
+    req(input$year_range)
+
+    # other requirements
+    monn = input$month_picker
+    parr = input$par_picker
+
+    # units
+    if (parr == "tmax" | parr == "tmin" | parr == "tmean") {
+      unt <- "°C"
+    } else if (parr == "prcp") {
+      unt <- "mm"
+      parr_pr <- "prcp"
+    } else if (parr == "RH") {
+      unt <- "%"
+    } else {
+      unt <- " "
+    }
+    unt
+
+    sel_area_shpfl <- get_shapefile()
+    if (input$major_area == "BC") {
+      region = "BC"
+    } else if (input$major_area == "Western North America") {
+      region = "Western North America"
+    } else if (input$major_area == "Ecoregions") {
+      region = input$ecoprov_area
+    } else if (input$major_area == "Watersheds") {
+      region = region = input$wtrshd_area
+    }
+    region
 
     clm_dt_fl %>%
       filter(par == input$par_picker) -> clm_dt_fl_par
@@ -1371,7 +1472,7 @@ server <- function(session, input, output) {
       geom_spatraster(data = clm_dt_sel_rast1) +
       scale_fill_continuous(
         type = "viridis",
-        name = paste0("climatological mean ", parr, "(", unt, ")"),
+        name = " ",
         option = "inferno",
         direction = -1,
         na.value = "transparent"
@@ -1471,7 +1572,7 @@ server <- function(session, input, output) {
       guides(
         fill = guide_colorbar(
           barwidth = 1.0,
-          barheight = 12,
+          barheight = 10,
           label.vjust = 0.5,
           label.hjust = 0.0,
           title.vjust = 0.5,
@@ -1500,7 +1601,7 @@ server <- function(session, input, output) {
       spatial_clm_plt <- spatial_clm_plt +
         scale_fill_continuous(
           type = "viridis",
-          name = paste0("climatological mean ", parr, " (", unt, ")"),
+          name = " ",
           option = "viridis",
           direction = -1,
           na.value = "transparent"
@@ -1508,17 +1609,17 @@ server <- function(session, input, output) {
     }
 
     # Climate plot title ( use log for prcp)
-    if (parr == "prcp") {
-      par_title <-  paste0(region, " ",
-                           parr_full," ", unt, " (log-scale)",
-                           " : ",
-                           monn_full)
-    } else{
-      par_title <-  paste0(region, " ",
-                           parr_full, " ", unt,
-                           " : ",
-                           monn_full)
-    }
+    # if (parr == "prcp") {
+    #   par_title <-  paste0(region, " mean ",
+    #                        parr_full,"\n ","(", unt,")" ," (log-scale)",
+    #                        " : ",
+    #                        monn_full)
+    # } else{
+    #   par_title <-  paste0(region, " ",
+    #                        parr_full, " ", "(", unt,")" ,
+    #                        " : ",
+    #                        monn_full)
+    # }
     spatial_clm_plt <- spatial_clm_plt +
       # labs(tag = plt_wtrmrk) +
       # theme(
@@ -1530,11 +1631,11 @@ server <- function(session, input, output) {
       #   )
       # ) +
       labs(
-        title = par_title,
+        # title = par_title,
         subtitle = paste0(
           'Mean = ',
           mn_clm_val[[1]]," ",
-          unt,
+          "(", unt,")" ,
           "  ",
           "Range = ",
           "[",
@@ -1550,9 +1651,76 @@ server <- function(session, input, output) {
       )
     spatial_clm_plt
   })
+
   output$clm_nor_map <- renderPlot({
-    reactive_clm_dt_fl()
+    reactive_clm_dt_plt()
   })
+  # Climate normal data : for download
+  reactive_clm_dt_fl <- reactive({
+    req(input$major_area)
+    req(input$par_picker)
+    req(input$month_picker)
+    req(input$year_range)
+
+    # other requirements
+    monn = input$month_picker
+    parr = input$par_picker
+
+    # units
+    if (parr == "tmax" | parr == "tmin" | parr == "tmean") {
+      unt <- "°C"
+    } else if (parr == "prcp") {
+      unt <- "mm"
+      parr_pr <- "prcp"
+    } else if (parr == "RH") {
+      unt <- "%"
+    } else {
+      unt <- " "
+    }
+    unt
+
+    sel_area_shpfl <- get_shapefile()
+    if (input$major_area == "BC") {
+      region = "BC"
+    } else if (input$major_area == "Western North America") {
+      region = "Western North America"
+    } else if (input$major_area == "Ecoregions") {
+      region = input$ecoprov_area
+    } else if (input$major_area == "Watersheds") {
+      region = region = input$wtrshd_area
+    }
+    region
+
+    clm_dt_fl %>%
+      filter(par == input$par_picker) -> clm_dt_fl_par
+    clm_dt_sel_rast <- rast(clm_dt_fl_par$dt_pth)
+    # plot(clm_dt_sel_rast)
+
+    # clm_dt_fl %>%
+    #   filter(par == "tmean") -> clm_dt_fl_par
+    # clm_dt_sel_rast <- rast(clm_dt_fl_par$dt_pth)
+    # clm_dt_sel_rast
+    # sel_area_shpfl <- bc_shp
+
+    names(clm_dt_sel_rast) <- months_nam
+
+    # Select for input month
+    clm_dt_sel_rast_mon <-
+      subset(clm_dt_sel_rast, which(names(clm_dt_sel_rast) %in% monn))
+    clm_dt_sel_rast <- clm_dt_sel_rast_mon
+    rm()
+
+    # Clip by shape file of the selected area
+    #browser()
+    sel_area_shpfl <- get_shapefile()
+    #browser()
+
+    clm_dt_sel_rast <-
+      terra::crop(clm_dt_sel_rast, sel_area_shpfl, mask = T)
+    # plot(clm_dt_sel_rast)
+    clm_dt_sel_rast
+  })
+
 
   # Anomaly overview table caption text ----
   ano_overview_info <- reactive({
@@ -1598,7 +1766,7 @@ server <- function(session, input, output) {
     } else if (monn == 'winter') {
       monn_full = "winter"
     } else if (monn == 'Jan') {
-      monn_full = "Janaury"
+      monn_full = "January"
     } else if (monn == 'Feb') {
       monn_full = "February"
     } else if (monn == 'Mar') {
@@ -1667,12 +1835,12 @@ server <- function(session, input, output) {
 
     # units
     if (parr == "tmax" | parr == "tmin" | parr == "tmean") {
-      unt <- "(°C)"
+      unt <- "°C"
     } else if (parr == "prcp") {
-      unt <- "(mm)"
+      unt <- "mm"
       parr_pr <- "prcp"
     } else if (parr == "RH") {
-      unt <- "(%)"
+      unt <- "%"
     } else {
       unt <- ""
     }
@@ -1839,12 +2007,12 @@ server <- function(session, input, output) {
 
     # units
     if (parr == "tmax" | parr == "tmin" | parr == "tmean") {
-      unt <- "(°C)"
+      unt <- "°C"
     } else if (parr == "prcp") {
-      unt <- "(mm)"
+      unt <- "mm"
       parr_pr <- "prcp"
     } else if (parr == "RH") {
-      unt <- "(%)"
+      unt <- "%"
     } else {
       unt <- ""
     }
@@ -1872,7 +2040,7 @@ server <- function(session, input, output) {
     } else if (monn == 'winter') {
       monn_full = "winter"
     } else if (monn == 'Jan') {
-      monn_full = "Janaury"
+      monn_full = "January"
     } else if (monn == 'Feb') {
       monn_full = "February"
     } else if (monn == 'Mar') {
@@ -2009,7 +2177,7 @@ server <- function(session, input, output) {
                            monn_full)
     } else{
       par_title <-  paste0(region, " ",
-                           parr_full, " ", "anomaly",unt,
+                           parr_full, " ", "anomaly"," (", unt,")",
                            " : ",
                            monn_full)
     }
@@ -2017,7 +2185,7 @@ server <- function(session, input, output) {
     if (parr == "prcp") {
       y_axis_lab <- paste0(parr, " average anomaly (% of normal)")
     } else{
-      y_axis_lab <- paste0(parr, " average anomaly ", unt)
+      y_axis_lab <- paste0(parr, " average anomaly ", "(", unt, ")")
     }
 
     ano_shp_trn_plt <-
@@ -2101,7 +2269,7 @@ server <- function(session, input, output) {
       ) +
       scale_x_continuous(
         name = " ",
-        breaks = seq(minyr, maxyr, 3),
+        breaks = seq(1950, maxyr, 5),
         expand = c(0.02, 0.02)
       ) +
       scale_y_continuous(name = y_axis_lab,
@@ -2136,14 +2304,14 @@ server <- function(session, input, output) {
         axis.title.y = element_text(
           angle = 90,
           face = "plain",
-          size = 14,
+          size = 13,
           colour = "Black",
           margin = unit(c(1, 1, 1, 1), "mm")
         ),
         axis.title.x = element_text(
           angle = 0,
           face = "plain",
-          size = 14,
+          size = 13,
           colour = "Black",
           margin = unit(c(1, 1, 1, 1), "mm")
         ),
@@ -2152,7 +2320,7 @@ server <- function(session, input, output) {
           hjust = 0.5,
           vjust = 0.5,
           colour = "black",
-          size = 13,
+          size = 12,
           margin = margin(
             t = 2,
             r = 2,
@@ -2165,7 +2333,7 @@ server <- function(session, input, output) {
           hjust = 0.5,
           vjust = 0.5,
           colour = "black",
-          size = 13,
+          size = 12,
           margin = margin(
             t = 2,
             r = 2,
@@ -2176,10 +2344,10 @@ server <- function(session, input, output) {
         plot.title = element_text(
           angle = 0,
           face = "bold",
-          size = 14,
+          size = 13,
           colour = "Black"
         ),
-        legend.position = c(0.95, 0.95),
+        legend.position = c(0.90, 0.94),
         legend.direction = "vertical",
         legend.background = element_rect(fill = NA, color = NA),
         legend.margin = margin(0, 0, 0, 0),
@@ -2212,7 +2380,7 @@ server <- function(session, input, output) {
     spatial_av_trnd_plt_rct()
   })
 
-  # Dynamic echart4r trend plot ----
+  # Time series line plot ----
 
   output$echarts_trn_plt <- renderEcharts4r({
     reactive_ano_dt_fl_sp() -> ano_shp_dt
@@ -2226,12 +2394,12 @@ server <- function(session, input, output) {
 
     # units
     if (parr == "tmax" | parr == "tmin" | parr == "tmean") {
-      unt <- "(°C)"
+      unt <- "°C"
     } else if (parr == "prcp") {
-      unt <- "(mm)"
+      unt <- "mm"
       parr_pr <- "prcp"
     } else if (parr == "RH") {
-      unt <- "(%)"
+      unt <- "%"
     } else {
       unt <- ""
     }
@@ -2259,7 +2427,7 @@ server <- function(session, input, output) {
     } else if (monn == 'winter') {
       monn_full = "winter"
     } else if (monn == 'Jan') {
-      monn_full = "Janaury"
+      monn_full = "January"
     } else if (monn == 'Feb') {
       monn_full = "February"
     } else if (monn == 'Mar') {
@@ -2371,7 +2539,7 @@ server <- function(session, input, output) {
                            monn_full)
     } else{
       par_title <-  paste0(region, " ",
-                           parr_full, " anomaly", unt,
+                           parr_full, " anomaly", " (", unt,")",
                            " : ",
                            monn_full)
     }
@@ -2400,7 +2568,7 @@ server <- function(session, input, output) {
 
   # Download data save plots ---------------
 
-  # File name for spatial anomaly map and raster data
+   ## Spatial anomaly map and raster data download ----
   file_nam_info <- reactive({
     req(input$par_picker)
     req(input$month_picker)
@@ -2421,7 +2589,6 @@ server <- function(session, input, output) {
     }
     region
 
-
     # other requirements
     monn = input$month_picker
     parr = input$par_picker
@@ -2429,7 +2596,7 @@ server <- function(session, input, output) {
     fl_nam <-
       paste0(region,
              "_",
-             parr,
+             parr,"_anomaly",
              "_",
              monn,
              "_",
@@ -2442,7 +2609,7 @@ server <- function(session, input, output) {
   # Spatial anomaly data download as raster (tif )
   output$download_ano_data <- downloadHandler(
     filename = function(file) {
-      paste0(file_nam_info(), "_spatial_anomaly_data.tif")
+      paste0(file_nam_info(), "_data.tif")
     },
     content = function(file) {
       writeRaster(reactive_ano_dt_fl(),
@@ -2455,7 +2622,7 @@ server <- function(session, input, output) {
   # Spatial anomaly map save
   output$download_ano_plt <- downloadHandler(
     filename = function(file) {
-      paste0(file_nam_info(), "_spatial_anomaly_plt.png")
+      paste0(file_nam_info(), "_plot.png")
     },
     content = function(file) {
       ggsave(
@@ -2472,7 +2639,7 @@ server <- function(session, input, output) {
     }
   )
 
-  # File name for spatially averaged time seris and time series plot
+  ## Anomaly time series and plot download ----
   file_nam_info_sp_av <- reactive({
     req(input$par_picker)
     req(input$month_picker)
@@ -2505,7 +2672,7 @@ server <- function(session, input, output) {
     fl_nam <-
       paste0(region,
              "_",
-             parr,
+             parr,"_anomaly_timeseries",
              "_",
              monn,
              "_",
@@ -2515,12 +2682,11 @@ server <- function(session, input, output) {
     fl_nam
   })
 
-
   # Spatial anomaly time series data download (.csv)
   output$download_ano_ts_data <- downloadHandler(
     filename = function(file) {
       paste0(file_nam_info_sp_av(),
-             "_spatiallyaveraged_anomaly_timeseries.csv")
+             "_data.csv")
     },
     content = function(file) {
       write_csv(reactive_ano_dt_fl_sp(),
@@ -2531,7 +2697,7 @@ server <- function(session, input, output) {
   #Spatially averaged trend plot save
   output$download_avtrn_plt <- downloadHandler(
     filename = function(file) {
-      paste0(file_nam_info_sp_av(), "_spatial_averaged_trend.png")
+      paste0(file_nam_info_sp_av(), "_trend_plot.png")
     },
     content = function(file) {
       ggsave(
@@ -2547,14 +2713,207 @@ server <- function(session, input, output) {
       )
     }
   )
+  ## Climate normal data and plot download  ----
+  file_nam_info_clm_nor <- reactive({
+    req(input$par_picker)
+    req(input$month_picker)
+    req(input$year_range)
 
-  # Reset  selection /filters -----
+    # other requirements
+    monn = input$month_picker
+    parr = input$par_picker
+
+    # units
+    if (parr == "tmax" | parr == "tmin" | parr == "tmean") {
+      unt <- "°C"
+    } else if (parr == "prcp") {
+      unt <- "mm"
+      parr_pr <- "prcp"
+    } else if (parr == "RH") {
+      unt <- "%"
+    } else {
+      unt <- ""
+    }
+    unt
+
+    sel_area_shpfl <- get_shapefile()
+
+    if (input$major_area == "BC") {
+      region = "BC"
+    } else if (input$major_area == "Western North America") {
+      region = "Western North America"
+    } else if (input$major_area == "Ecoregions") {
+      region = input$ecoprov_area
+    } else if (input$major_area == "Watersheds") {
+      region = region = input$wtrshd_area
+    }
+    region
+
+    if (parr == 'tmin') {
+      parr_full = "minimum temperature"
+    } else if (parr == 'tmax') {
+      parr_full = "maximum temperature"
+    } else if (parr == 'tmean') {
+      parr_full = "mean temperature"
+    } else if (parr == 'prcp') {
+      parr_full = "total precipitation"
+    }
+    parr_full
+
+    if (monn == 'annual') {
+      monn_full = "annual"
+    } else if (monn == 'spring') {
+      monn_full = "spring"
+    } else if (monn == 'summer') {
+      monn_full = "summer"
+    } else if (monn == 'fall') {
+      monn_full = "fall"
+    } else if (monn == 'winter') {
+      monn_full = "winter"
+    } else if (monn == 'Jan') {
+      monn_full = "January"
+    } else if (monn == 'Feb') {
+      monn_full = "February"
+    } else if (monn == 'Mar') {
+      monn_full = "March"
+    } else if (monn == 'Apr') {
+      monn_full = "April"
+    } else if (monn == 'May') {
+      monn_full = "May"
+    } else if (monn == 'Jun') {
+      monn_full = "June"
+    } else if (monn == 'Jul') {
+      monn_full = "July"
+    } else if (monn == 'Aug') {
+      monn_full = "August"
+    } else if (monn == 'Sep') {
+      monn_full = "September"
+    } else if (monn == 'Oct') {
+      monn_full = "October"
+    } else if (monn == 'Nov') {
+      monn_full = "November"
+    } else if (monn == 'Dec') {
+      monn_full = "December"
+    }
+    monn_full
+
+    fl_nam <-
+      paste0(region,
+             "_",
+             parr_full,"_climate_normal_1981_2010",
+             "_",
+             monn_full)
+    fl_nam
+  })
+
+  dwnlnd_clm_plt <- reactive({
+    req(input$par_picker)
+    req(input$month_picker)
+    req(input$year_range)
+
+    # other requirements
+    monn = input$month_picker
+    parr = input$par_picker
+
+    sel_area_shpfl <- get_shapefile()
+
+    if (input$major_area == "BC") {
+      region = "BC"
+    } else if (input$major_area == "Western North America") {
+      region = "Western North America"
+    } else if (input$major_area == "Ecoregions") {
+      region = input$ecoprov_area
+    } else if (input$major_area == "Watersheds") {
+      region = region = input$wtrshd_area
+    }
+    region
+
+    # units
+    if (parr == "tmax" | parr == "tmin" | parr == "tmean") {
+      unt <- "°C"
+    } else if (parr == "prcp") {
+      unt <- "mm"
+      parr_pr <- "prcp"
+    } else if (parr == "RH") {
+      unt <- "%"
+    } else {
+      unt <- ""
+    }
+    unt
+
+      plt_wtrmrk <-
+        "Created by Aseem Sharma BC Ministry of Forests using ERA5-Land hourly data\nContact: Aseem.Sharma@gov.bc.ca"
+        plt_wtrmrk
+      # Climate plot title ( use log for prcp)
+      if (parr == "prcp") {
+        par_title <-  paste0(region, " mean ",
+                             parr,"","(", unt,")" ," (log-scale)",
+                             " : ",
+                             monn)
+      } else{
+        par_title <-  paste0(region, " ",
+                             parr, " ", "(", unt,")" ,
+                             " : ",
+                             monn)
+      }
+
+    dwn_clm_plt <- reactive_clm_dt_plt() +
+    labs(tag = plt_wtrmrk,title = par_title) +
+    theme(
+      plot.tag.position = 'bottom',
+      plot.tag = element_text(
+        color = 'gray50',
+        hjust = 1,
+        size = 8
+      )
+    ) +
+    theme(
+      plot.title = element_text(size = 12, face = 'plain'),
+      plot.subtitle = element_text(size = 10)
+    )
+    dwn_clm_plt
+  })
+
+  # Climatological normal plot save
+  output$download_clm_nor_plt <- downloadHandler(
+    filename = function(file) {
+      paste0(file_nam_info_clm_nor(), "_plot.png")
+    },
+    content = function(file) {
+      ggsave(
+        file,
+        plot =  dwnlnd_clm_plt(),
+        width = 11,
+        height = 9,
+        units = "in",
+        dpi = 300,
+        scale = 0.9,
+        limitsize = F,
+        device = "png"
+      )
+    }
+  )
+
+  # Download climate normal data in tiff
+  output$download_clm_nor_data <- downloadHandler(
+    filename = function(file) {
+      paste0(file_nam_info_clm_nor(), "_data.tif")
+    },
+    content = function(file) {
+      writeRaster(reactive_clm_dt_fl(),
+                  file,
+                  filetype = "GTiff",
+                  overwrite = TRUE)
+    }
+  )
+
+    # Reset  selection /filters -----
   observeEvent(input$reset_input, {
     shinyjs::reset("selection-panel")
   })
 
   # observeEvent(input$reset_input, {
-  #   shinyjs::reset("yrs_sel")
+  #   shinyjs::reset("sel_yrs")
   # })
 
   # Feedback text -------
@@ -2562,7 +2921,7 @@ server <- function(session, input, output) {
     HTML(
       "<p>We used <a href='https://cds.climate.copernicus.eu/cdsapp#!/dataset/reanalysis-era5-land?tab=overview'>
       ERA5-Land hourly data</a> to calculate the anomalies and climatology.
-      Anomalies are calculated as the measure of departure from the climatological averages spanning from 1980 to 2010.
+      Anomalies are calculated as the measure of departure from the climatological averages spanning from 1981 to 2010.
       Should you have any inquiries or wish to provide feedback, please do not hesitate to use
       <a href=https://forms.office.com/r/wN0QYAvSTZ'> this feedback form </a> or write to Aseem Sharma @ <a href= 'mailto: Aseem.Sharma@gov.bc.ca'>Aseem.Sharma@gov.bc.ca</a> . </p>"
     )
