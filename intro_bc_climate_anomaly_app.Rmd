@@ -1,0 +1,38 @@
+---
+title: "Introdcution BC climate anomaly app"
+author: "Aseem Sharma"
+date: "`r paste('Date:', format(Sys.time(), '%d %B, %Y'))`"
+output: html_document
+---
+
+#### **Overview:**
+
+This is an app to visualize monthly, seasonal, and annual temperature and precipitation anomalies in BC and its sub regions (eco-regions and watersheds) along with their trends and offers spatial visualizations, plots, and reports on monthly, seasonal, and annual historical climate changes. Developed as an R Shiny application, this tool is complemented by an informative report, offering a comprehensive understanding of climate variations within BC. The climate parameters encompass minimum, maximum, and mean surface air temperatures, and precipitation. The app shows climate anomalies in comparison to the average climate conditions across western North America, British Columbia (BC), and the eco-regions and major watersheds of BC. Additionally, the application offers insights into the trends and significance of the spatially averaged anomalies for selected regions and parameters. The analysis covers the timeframe from 1951 to 2023, with monthly updates to incorporate the most recent data. We used <a href='https://cds.climate.Copernicus.eu/cdsapp#!/data set/reanalysis-era5-land?tab=overview'> ERA5-Land hourly data</a> for calculating the climatological mean and anomalies. The anomalies are computed as deviations from the average climatic conditions observed between 1981 and 2010 (30-years).
+
+This is a product of the <a href ='https://www2.gov.bc.ca/gov/content/environment/natural-resource-stewardship/natural-resources-climate-change/future-forest-ecosystems-centre#:~:text=The%20Future%20Forest%20Ecosystems%20Centre%20(FFEC)%20was%20officially%20established%20in,on%20B.C.%27s%20forest%20ecosystems.'> Future Forest Ecosystems Center (FFEC)</a>. The FFEC is a scientific team that forecasts climate change impacts on B.C.'s forest ecosystems. The core role of the FFEC is to translate ecological knowledge into data, tools, and guidance to help ecosystem managers account for climate risks.
+
+#### **Key features:**
+
+-   **Climate anomaly:** The app shows anomalies of fundamental climate parameters (temperature and precipitation) highlighting deviations from historical norms.
+
+-   **Interactive Visualization**: It presents the data through intuitive maps, summary tables, and time series plots, complete with trend magnitude and significance values.
+
+-   **User-Friendly**: Accessible to both government employees and the public, the app provides a "climate lens" to examine climate changes in specific regions, months, seasons, and years of interest.
+
+-   **Wide Applicability**: Benefiting government employees, the broader scientific community, and interested individuals, it serves as a valuable resource for understanding BC's evolving climate.
+
+
+#### **Target Users:**
+
+This app is designed for:
+
+-   **Government Employees**: Providing valuable insights into climate trends to inform policy and decision-making.
+
+-   **Scientific Community**: Offering data and visualization tools for research and analysis.
+
+-   **General Public**: Enabling anyone interested in climate to explore historical climate changes in BC and its sub-regions, fostering climate literacy.
+
+The ***BC climate Anomaly app*** is a valuable resource that provides information on historical climate change in BC for government agencies, consulting forms and public and supports scientific endeavors by offering a comprehensive view of climate anomalies and trends in British Columbia and its subregions.
+
+Please navigate to the ***About*** page to learn more about the app, data, and methods. The ***Anomaly App*** page generates the spatial anomaly map and time series plot with trend magnitude and significance of the selected region of interest, parameter, and month/season. There are options to download plots and/or data. The ***Report*** page has a link to full report on BC climate anomalies in HTML format that can be downloaded. The ***Feedback & Links*** page has a link to a form where users can provide their comments/feedback related to the app. Also, this page has links to other similar apps developed and maintained by the FFEC team.
+
