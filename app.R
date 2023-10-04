@@ -36,6 +36,7 @@ library('zyp')
 library('viridisLite')
 library('cptcity')
 library('echarts4r')
+library('plotly')
 
 # Load and process input data -------
 ## Paths --
@@ -329,8 +330,8 @@ ui <- fluidPage(
           br(),
           fluidRow(
             helpText(HTML("<h5><b> Choose specific year (s) or range of years</b> </h5>",)),
-            actionButton("ab_years_choose", "Specific year(s)"),
             actionButton("rng_years_choose", "Range of years"),
+            actionButton("ab_years_choose", "Specific year(s)"),
            sliderInput(
               "year_range",
               "year range",
@@ -377,7 +378,7 @@ ui <- fluidPage(
             width = 12,
             box(
               width = 12,
-              plotOutput("ano_map", height = "70vh"),
+              plotlyOutput("ano_map", height = "70vh"),
               downloadButton(outputId = "download_ano_plt",
                              label = "Download plot"),
               downloadButton(outputId = "download_ano_data",
@@ -615,6 +616,7 @@ ui <- fluidPage(
 
 # Server ----
 server <- function(session, input, output) {
+  options(warn = -1)
   # Maps and plots tab ----
   # Filters ------
   # # Filter : Area
@@ -722,7 +724,7 @@ server <- function(session, input, output) {
 
   #interactive years choices
 
-  whichInput <- reactiveValues(type = "specific")
+  whichInput <- reactiveValues(type = "range")
 
 
   observeEvent(input$rng_years_choose, {
@@ -789,7 +791,7 @@ server <- function(session, input, output) {
     sel_area_shpfl <- get_shapefile()
     #browser()
 
-    # # For sample run
+    # # For sample run ----
     # monn = "summer"
     # parr = "prcp"
     # sel_yrs <- seq(1980,2023,1)
@@ -1009,16 +1011,19 @@ server <- function(session, input, output) {
     # Climate plot title ( use log for prcp)
     if (parr == "prcp") {
       par_title <-  paste0(region, " ",
-                           parr_full, " anomaly  (% of normal)",
-                           " : ",
+                           parr_full, "anomaly (% of normal)",
+                           ": ",
                            monn_full)
     } else {
       par_title <-  paste0(region, " ",
-                           parr_full, " anomaly (", unt,")",
-                           " : ",
+                           parr_full, "anomaly (", unt,")",
+                           ": ",
                            monn_full)
     }
 
+    sel_area_shpfl_2 <- sf::st_cast(sel_area_shpfl, "MULTIPOLYGON")
+
+    ano_dt_rast <- subset(ano_dt_rast,1:5)
     spatial_ano_plt <-  ggplot() +
       geom_spatraster(data = ano_dt_rast) +
       scale_fill_gradientn(
@@ -1032,7 +1037,7 @@ server <- function(session, input, output) {
       ) +
       facet_wrap(. ~ lyr) +
       geom_sf(
-        data = sel_area_shpfl,
+        data = sel_area_shpfl_2,
         colour = "black",
         size = 1,
         fill = NA,
@@ -1186,11 +1191,35 @@ server <- function(session, input, output) {
         )
       )
     spatial_ano_plt
-  })
+
+    })
 
   # Anomaly map plot display ----
-  output$ano_map <- renderPlot({
-    sp_ano_plt_rct()
+  output$ano_map <- renderPlotly({
+    sp_ano_plt_rct() -> spatial_ano_plt
+    #Convert to plotly
+    spatial_ano_plty <- ggplotly(spatial_ano_plt) %>%
+      layout(margin = list(l = 0, r = 0, b = 30, t = 70),
+             title = list( x = 0.01 ,
+                           y = 0.98,
+                           text = paste0(par_title,
+                                         '<br>',
+                                         '<sup>',
+                                         'Baseline: 1981-2010', '</sup>')))%>%
+      layout(
+        annotations = list(
+          list(
+            x = 0.8 ,
+            y = 0.01,
+            text = plt_wtrmrk,
+            showarrow = F,
+            xref = 'paper',
+            yref = 'paper',
+            xanchor='right', yanchor='auto', xshift=0, yshift=0,
+            font=list(size=6, color="gray80")
+          )
+        ))
+    spatial_ano_plty
   })
 
   # Location map plot ----
