@@ -329,7 +329,9 @@ ui <- fluidPage(
                    uiOutput("month_picker")),
           br(),
           fluidRow(
-            helpText(HTML("<h5><b> Choose specific year (s) or range of years</b> </h5>",)),
+
+            helpText(HTML("<h5><b> Choose range of years or specific year(s)</b> </h5>",)),
+
             actionButton("rng_years_choose", "Range of years"),
             actionButton("ab_years_choose", "Specific year(s)"),
            sliderInput(
@@ -507,6 +509,7 @@ ui <- fluidPage(
                   uiOutput("doc_html")
                 )
               ))),
+      ###### footer ----
       column(
         width = 12,
         style = "background-color:#003366; border-top:2px solid #fcba19;",
@@ -570,6 +573,7 @@ ui <- fluidPage(
           <br>"
         )
       ),
+      ###### footer ----
       column(
         width = 12,
         style = "background-color:#003366; border-top:2px solid #fcba19;",
@@ -741,7 +745,6 @@ server <- function(session, input, output) {
     whichInput$type <- "specific"
 
   })
-
 
   get_years <- reactive({
     if (whichInput$type == "specific") {
@@ -2059,11 +2062,13 @@ server <- function(session, input, output) {
     trn_slp = c(unique(ano_shp_dt$incpt), unique(ano_shp_dt$trn))
     ys = cbind(1, xs) %*% trn_slp
     ano_shp_dt$trn_lab = paste(
-      "italic(1951-trend)==",
-      round(ano_shp_dt$trn, 2),
-      "~','~italic(p)==",
+      "italic(1950-~trend)==",
+      round(ano_shp_dt$trn, 2),"~yr^{-1}~','~italic(p)==",
       round(ano_shp_dt$sig, 2)
     )
+#
+#     mag_trnd_lab=paste("italic(t)==",round(ano_shp_dt$trn,2),unt,
+#                        "~mm~yr^{-1}~','~italic(p)==",round(ano_shp_dt$sig,2))
 
     # Trend on average anomaly 1980 - now
     ano_shp_dt %>%
@@ -2084,9 +2089,8 @@ server <- function(session, input, output) {
     trn_slp80 = c(unique(ano_shp_dt80$incpt), unique(ano_shp_dt80$trn))
     ys80 = cbind(1, xs80) %*% trn_slp80
     ano_shp_dt80$trn_lab = paste(
-      "italic(1980-trend)==",
-      round(ano_shp_dt80$trn, 2),
-      "~','~italic(p)==",
+      "italic(1980-~trend)==",
+      round(ano_shp_dt80$trn, 2),"~yr^{-1}~','~italic(p)==",
       round(ano_shp_dt80$sig, 2)
     )
 
@@ -2217,8 +2221,7 @@ server <- function(session, input, output) {
         y = ymax - 0.05,
         fill = NA,
         label = ano_shp_dt$trn_lab[[1]],
-        size = 4.0,
-        parse = TRUE
+        size = 4.0, parse=T
       ) +
       # add 80s trend
       geom_segment(
