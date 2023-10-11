@@ -6,14 +6,15 @@ tic()
 
 # Render the anomaly quarto file in the www app folder of the shiny app with date.
 
-update_month <- "August"
+update_month <- "September"
 update_year <- "2023"
 
 # pdf_file_name = paste0("BC_climate_anomaly_",update_month,"_",update_year,".pdf")
 html_file_name = paste0("BC_climate_anomaly_",update_month,"_",update_year,".html")
 
 
-# html_render
+# # html_render
+
 quarto::quarto_render(
   input="bc_climate_anomaly_report_html.qmd",
   output_file = html_file_name, output_format = "html"

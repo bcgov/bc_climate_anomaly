@@ -85,6 +85,7 @@ wna_shp <-
     ymax = ymx
   )
 # plot(st_geometry(wna_shp))
+wna_shp <- sf::st_cast(wna_shp, "MULTIPOLYGON")
 
 ## Months, parameters ----
 months_nam <-
@@ -115,7 +116,7 @@ parameters
 min_year <- 1951
 max_year <- 2023
 
-update_month <- "August"
+update_month <- "September"
 update_year <- "2023"
 
 years <- seq(min_year, max_year, 1)
@@ -1188,7 +1189,6 @@ server <- function(session, input, output) {
         )
       )
     spatial_ano_plt
-
     })
 
   # Anomaly map plot display ----
@@ -2501,7 +2501,7 @@ server <- function(session, input, output) {
                            y = 1.0))%>%
       layout(margin = list(l = 0, r = 0, b = 10, t = 80),
              title = list( x = 0.001 ,
-                           y = 0.91,
+                           y = 0.92,
                            text = paste0(par_title,
                                          '<br>',
                                          '<sup>',
