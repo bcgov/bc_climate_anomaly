@@ -155,7 +155,7 @@ parameters
 min_year <- 1951
 max_year <- 2023
 
-update_month <- "August"
+update_month <- "September"
 update_year <- "2023"
 
 years <- seq(min_year, max_year, 1)
@@ -190,7 +190,17 @@ sel_area_shpfl <- bc_shp
 sel_area <- "BC"
 ```
 
-# Summary
+# Recent months/seasons Summary
+
+## Summer 2023
+
+-   The summer (June, July & August) of 2023 stood out as one of the warmest seasons in BC, featuring an average mean temperature anomaly of 2.30°C above the normal baseline (ranging spatially from 0.52°C to 3.17°C).
+
+-   The spatially averaged BC's total summer precipitation in 2023 was 21% lower than the historical average. Particularly, Vancouver Island and the Lower Mainland experienced a significant deficit, receiving up to 67% less precipitation than the usual seasonal norms
+
+-   Notably, June and August exhibited extreme dryness in Vancouver Island, the Lower Mainland, and higher latitude regions of BC. Meanwhile, July was characterized by an extended dry spell, with precipitation levels plummeting by up to 82% below the normal for lower latitude regions.
+
+# Overall Summary: 1980 - 2022
 
 This report presents a comprehensive analysis of monthly and annual anomalies in mean, maximum, and minimum temperatures, as well as precipitation data for the period from 1980 to 2023 in western North America. Additionally, it examines the spatially averaged trends in monthly and annual temperature and precipitation for British Columbia (BC) during the same period. The study utilizes ERA5 land data with a spatial resolution of approximately 9 km × 9 km and calculates anomalies relative to the climatological mean of 1981 to 2010. Anomalies were obtained by subtracting the climatological mean from the corresponding monthly and annual temperature and precipitation values. The magnitudes of trends and their statistical significance are determined using the non-parametric Mann-Kendall trend test.
 
