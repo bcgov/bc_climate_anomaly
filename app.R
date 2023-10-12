@@ -85,7 +85,7 @@ wna_shp <-
     ymax = ymx
   )
 # plot(st_geometry(wna_shp))
-wna_shp <- sf::st_cast(wna_shp, "MULTIPOLYGON")
+# wna_shp <- sf::st_cast(wna_shp, "MULTIPOLYGON")
 
 ## Months, parameters ----
 months_nam <-

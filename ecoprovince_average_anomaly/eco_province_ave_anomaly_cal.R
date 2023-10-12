@@ -51,6 +51,10 @@ bc_ecoprv_shp <-
 months_nam <-
   c(
     "annual",
+    "winter",
+    "spring",
+    "summer",
+    "fall",
     "Jan",
     "Feb",
     "Mar",
@@ -69,10 +73,10 @@ months_nam
 parameters <- c("tmean", "tmax", "tmin", "prcp")
 parameters
 
-min_year <- 1980
+min_year <- 1951
 max_year <- 2023
 
-update_month <- c("Jul", "Aug")
+update_month <- c("Jun","Jul","Aug","Sep")
 update_year <- "2023"
 
 ## Anomalies Data files -----
@@ -82,31 +86,22 @@ list.files(path = ano_dt_pth,
 head(ano_dt_fls)
 
 ano_dt_fl <- tibble(dt_pth = ano_dt_fls)
-ano_dt_fl
 ano_dt_fl %<>%
   mutate(mon = str_extract(ano_dt_fls,
                            paste(months_nam, collapse = "|")),
          par = str_extract(ano_dt_fls,
                            paste(parameters, collapse = "|")))
-# For update months only
-ano_dt_fl %<>%
-  filter(mon == update_month[[1]] | mon == update_month[[2]])
 
-
-# Calculate average anomaly for each month year by ecoregion
-
-# Climatology files
-list.files(
-  path = ano_dt_pth,
-  pattern = glob2rx("*_clm_mon_annual_*.nc"),
-  full.names = T
-) -> clm_dt_fls
+## Climatology Data files -----
+list.files(path = ano_dt_pth,
+           pattern = ".*_clm_.*\\.nc",
+           full.names = T) -> clm_dt_fls
 head(clm_dt_fls)
+
 clm_dt_fl <- tibble(dt_pth = clm_dt_fls)
-clm_dt_fl
-clm_dt_fl  %<>%
-  mutate(par = str_extract(dt_pth  , paste(parameters, collapse = "|")))
-clm_dt_fl
+clm_dt_fl %<>%
+  mutate(par = str_extract(clm_dt_fls,
+                           paste(parameters, collapse = "|")))
 
 
 # Anomalies and percentage calculation  --------------------------------------------------------
@@ -119,10 +114,10 @@ ano_subregion_clip_fun <-
            clm_dt_fl,
            eco_rgn_shp,
            eco_region_name) {
-    eco_region_name <- "eco_province"
-    eco_rgn_shp <- bc_ecoprv_shp
-    clm_dt_fl <- clm_dt_fl
 
+    # eco_region_name <- "eco_province"
+    # eco_rgn_shp <- bc_ecoprv_shp
+    # clm_dt_fl <- clm_dt_fl
     # ano_dt_fl_i <- ano_dt_fl[i,]
     # ano_dt_fl_i
 
@@ -264,7 +259,7 @@ ano_subregion_clip_fun <-
     }
     shp_sub_rg_mean_ano_dt <- bind_rows(shp_fl_mean_ano_list)
 
-    #Cobine BC and ecoregions
+    #Combine BC and eco-regions
 
     bc_shp_sub_rg_mean_ano_dt <-
       bind_rows(bc_ano_shp_av_dt_i, shp_sub_rg_mean_ano_dt)
@@ -293,27 +288,28 @@ for (i in 1:nrow(ano_dt_fl)) {
   )
 }
 eco_prv_ano_dt <- bind_rows(eco_prv_ano_dt_lst)
-eco_prv_ano_dt
-eco_prv_ano_dt %<>%
-  filter(yr >= update_year)
+eco_prv_ano_dt%<>%
+  drop_na()
+# eco_prv_ano_dt %<>%
+#   filter(yr >= update_year)
 
 # Read csv upto 2022 and add updated month
-ecoprv22_dt <-
-  read_csv('temp_prcp_avg_ano_per_bc_ecoprvnc_data_1950_2022.csv')
-ecoprv22_dt
-tail(ecoprv22_dt)
+# ecoprv22_dt <-
+#   read_csv('temp_prcp_avg_ano_per_bc_ecoprvnc_data_1950_2022.csv')
+# ecoprv22_dt
+# tail(ecoprv22_dt)
 
-# Merge and update with new data
-ecoprv_dt_updated <- bind_rows(ecoprv22_dt, eco_prv_ano_dt)
-ecoprv_dt_updated
-ecoprv_dt_updated %<>%
-  drop_na()
+# # Merge and update with new data
+# ecoprv_dt_updated <- bind_rows(ecoprv22_dt, eco_prv_ano_dt)
+# ecoprv_dt_updated
+# ecoprv_dt_updated %<>%
+#   drop_na()
 
 write_csv(
-  ecoprv_dt_updated,
+  eco_prv_ano_dt,
   file = paste0(
     "temp_prcp_avg_ano_per_bc_ecoprvnc_data_updated_",
-    update_month[[2]],
+    update_month[[4]],
     "_",
     update_year,
     ".csv"

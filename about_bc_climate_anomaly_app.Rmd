@@ -20,6 +20,7 @@ output: html_document
 #### **Download data and plot**
 
  By clicking the *Download Plot* button, users can save the plots with names that include the *region*, *parameter*, and *start and end years (or years of climate normal)* in *.PNG* format. The *Download Raster Data* button allows users to download spatial anomaly data and climate normal data in *GTiff* format for the selected region and period, with each band containing data for one year. The *Download anomaly time series data* button download spatially averaged time series of selected parameter anomalies for the chosen region in *.csv* format. The dataset includes four columns: year (*yr*), anomalies values (*ano*), parameter (*par*), month (*Mon*), and *region* (name of the region). For temperature-related parameters (*tmean*, *tmax*, or *tmin*), unit of anomaly is degrees Celsius **(°C)**, and for the precipitation (*prcp*), the unit is percentage of normal **(% of normal)**.
+The anomaly data exclusively pertains to the landmass. Consequently, if there is no grid overlap between the landmass and the selected shapefile, the application will generate an error; reset the app to restore functional state.
 
  **Report** page provides a link to an HTML report providing a general overview spanning from 1980 to 2022 and month-to-month summaries for recent months and spatial anomalies and time series plots of monthly, seasonal, and annual anomalies.
 
