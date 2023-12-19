@@ -43,6 +43,11 @@ library('plotly')
 shp_fls_pth <- './shapefiles/'
 ano_dt_pth <-  './ano_clm_data/'
 
+# Credit  -----
+plt_wtrmrk <-
+  "Created by Aseem Sharma (aseem.sharma@gov.bc.ca), BC Ministry of Forests. Data credit: ERA5land/C3S/ECMWF."
+plt_wtrmrk
+
 ## Shape files --------------
 # Domain
 xmi = -140
@@ -110,13 +115,13 @@ months_nam <-
   )
 months_nam
 
-parameters <- c("tmean", "tmax", "tmin", "prcp")
+parameters <- c("tmean", "tmax", "tmin", "prcp","vpd","rh","soil_moisture")
 parameters
 
 min_year <- 1951
 max_year <- 2023
 
-update_month <- "September"
+update_month <- "November"
 update_year <- "2023"
 
 years <- seq(min_year, max_year, 1)
@@ -357,7 +362,8 @@ ui <- fluidPage(
                         selected = max_year)),
             # Reset selection
             br(),
-            actionButton("reset_input", "Reset")
+            actionButton("reset_input", "Reset"),
+            actionButton("execute_app", "Execute")
           ),
           fluidRow(column(
             HTML("<h4><b>Location Map</b> </h4>"),
@@ -425,7 +431,7 @@ ui <- fluidPage(
               tabPanel(
                 status = 'primary',
                 title = "Time-series plot",
-                plotlyOutput("spatial_trn_plt", height = "80vh"),
+                plotlyOutput("spatial_trn_plt", height = "60vh"),
                 downloadButton(outputId = "download_avtrn_plt",
                                label = "Download plot"),
                 downloadButton(outputId = "download_ano_ts_data",
@@ -488,10 +494,9 @@ ui <- fluidPage(
       value = "report",
       column(width = 12,
              wellPanel(
-               HTML("<h3><b>BC climate anomaly report</b></h2>"),
+               HTML("<h3><b>BC climate summary and anomaly reports</b></h2>"),
                HTML(
-                 "<h4>The following link provide a report on HTML  format that shows the spatial climate anomaly maps of
-            western North America and timeseries plot and trend of BC's spatially averaged anomalies along with summary notes.</h>"
+                 "<h4>The following links provide reports on monthly climate summary and spatial climate anomaly map and long term trends in HTML format.</h>"
                )
              ),
             fluidPage(#   fluidRow(
@@ -507,7 +512,17 @@ ui <- fluidPage(
                   width = 8,
                   height = "12vh",
                   status = "primary",
-                  uiOutput("doc_html")
+                  uiOutput("doc_html_mon_summ_3"),
+                  uiOutput("doc_html_mon_summ_2"),
+                  uiOutput("doc_html_mon_summ_1")
+                )
+              ),
+              fluidRow(
+                box(
+                  width = 8,
+                  height = "12vh",
+                  status = "primary",
+                  uiOutput("doc_html_longterm_rep")
                 )
               ))),
       ###### footer ----
@@ -622,6 +637,7 @@ ui <- fluidPage(
 # Server ----
 server <- function(session, input, output) {
   options(warn = -1)
+
   # Maps and plots tab ----
   # Filters ------
   # # Filter : Area
@@ -659,7 +675,10 @@ server <- function(session, input, output) {
         "Minimum Temperature" = 'tmin',
         "Maximum Temperature" = 'tmax',
         "Mean Temperature" = 'tmean',
-        "Precipitation" = 'prcp'
+        "Precipitation" = 'prcp',
+        "Vapor pressure deficit (vpd)" = 'vpd',
+        "Relative Humidity (RH)" = 'rh',
+        "Soil moisture (0-1m)" = 'soil_moisture'
       )
     pickerInput(
       "par_picker",
@@ -700,7 +719,6 @@ server <- function(session, input, output) {
       selected = "summer"
     )
   })
-
   # Filter year range or specific year (s)
   # output$year_range <- renderUI({
   #   min_year <- min_year
@@ -747,6 +765,8 @@ server <- function(session, input, output) {
 
   })
 
+
+  # get values for naming etc ------
   get_years <- reactive({
     if (whichInput$type == "specific") {
       sel_yrs <- input$year_specific
@@ -776,6 +796,102 @@ server <- function(session, input, output) {
     sel_area_shpfl
   })
 
+  # Get unit interactively
+  # Units
+  get_unit <- reactive({
+    req(input$par_picker)
+    if (input$par_picker == "tmax" | input$par_picker == "tmin" | input$par_picker == "tmean") {
+      unt <- "°C"
+    } else if (input$par_picker == "prcp") {
+      unt <- "mm"
+    } else if (input$par_picker == "rh") {
+      unt <- "%"
+    } else if (input$par_picker == "vpd") {
+      unt <- "kPa"
+    } else if (input$par_picker == "soil_moisture") {
+      unt <- "m\U00B3/m"
+    }else {
+      unt <- " "
+    }
+    unt
+  })
+
+  #Get parameter name full
+  get_par_full <-  reactive({
+    req(input$par_picker)
+    if (input$par_picker == 'tmin') {
+      parr_full = "minimum temperature"
+    } else if (input$par_picker == 'tmax') {
+      parr_full = "maximum temperature"
+    } else if (input$par_picker == 'tmean') {
+      parr_full = "mean temperature"
+    } else if (input$par_picker == 'prcp') {
+      parr_full = "total precipitation"
+    }else if (input$par_picker == 'rh') {
+      parr_full = "relative humidity (RH)"
+    }else if (input$par_picker == 'vpd') {
+      parr_full = "vapor pressure deficit (VPD)"
+    }else if (input$par_picker == 'soil_moisture') {
+      parr_full = "volumetric soil moisture (0-1m)"
+    }
+    parr_full
+  })
+
+# Get months name full
+  get_mon_full <-  reactive({
+    req(input$month_picker)
+    if (input$month_picker == 'annual') {
+      mon_full = "annual"
+    } else if (input$month_picker == 'spring') {
+      mon_full = "spring"
+    } else if (input$month_picker == 'summer') {
+      mon_full = "summer"
+    } else if (input$month_picker == 'fall') {
+      mon_full = "fall"
+    } else if (input$month_picker == 'winter') {
+      mon_full = "winter"
+    } else if (input$month_picker == 'Jan') {
+      mon_full = "January"
+    } else if (input$month_picker == 'Feb') {
+      mon_full = "February"
+    } else if (input$month_picker == 'Mar') {
+      mon_full = "March"
+    } else if (input$month_picker == 'Apr') {
+      mon_full = "April"
+    } else if (input$month_picker == 'May') {
+      mon_full = "May"
+    } else if (input$month_picker == 'Jun') {
+      mon_full = "June"
+    } else if (input$month_picker == 'Jul') {
+      mon_full = "July"
+    } else if (input$month_picker == 'Aug') {
+      mon_full = "August"
+    } else if (input$month_picker == 'Sep') {
+      mon_full = "September"
+    } else if (input$month_picker == 'Oct') {
+      mon_full = "October"
+    } else if (input$month_picker == 'Nov') {
+      mon_full = "November"
+    } else if (input$month_picker == 'Dec') {
+      mon_full = "December"
+    }
+    mon_full
+  })
+
+  #Get regions name
+  get_region <- reactive({
+    if (input$major_area == "BC") {
+      region = "BC"
+    } else if (input$major_area == "Western North America") {
+      region = "Western North America"
+    } else if (input$major_area == "Ecoregions") {
+      region = input$ecoprov_area
+    } else if (input$major_area == "Watersheds") {
+      region = region = input$wtrshd_area
+    }
+    region
+  })
+
   # Spatial anomaly data : reactive to selection
   reactive_ano_dt_fl <- reactive({
     req(input$par_picker)
@@ -794,9 +910,10 @@ server <- function(session, input, output) {
     sel_area_shpfl <- get_shapefile()
     #browser()
 
-#For sample run ----
-# monn = "fall"
-# parr = "prcp"
+# For sample run ----
+
+# monn = "annual"
+# parr = "tmean"
 # sel_yrs <- seq(1951,2023,1)
 # sel_yrs
 # sel_area_shpfl <- bc_shp
@@ -807,8 +924,11 @@ server <- function(session, input, output) {
 #            par == parr) -> ano_dt_fl_mon
 # ano_dt_sel_rast <- rast(ano_dt_fl_mon$dt_pth)
 # ano_dt_sel_rast
-# terra::plot(ano_dt_sel_rast)
+# terra::plot(ano_dt_sel_rast,70:nlyr(ano_dt_sel_rast))
 
+####
+
+# The spatial plot -------------------
     ano_dt_sel_rast <-
       terra::crop(ano_dt_sel_rast, sel_area_shpfl, mask = T)
     ano_dt_sel_rast
@@ -850,16 +970,6 @@ server <- function(session, input, output) {
 
     # Clip by shapefile of the selected area
     sel_area_shpfl <- get_shapefile()
-    if (input$major_area == "BC") {
-      region = "BC"
-    } else if (input$major_area == "Western North America") {
-      region = "Western North America"
-    } else if (input$major_area == "Ecoregions") {
-      region = input$ecoprov_area
-    } else if (input$major_area == "Watersheds") {
-      region = region = input$wtrshd_area
-    }
-    region
 
     reactive_ano_dt_fl() -> ano_dt_rast
 
@@ -886,7 +996,7 @@ server <- function(session, input, output) {
     # plot(clm_dt_rast)
     # plot(ano_dt_rast)
 
-    if (parr == 'prcp') {
+    if (parr == 'prcp' | parr == 'soil_moisture' ) {
       ano_dt_rast_per1 <- (ano_dt_rast / clm_dt_rast) * 100
       #If prcp anomalies are very high ( > 200 %) then convert and limit to 200.
       ano_dt_rast_per2 <-
@@ -903,67 +1013,6 @@ server <- function(session, input, output) {
     ano_rng_lmt <- terra::minmax(ano_dt_rast, compute = T)
     minval <- (-1) * (max(abs(ano_rng_lmt), na.rm = T))
     maxval <- (1) * (max(abs(ano_rng_lmt), na.rm = T))
-
-    # units
-    if (parr == "tmax" | parr == "tmin" | parr == "tmean") {
-      unt <- "°C"
-    } else if (parr == "prcp") {
-      unt <- "mm"
-      parr_pr <- "prcp"
-    } else if (parr == "RH") {
-      unt <- "%"
-    } else {
-      unt <- " "
-    }
-    unt
-
-    if (parr == 'tmin') {
-      parr_full = "minimum temperature"
-    } else if (parr == 'tmax') {
-      parr_full = "maximum temperature"
-    } else if (parr == 'tmean') {
-      parr_full = "mean temperature"
-    } else if (parr == 'prcp') {
-      parr_full = "total precipitation"
-    }
-    parr_full
-
-    if (monn == 'annual') {
-      monn_full = "annual"
-    } else if (monn == 'spring') {
-      monn_full = "spring"
-    } else if (monn == 'summer') {
-      monn_full = "summer"
-    } else if (monn == 'fall') {
-      monn_full = "fall"
-    } else if (monn == 'winter') {
-      monn_full = "winter"
-    } else if (monn == 'Jan') {
-      monn_full = "January"
-    } else if (monn == 'Feb') {
-      monn_full = "February"
-    } else if (monn == 'Mar') {
-      monn_full = "March"
-    } else if (monn == 'Apr') {
-      monn_full = "April"
-    } else if (monn == 'May') {
-      monn_full = "May"
-    } else if (monn == 'Jun') {
-      monn_full = "June"
-    } else if (monn == 'Jul') {
-      monn_full = "July"
-    } else if (monn == 'Aug') {
-      monn_full = "August"
-    } else if (monn == 'Sep') {
-      monn_full = "September"
-    } else if (monn == 'Oct') {
-      monn_full = "October"
-    } else if (monn == 'Nov') {
-      monn_full = "November"
-    } else if (monn == 'Dec') {
-      monn_full = "December"
-    }
-    monn_full
 
     # Breaks and labels
     brk_neg <-
@@ -1008,27 +1057,27 @@ server <- function(session, input, output) {
     labels_val
 
     # Plot using terra rast
-    plt_wtrmrk <-
-      "Created by Aseem Sharma, BC Ministry of Forests using ERA5-Land hourly data\nContact: Aseem.Sharma@gov.bc.ca"
-    plt_wtrmrk
 
     # Climate plot title ( use log for prcp)
-    if (parr == "prcp") {
-      par_title <-  paste0(region, " ",
-                           parr_full, "anomaly (% of normal)",
+    if (parr == "prcp" |parr == "soil_moisture") {
+      par_title <-  paste0(get_region(), " ",
+                           get_par_full(), " anomaly (% of normal)",
                            ": ",
-                           monn_full)
+                           get_mon_full())
     } else {
-      par_title <-  paste0(region, " ",
-                           parr_full, "anomaly (", unt,")",
+      par_title <-  paste0(get_region(), " ",
+                           get_par_full(), " anomaly (", get_unit(),")",
                            ": ",
-                           monn_full)
+                           get_mon_full())
     }
+
+    xlim <- c(-140,-113.0)
+    ylim <- c(45,61)
 
    spatial_ano_plt <-  ggplot() +
       geom_spatraster(data = ano_dt_rast) +
       scale_fill_gradientn(
-        name = paste0(parr, " anomaly ", unt),
+        name = paste0(parr, " anomaly ", get_unit()),
         colours = cpt(pal = "ncl_BlWhRe",
                       n = 100,
                       rev = F),
@@ -1044,6 +1093,7 @@ server <- function(session, input, output) {
         fill = NA,
         alpha = 0.8
       ) +
+     # coord_sf(xlim = xlim, ylim = ylim)+
       scale_x_continuous(
         name =  "Longitude (°W) ",
         breaks = seq(xmi - 5, xmx + 5, 10),
@@ -1156,10 +1206,10 @@ server <- function(session, input, output) {
         axis.ticks.y = element_blank()
       )
 
-    if (parr == "prcp" & maxval > 200) {
+    if (parr == "prcp" & maxval > 200 |parr == "soil_moisture" & maxval > 200 ||parr == "rh" & maxval > 200 ) {
      spatial_ano_plt <- spatial_ano_plt +
         scale_fill_gradientn(
-          name = paste0(parr, " anomaly ", unt),
+          name = paste0(parr, " anomaly ", get_unit()),
           colours = cpt(pal = "cmocean_curl",
                         n = 100,
                         rev = T),
@@ -1168,10 +1218,10 @@ server <- function(session, input, output) {
           breaks = brks_seq,
           labels = labels_val
         )
-    } else if (parr == "prcp") {
+    } else if (parr == "prcp" |parr == "soil_moisture" |parr == "rh" ) {
       spatial_ano_plt <- spatial_ano_plt +
         scale_fill_gradientn(
-          name = paste0(parr_pr, "  anomaly (%) "),
+          name = paste0(parr, "  anomaly (%) "),
           colours = cpt(pal = "cmocean_curl",
                         n = 100,
                         rev = T),
@@ -1271,93 +1321,22 @@ server <- function(session, input, output) {
     monn = input$month_picker
     parr = input$par_picker
 
-    # units
-    if (parr == "tmax" | parr == "tmin" | parr == "tmean") {
-      unt <- "°C"
-    } else if (parr == "prcp") {
-      unt <- "mm"
-      parr_pr <- "prcp"
-    } else if (parr == "RH") {
-      unt <- "%"
-    } else {
-      unt <- " "
-    }
-    unt
+
 
     sel_area_shpfl <- get_shapefile()
-
-    if (input$major_area == "BC") {
-      region = "BC"
-    } else if (input$major_area == "Western North America") {
-      region = "Western North America"
-    } else if (input$major_area == "Ecoregions") {
-      region = input$ecoprov_area
-    } else if (input$major_area == "Watersheds") {
-      region = region = input$wtrshd_area
-    }
-    region
-
-
-    if (parr == 'tmin') {
-      parr_full = "minimum temperature"
-    } else if (parr == 'tmax') {
-      parr_full = "maximum temperature"
-    } else if (parr == 'tmean') {
-      parr_full = "mean temperature"
-    } else if (parr == 'prcp') {
-      parr_full = "total precipitation"
-    }
-    parr_full
-
-    if (monn == 'annual') {
-      monn_full = "annual"
-    } else if (monn == 'spring') {
-      monn_full = "spring"
-    } else if (monn == 'summer') {
-      monn_full = "summer"
-    } else if (monn == 'fall') {
-      monn_full = "fall"
-    } else if (monn == 'winter') {
-      monn_full = "winter"
-    } else if (monn == 'Jan') {
-      monn_full = "January"
-    } else if (monn == 'Feb') {
-      monn_full = "February"
-    } else if (monn == 'Mar') {
-      monn_full = "March"
-    } else if (monn == 'Apr') {
-      monn_full = "April"
-    } else if (monn == 'May') {
-      monn_full = "May"
-    } else if (monn == 'Jun') {
-      monn_full = "June"
-    } else if (monn == 'Jul') {
-      monn_full = "July"
-    } else if (monn == 'Aug') {
-      monn_full = "August"
-    } else if (monn == 'Sep') {
-      monn_full = "September"
-    } else if (monn == 'Oct') {
-      monn_full = "October"
-    } else if (monn == 'Nov') {
-      monn_full = "November"
-    } else if (monn == 'Dec') {
-      monn_full = "December"
-    }
-    monn_full
 
     if (parr == "prcp") {
       clm_nor_title_txt <-
         # Climate plot title ( use log for prcp)
-        paste0(region, " mean ",
-               parr_full," (average of  1981-2010)","(", unt,")" ," (log-scale)",
+        paste0(get_region(), " mean ",
+               get_par_full()," (average of  1981-2010)","(", get_unit(),")" ," (log-scale)",
                "  : ",
-               monn_full)
+               get_mon_full())
     } else{
-      clm_nor_title_txt <-  paste0(region, " ",
-                                   parr_full, " (average of  1981-2010) ", "(", unt,")" ,
+      clm_nor_title_txt <-  paste0(get_region(), " ",
+                                   get_par_full(), " (average of  1981-2010) ", "(", get_unit(),")" ,
                                    " : ",
-                                   monn_full)
+                                   get_mon_full())
     }
     clm_nor_title_txt
   })
@@ -1377,30 +1356,7 @@ server <- function(session, input, output) {
     monn = input$month_picker
     parr = input$par_picker
 
-    # units
-    if (parr == "tmax" | parr == "tmin" | parr == "tmean") {
-      unt <- "°C"
-    } else if (parr == "prcp") {
-      unt <- "mm"
-      parr_pr <- "prcp"
-    } else if (parr == "RH") {
-      unt <- "%"
-    } else {
-      unt <- " "
-    }
-    unt
-
     sel_area_shpfl <- get_shapefile()
-    if (input$major_area == "BC") {
-      region = "BC"
-    } else if (input$major_area == "Western North America") {
-      region = "Western North America"
-    } else if (input$major_area == "Ecoregions") {
-      region = input$ecoprov_area
-    } else if (input$major_area == "Watersheds") {
-      region = region = input$wtrshd_area
-    }
-    region
 
     clm_dt_fl %>%
       filter(par == input$par_picker) -> clm_dt_fl_par
@@ -1419,7 +1375,6 @@ server <- function(session, input, output) {
     clm_dt_sel_rast_mon <-
       subset(clm_dt_sel_rast, which(names(clm_dt_sel_rast) %in% monn))
     clm_dt_sel_rast <- clm_dt_sel_rast_mon
-    rm()
 
     # Clip by shape file of the selected area
     #browser()
@@ -1438,10 +1393,6 @@ server <- function(session, input, output) {
       round(global(clm_dt_sel_rast, 'max', na.rm = T), digits = 2)
 
     # Plot using terra rast
-
-    #     plt_wtrmrk <-
-    #       "Created by Aseem Sharma BC Ministry of Forests using ERA5-Land hourly data\nContact: Aseem.Sharma@gov.bc.ca"
-    #     plt_wtrmrk
 
     if (parr == "prcp") {
       clm_dt_sel_rast1 <- log(clm_dt_sel_rast)
@@ -1578,7 +1529,7 @@ server <- function(session, input, output) {
       )
     spatial_clm_plt
 
-    if (parr == "prcp") {
+    if (parr == "prcp" |parr == "soil_moisture" |parr == "rh") {
       spatial_clm_plt <- spatial_clm_plt +
         scale_fill_continuous(
           type = "viridis",
@@ -1591,15 +1542,15 @@ server <- function(session, input, output) {
 
     # Climate plot title ( use log for prcp)
     # if (parr == "prcp") {
-    #   par_title <-  paste0(region, " mean ",
-    #                        parr_full,"\n ","(", unt,")" ," (log-scale)",
+    #   par_title <-  paste0(get_region(), " mean ",
+    #                        get_par_full(),"\n ","(", get_unit(),")" ," (log-scale)",
     #                        " : ",
-    #                        monn_full)
+    #                        get_mon_full())
     # } else{
-    #   par_title <-  paste0(region, " ",
-    #                        parr_full, " ", "(", unt,")" ,
+    #   par_title <-  paste0(get_region(), " ",
+    #                        get_par_full(), " ", "(", get_unit(),")" ,
     #                        " : ",
-    #                        monn_full)
+    #                        get_mon_full())
     # }
     spatial_clm_plt <- spatial_clm_plt +
       # labs(tag = plt_wtrmrk) +
@@ -1616,7 +1567,7 @@ server <- function(session, input, output) {
         subtitle = paste0(
           'Mean = ',
           mn_clm_val[[1]]," ",
-          "(", unt,")" ,
+          "(", get_unit(),")" ,
           "  ",
           "Range = ",
           "[",
@@ -1647,30 +1598,7 @@ server <- function(session, input, output) {
     monn = input$month_picker
     parr = input$par_picker
 
-    # units
-    if (parr == "tmax" | parr == "tmin" | parr == "tmean") {
-      unt <- "°C"
-    } else if (parr == "prcp") {
-      unt <- "mm"
-      parr_pr <- "prcp"
-    } else if (parr == "RH") {
-      unt <- "%"
-    } else {
-      unt <- " "
-    }
-    unt
-
     sel_area_shpfl <- get_shapefile()
-    if (input$major_area == "BC") {
-      region = "BC"
-    } else if (input$major_area == "Western North America") {
-      region = "Western North America"
-    } else if (input$major_area == "Ecoregions") {
-      region = input$ecoprov_area
-    } else if (input$major_area == "Watersheds") {
-      region = region = input$wtrshd_area
-    }
-    region
 
     clm_dt_fl %>%
       filter(par == input$par_picker) -> clm_dt_fl_par
@@ -1689,7 +1617,6 @@ server <- function(session, input, output) {
     clm_dt_sel_rast_mon <-
       subset(clm_dt_sel_rast, which(names(clm_dt_sel_rast) %in% monn))
     clm_dt_sel_rast <- clm_dt_sel_rast_mon
-    rm()
 
     # Clip by shape file of the selected area
     #browser()
@@ -1710,67 +1637,9 @@ server <- function(session, input, output) {
 
     sel_area_shpfl <- get_shapefile()
 
-    if (input$major_area == "BC") {
-      region = "BC"
-    } else if (input$major_area == "Western North America") {
-      region = "Western North America"
-    } else if (input$major_area == "Ecoregions") {
-      region = input$ecoprov_area
-    } else if (input$major_area == "Watersheds") {
-      region = region = input$wtrshd_area
-    }
-    region
     # other requirements
     monn = input$month_picker
     parr = input$par_picker
-
-    if (parr == 'tmin') {
-      parr_full = "minimum temperature"
-    } else if (parr == 'tmax') {
-      parr_full = "maximum temperature"
-    } else if (parr == 'tmean') {
-      parr_full = "mean temperature"
-    } else if (parr == 'prcp') {
-      parr_full = "total precipitation"
-    }
-    parr_full
-
-    if (monn == 'annual') {
-      monn_full = "annual"
-    } else if (monn == 'spring') {
-      monn_full = "spring"
-    } else if (monn == 'summer') {
-      monn_full = "summer"
-    } else if (monn == 'fall') {
-      monn_full = "fall"
-    } else if (monn == 'winter') {
-      monn_full = "winter"
-    } else if (monn == 'Jan') {
-      monn_full = "January"
-    } else if (monn == 'Feb') {
-      monn_full = "February"
-    } else if (monn == 'Mar') {
-      monn_full = "March"
-    } else if (monn == 'Apr') {
-      monn_full = "April"
-    } else if (monn == 'May') {
-      monn_full = "May"
-    } else if (monn == 'Jun') {
-      monn_full = "June"
-    } else if (monn == 'Jul') {
-      monn_full = "July"
-    } else if (monn == 'Aug') {
-      monn_full = "August"
-    } else if (monn == 'Sep') {
-      monn_full = "September"
-    } else if (monn == 'Oct') {
-      monn_full = "October"
-    } else if (monn == 'Nov') {
-      monn_full = "November"
-    } else if (monn == 'Dec') {
-      monn_full = "December"
-    }
-    monn_full
 
     # Years
     # Filter for selected year (s)
@@ -1786,11 +1655,11 @@ server <- function(session, input, output) {
     ano_overview <-
       paste0(
         "The spatially averaged anomaly overview of ",
-        region,
+        get_region(),
         "'s ",
-        monn_full,
+        get_mon_full(),
         " ",
-        parr_full,
+        get_par_full(),
         " ",
         minyr,
         "—",
@@ -1813,19 +1682,6 @@ server <- function(session, input, output) {
     monn = input$month_picker
     parr = input$par_picker
 
-    # units
-    if (parr == "tmax" | parr == "tmin" | parr == "tmean") {
-      unt <- "°C"
-    } else if (parr == "prcp") {
-      unt <- "mm"
-      parr_pr <- "prcp"
-    } else if (parr == "RH") {
-      unt <- "%"
-    } else {
-      unt <- ""
-    }
-    unt
-
     #For percentage of precipitation anomaly
     names(ano_dt_rast)
 
@@ -1845,7 +1701,7 @@ server <- function(session, input, output) {
     # plot(clm_dt_rast)
     # plot(ano_dt_rast)
 
-    if (parr == 'prcp') {
+    if (parr == 'prcp' | parr == 'soil_moisture') {
       ano_dt_rast_per1 <- (ano_dt_rast / clm_dt_rast) * 100
       #If prcp anomalies are very hihgn ( > 200 %) then convert and limit to 200.
       ano_dt_rast_per2 <-
@@ -1881,14 +1737,14 @@ server <- function(session, input, output) {
     mx_ano_per <- round(max(mx_ano_per$max, na.rm = T), 2)
 
     #Combine for a display table
-    if (parr == 'prcp') {
-      mi_ano_val = paste0(mi_ano_per, "% of normal (", mi_ano, unt, ")")
-      mn_ano_val = paste0(mn_ano_per, "% of normal (", mn_ano, unt, ")")
-      mx_ano_val = paste0(mx_ano_per, "% of normal (", mx_ano, unt, ")")
+    if (parr == 'prcp' | parr == 'soil_moisture') {
+      mi_ano_val = paste0(mi_ano_per, "% of normal (", mi_ano, get_unit(), ")")
+      mn_ano_val = paste0(mn_ano_per, "% of normal (", mn_ano, get_unit(), ")")
+      mx_ano_val = paste0(mx_ano_per, "% of normal (", mx_ano, get_unit(), ")")
     } else {
-      mi_ano_val = paste0(mi_ano, unt)
-      mn_ano_val = paste0(mn_ano, unt)
-      mx_ano_val = paste0(mx_ano, unt)
+      mi_ano_val = paste0(mi_ano, get_unit())
+      mn_ano_val = paste0(mn_ano, get_unit())
+      mx_ano_val = paste0(mx_ano, get_unit())
     }
 
     # Create a table
@@ -1927,20 +1783,10 @@ server <- function(session, input, output) {
     # plot(ano_dt_sel_rast)
 
     # ano_dt_sel_rast <- ano_dt_fil_rast
+    # plot(ano_dt_sel_rast)
 
     # Clip by shapefile of the selected area
     sel_area_shpfl <- get_shapefile()
-
-    if (input$major_area == "BC") {
-      region = "BC"
-    } else if (input$major_area == "Western North America") {
-      region = "Western North America"
-    } else if (input$major_area == "Ecoregions") {
-      region = input$ecoprov_area
-    } else if (input$major_area == "Watersheds") {
-      region = region = input$wtrshd_area
-    }
-    region
 
       # other requirements
     monn = input$month_picker
@@ -1949,11 +1795,44 @@ server <- function(session, input, output) {
    ano_dt_shp_rast <-
       terra::crop(ano_dt_sel_rast, sel_area_shpfl, mask = T)
     ano_dt_shp_rast
-    # plot(ano_dt_shp_rast,74)
+   # plot(ano_dt_shp_rast,72)
     yr_df <- tibble(paryr = names(ano_dt_shp_rast))
     yr_df %<>%
       mutate(yr = as.numeric(str_extract(paryr, "[0-9]+")))
     names(ano_dt_shp_rast) <- yr_df$yr
+
+    #get climatology and calculate percentage for prcp and soil-moisture
+    clm_dt_fl %>%
+      filter(par == parr) -> clm_dt_fl_par
+    clm_dt_sel_rast <- rast(clm_dt_fl_par$dt_pth)
+    # plot(clm_dt_sel_rast)
+    names(clm_dt_sel_rast) <- months_nam
+
+    # Select for input month
+    clm_dt_sel_rast_mon <-
+      subset(clm_dt_sel_rast, which(names(clm_dt_sel_rast) %in% monn))
+    clm_dt_sel_rast <- clm_dt_sel_rast_mon
+    rm(clm_dt_sel_rast_mon)
+
+    # Crop to shpfile
+    clm_dt_rast <-
+      terra::crop(clm_dt_sel_rast, sel_area_shpfl, mask = T)
+    # plot(clm_dt_rast)
+    # plot(ano_dt_shp_rast)
+
+    if (parr == 'prcp' | parr == 'soil_moisture' ) {
+      ano_dt_shp_rast1 <- (ano_dt_shp_rast / clm_dt_rast) * 100
+      #If prcp anomalies are very high ( > 200 %) then convert and limit to 200.
+      ano_dt_shp_rast2 <-
+        ifel(ano_dt_shp_rast1 > 201, 200, ano_dt_shp_rast1)
+      ano_dt_shp_rast3 <-
+        ifel(ano_dt_shp_rast2 < -201, -200, ano_dt_shp_rast2)
+      ano_dt_shp_rast <- ano_dt_shp_rast3
+    } else{
+      ano_dt_shp_rast <- ano_dt_shp_rast
+    }
+    # plot(aano_dt_shp_rast,40:44)
+    ano_dt_shp_rast
 
     # Shapefile spatial average anomalies by year
     ano_shp_av_dt <-
@@ -1967,7 +1846,7 @@ server <- function(session, input, output) {
       as.numeric(str_extract(ano_shp_av_dt$yr, "[0-9]+"))
     ano_shp_av_dt$par <- unique(ano_dt_fl_mon$par)
     ano_shp_av_dt$mon <- unique(ano_dt_fl_mon$mon)
-    ano_shp_av_dt$region <- region
+    ano_shp_av_dt$region <- get_region()
     ano_shp_av_dt
   })
 
@@ -1975,73 +1854,16 @@ server <- function(session, input, output) {
   spatial_av_trnd_plt_rct <- reactive({
     reactive_ano_dt_fl_sp() -> ano_shp_dt
     ano_shp_dt
+
     # ano_shp_dt <-  ano_shp_av_dt
+    # ano_shp_dt$par <- parr
+    # ano_shp_dt$mon <- monn
+    # ano_shp_dt$region <- region
 
     # Background requirements for plots
     parr <- unique(ano_shp_dt$par)
     monn <- unique(ano_shp_dt$mon)
     region <- unique(ano_shp_dt$region)
-
-    # units
-    if (parr == "tmax" | parr == "tmin" | parr == "tmean") {
-      unt <- "°C"
-    } else if (parr == "prcp") {
-      unt <- "mm"
-      parr_pr <- "prcp"
-    } else if (parr == "RH") {
-      unt <- "%"
-    } else {
-      unt <- ""
-    }
-    unt
-
-    if (parr == 'tmin') {
-      parr_full = "minimum temperature"
-    } else if (parr == 'tmax') {
-      parr_full = "maximum temperature"
-    } else if (parr == 'tmean') {
-      parr_full = "mean temperature"
-    } else if (parr == 'prcp') {
-      parr_full = "total precipitation"
-    }
-    parr_full
-
-    if (monn == 'annual') {
-      monn_full = "annual"
-    } else if (monn == 'spring') {
-      monn_full = "spring"
-    } else if (monn == 'summer') {
-      monn_full = "summer"
-    } else if (monn == 'fall') {
-      monn_full = "fall"
-    } else if (monn == 'winter') {
-      monn_full = "winter"
-    } else if (monn == 'Jan') {
-      monn_full = "January"
-    } else if (monn == 'Feb') {
-      monn_full = "February"
-    } else if (monn == 'Mar') {
-      monn_full = "March"
-    } else if (monn == 'Apr') {
-      monn_full = "April"
-    } else if (monn == 'May') {
-      monn_full = "May"
-    } else if (monn == 'Jun') {
-      monn_full = "June"
-    } else if (monn == 'Jul') {
-      monn_full = "July"
-    } else if (monn == 'Aug') {
-      monn_full = "August"
-    } else if (monn == 'Sep') {
-      monn_full = "September"
-    } else if (monn == 'Oct') {
-      monn_full = "October"
-    } else if (monn == 'Nov') {
-      monn_full = "November"
-    } else if (monn == 'Dec') {
-      monn_full = "December"
-    }
-    monn_full
 
     # Trend on average anomaly 1950 - now
     ano_shp_dt %<>%
@@ -2067,7 +1889,7 @@ server <- function(session, input, output) {
       round(ano_shp_dt$sig, 2)
     )
 #
-#     mag_trnd_lab=paste("italic(t)==",round(ano_shp_dt$trn,2),unt,
+#     mag_trnd_lab=paste("italic(t)==",round(ano_shp_dt$trn,2),get_unit(),
 #                        "~mm~yr^{-1}~','~italic(p)==",round(ano_shp_dt$sig,2))
 
     # Trend on average anomaly 1980 - now
@@ -2100,6 +1922,18 @@ server <- function(session, input, output) {
     minyr <- min(ano_shp_dt$yr)
     maxyr <- max(ano_shp_dt$yr)
 
+    if(ymax < 1){
+      ybrk_neg <-
+        round(c(seq((-1) * (max(
+          abs(ano_shp_dt$ano)
+        )), 0, length.out = 2)), digits=2)
+      ybrk_neg
+      ybrk_pos <-
+        round(c(seq(0, (1) * (max(
+          abs(ano_shp_dt$ano)
+        )), length.out = 2))[-1], digits=2)
+      ybrk_pos
+    } else {
     ybrk_neg <-
       ceiling(c(seq((-1) * (max(
         abs(ano_shp_dt$ano)
@@ -2110,7 +1944,7 @@ server <- function(session, input, output) {
         abs(ano_shp_dt$ano)
       )), length.out = 4)))[-1]
     ybrk_pos
-
+}
     #create breaks with "00"
 
     if (nchar(abs(ybrk_neg[[1]])) == 4) {
@@ -2135,8 +1969,12 @@ server <- function(session, input, output) {
     }
     ybrk_posp
 
-    ybrks_seq <- c(ybrk_negn, ybrk_posp)
-
+    if(ymax < 1){
+      ybrks_seq <- c(ybrk_neg, ybrk_pos)
+    }else {
+      ybrks_seq <- c(ybrk_negn, ybrk_posp)
+      }
+    ybrks_seq
     # Positive and negative anomalies and 3 years moving average to create bar plot
     ano_shp_dt %<>%
       mutate(pos_neg = if_else(ano <= 0, "neg", "pos")) %>%
@@ -2144,26 +1982,22 @@ server <- function(session, input, output) {
     ano_shp_dt
     tail(ano_shp_dt)
 
-    plt_wtrmrk <-
-      "Created by Aseem Sharma, BC Ministry of Forests using ERA5-Land hourly data\nContact: Aseem.Sharma@gov.bc.ca"
-    plt_wtrmrk
-
-    if (parr == "prcp") {
-      par_title <-  paste0(region, " ",
-                           parr_full, " ", "anomaly", " (% of normal)",
+    if (parr == "prcp" |parr == "soil_moisture") {
+      par_title <-  paste0(get_region(), " ",
+                           get_par_full(), " ", "anomaly", " (% of normal)",
                            " : ",
-                           monn_full)
+                           get_mon_full())
     } else{
-      par_title <-  paste0(region, " ",
-                           parr_full, " ", "anomaly"," (", unt,")",
+      par_title <-  paste0(get_region(), " ",
+                           get_par_full(), " ", "anomaly"," (", get_unit(),")",
                            " : ",
-                           monn_full)
+                           get_mon_full())
     }
 
-    if (parr == "prcp") {
+    if (parr == "prcp" |parr == "soil_moisture") {
       y_axis_lab <- paste0(parr, " average anomaly (% of normal)")
     } else{
-      y_axis_lab <- paste0(parr, " average anomaly ", "(", unt, ")")
+      y_axis_lab <- paste0(parr, " average anomaly ", "(", get_unit(), ")")
     }
 
     ano_shp_trn_plt <-
@@ -2174,7 +2008,7 @@ server <- function(session, input, output) {
         x = Inf,
         y = -Inf,
         hjust = 1,
-        vjust = -0.3,
+        vjust = -0.5,
         color = 'gray80',
         size = 3.0
       ) +
@@ -2190,7 +2024,7 @@ server <- function(session, input, output) {
         linewidth = 0.5
       ) +
       scale_fill_gradientn(
-        name = paste0(parr, " anomaly ", unt),
+        name = paste0(parr, " anomaly ", get_unit()),
         colours = cpt(pal = "ncl_BlWhRe",
                       n = 100,
                       rev = F),
@@ -2338,10 +2172,11 @@ server <- function(session, input, output) {
         strip.text = element_text(colour = 'Black')
       )
     ano_shp_trn_plt
-    if (parr == "prcp") {
+
+    if (parr == "prcp" | parr == "soil_moisture" |parr == "rh") {
       ano_shp_trn_plt <- ano_shp_trn_plt +
         scale_fill_gradientn(
-          name = paste0(parr_pr, "  anomaly ", unt),
+          name = paste0(parr, "  anomaly ", get_unit()),
           colours = cpt(pal = "cmocean_curl",
                         n = 100,
                         rev = T),
@@ -2349,8 +2184,9 @@ server <- function(session, input, output) {
           breaks = ybrks_seq
         )
     }
+    ano_shp_trn_plt<- ano_shp_trn_plt +
+      theme(axis.title.y = element_blank())
     ano_shp_trn_plt
-
   })
 
   ## Plotly display ------
@@ -2362,66 +2198,6 @@ server <- function(session, input, output) {
     monn <- unique(ano_shp_dt$mon)
     region <- unique(ano_shp_dt$region)
 
-    # units
-    if (parr == "tmax" | parr == "tmin" | parr == "tmean") {
-      unt <- "°C"
-    } else if (parr == "prcp") {
-      unt <- "mm"
-      parr_pr <- "prcp"
-    } else if (parr == "RH") {
-      unt <- "%"
-    } else {
-      unt <- ""
-    }
-    unt
-
-    if (parr == 'tmin') {
-      parr_full = "minimum temperature"
-    } else if (parr == 'tmax') {
-      parr_full = "maximum temperature"
-    } else if (parr == 'tmean') {
-      parr_full = "mean temperature"
-    } else if (parr == 'prcp') {
-      parr_full = "total precipitation"
-    }
-    parr_full
-
-    if (monn == 'annual') {
-      monn_full = "annual"
-    } else if (monn == 'spring') {
-      monn_full = "spring"
-    } else if (monn == 'summer') {
-      monn_full = "summer"
-    } else if (monn == 'fall') {
-      monn_full = "fall"
-    } else if (monn == 'winter') {
-      monn_full = "winter"
-    } else if (monn == 'Jan') {
-      monn_full = "January"
-    } else if (monn == 'Feb') {
-      monn_full = "February"
-    } else if (monn == 'Mar') {
-      monn_full = "March"
-    } else if (monn == 'Apr') {
-      monn_full = "April"
-    } else if (monn == 'May') {
-      monn_full = "May"
-    } else if (monn == 'Jun') {
-      monn_full = "June"
-    } else if (monn == 'Jul') {
-      monn_full = "July"
-    } else if (monn == 'Aug') {
-      monn_full = "August"
-    } else if (monn == 'Sep') {
-      monn_full = "September"
-    } else if (monn == 'Oct') {
-      monn_full = "October"
-    } else if (monn == 'Nov') {
-      monn_full = "November"
-    } else if (monn == 'Dec') {
-      monn_full = "December"
-    }
-    monn_full
 
     # Trend on average anomaly 1950 - now
     ano_shp_dt %<>%
@@ -2467,20 +2243,16 @@ server <- function(session, input, output) {
       round(ano_shp_dt80$sig, 2)
     )
 
-    plt_wtrmrk <-
-      "Created by Aseem Sharma, BC Ministry of Forests using ERA5-Land hourly data\nContact: Aseem.Sharma@gov.bc.ca"
-    plt_wtrmrk
-
-    if (parr == "prcp") {
-      par_title <-  paste0(region, " ",
-                           parr_full, " ", "anomaly", " (% of normal)",
+    if (parr == "prcp" |parr == "soil_moisture") {
+      par_title <-  paste0(get_region(), " ",
+                           get_par_full(), " ", "anomaly", " (% of normal)",
                            ": ",
-                           monn_full)
+                           get_mon_full())
     } else{
-      par_title <-  paste0(region, " ",
-                           parr_full, " ", "anomaly"," (", unt,")",
+      par_title <-  paste0(get_region(), " ",
+                           get_par_full(), " ", "anomaly"," (", get_unit(),")",
                            ": ",
-                           monn_full)
+                           get_mon_full())
     }
 
     trn1980_lab <-
@@ -2519,7 +2291,7 @@ server <- function(session, input, output) {
             xref = 'paper',
             yref = 'paper',
             xanchor='right', yanchor='auto', xshift=0, yshift=0,
-            font=list(size=7, color='#e5e5e5')
+            font=list(size=9, color='#e5e5e5')
           )
         ))%>%
       layout(
@@ -2565,23 +2337,12 @@ server <- function(session, input, output) {
     sel_area_shpfl <- get_shapefile()
     # plot(st_geometry(sel_area_shpfl))
 
-    if (input$major_area == "BC") {
-      region = "BC"
-    } else if (input$major_area == "Western North America") {
-      region = "Western North America"
-    } else if (input$major_area == "Ecoregions") {
-      region = input$ecoprov_area
-    } else if (input$major_area == "Watersheds") {
-      region = region = input$wtrshd_area
-    }
-    region
-
     # other requirements
     monn = input$month_picker
     parr = input$par_picker
 
     fl_nam <-
-      paste0(region,
+      paste0(get_region(),
              "_",
              parr,"_anomaly",
              "_",
@@ -2634,17 +2395,6 @@ server <- function(session, input, output) {
 
     sel_area_shpfl <- get_shapefile()
 
-    if (input$major_area == "BC") {
-      region = "BC"
-    } else if (input$major_area == "Western North America") {
-      region = "Western North America"
-    } else if (input$major_area == "Ecoregions") {
-      region = input$ecoprov_area
-    } else if (input$major_area == "Watersheds") {
-      region = region = input$wtrshd_area
-    }
-    region
-
     # other requirements
     monn = input$month_picker
     parr = input$par_picker
@@ -2657,7 +2407,7 @@ server <- function(session, input, output) {
     }
 
     fl_nam <-
-      paste0(region,
+      paste0(get_region(),
              "_",
              parr,"_anomaly_timeseries",
              "_",
@@ -2710,86 +2460,16 @@ server <- function(session, input, output) {
     monn = input$month_picker
     parr = input$par_picker
 
-    # units
-    if (parr == "tmax" | parr == "tmin" | parr == "tmean") {
-      unt <- "°C"
-    } else if (parr == "prcp") {
-      unt <- "mm"
-      parr_pr <- "prcp"
-    } else if (parr == "RH") {
-      unt <- "%"
-    } else {
-      unt <- ""
-    }
-    unt
 
     sel_area_shpfl <- get_shapefile()
 
-    if (input$major_area == "BC") {
-      region = "BC"
-    } else if (input$major_area == "Western North America") {
-      region = "Western North America"
-    } else if (input$major_area == "Ecoregions") {
-      region = input$ecoprov_area
-    } else if (input$major_area == "Watersheds") {
-      region = region = input$wtrshd_area
-    }
-    region
-
-    if (parr == 'tmin') {
-      parr_full = "minimum temperature"
-    } else if (parr == 'tmax') {
-      parr_full = "maximum temperature"
-    } else if (parr == 'tmean') {
-      parr_full = "mean temperature"
-    } else if (parr == 'prcp') {
-      parr_full = "total precipitation"
-    }
-    parr_full
-
-    if (monn == 'annual') {
-      monn_full = "annual"
-    } else if (monn == 'spring') {
-      monn_full = "spring"
-    } else if (monn == 'summer') {
-      monn_full = "summer"
-    } else if (monn == 'fall') {
-      monn_full = "fall"
-    } else if (monn == 'winter') {
-      monn_full = "winter"
-    } else if (monn == 'Jan') {
-      monn_full = "January"
-    } else if (monn == 'Feb') {
-      monn_full = "February"
-    } else if (monn == 'Mar') {
-      monn_full = "March"
-    } else if (monn == 'Apr') {
-      monn_full = "April"
-    } else if (monn == 'May') {
-      monn_full = "May"
-    } else if (monn == 'Jun') {
-      monn_full = "June"
-    } else if (monn == 'Jul') {
-      monn_full = "July"
-    } else if (monn == 'Aug') {
-      monn_full = "August"
-    } else if (monn == 'Sep') {
-      monn_full = "September"
-    } else if (monn == 'Oct') {
-      monn_full = "October"
-    } else if (monn == 'Nov') {
-      monn_full = "November"
-    } else if (monn == 'Dec') {
-      monn_full = "December"
-    }
-    monn_full
 
     fl_nam <-
-      paste0(region,
+      paste0(get_region(),
              "_",
-             parr_full,"_climate_normal_1981_2010",
+             get_par_full(),"_climate_normal_1981_2010",
              "_",
-             monn_full)
+             get_mon_full())
     fl_nam
   })
 
@@ -2804,42 +2484,15 @@ server <- function(session, input, output) {
 
     sel_area_shpfl <- get_shapefile()
 
-    if (input$major_area == "BC") {
-      region = "BC"
-    } else if (input$major_area == "Western North America") {
-      region = "Western North America"
-    } else if (input$major_area == "Ecoregions") {
-      region = input$ecoprov_area
-    } else if (input$major_area == "Watersheds") {
-      region = region = input$wtrshd_area
-    }
-    region
-
-    # units
-    if (parr == "tmax" | parr == "tmin" | parr == "tmean") {
-      unt <- "°C"
-    } else if (parr == "prcp") {
-      unt <- "mm"
-      parr_pr <- "prcp"
-    } else if (parr == "RH") {
-      unt <- "%"
-    } else {
-      unt <- ""
-    }
-    unt
-
-      plt_wtrmrk <-
-        "Created by Aseem Sharma BC Ministry of Forests using ERA5-Land hourly data\nContact: Aseem.Sharma@gov.bc.ca"
-        plt_wtrmrk
       # Climate plot title ( use log for prcp)
       if (parr == "prcp") {
-        par_title <-  paste0(region, " mean ",
-                             parr,"","(", unt,")" ," (log-scale)",
+        par_title <-  paste0(get_region(), " mean ",
+                             parr,"","(", get_unit(),")" ," (log-scale)",
                              " : ",
                              monn)
       } else{
-        par_title <-  paste0(region, " ",
-                             parr, " ", "(", unt,")" ,
+        par_title <-  paste0(get_region(), " ",
+                             parr, " ", "(", get_unit(),")" ,
                              " : ",
                              monn)
       }
@@ -2894,7 +2547,9 @@ server <- function(session, input, output) {
     }
   )
 
-    # Reset  selection /filters -----
+
+
+  # Reset  selection /filters -----
   observeEvent(input$reset_input, {
     shinyjs::reset("selection-panel")
   })
@@ -2914,31 +2569,71 @@ server <- function(session, input, output) {
     )
 
   })
+
   # Reports ----
 
-  # pdf_file_name = paste0("BC_climate_anomaly_",
-  #                        update_month,
-  #                        "_",
-  #                        update_year,
-  #                        ".pdf")
-  html_file_name = paste0("BC_climate_anomaly_",
-                          update_month,
-                          "_",
-                          update_year,
-                          ".html")
-
+  # November
   # HTML in the shiny www folder
-  output$doc_html <- renderUI({
+  output$doc_html_mon_summ_3 <- renderUI({
     a(
-      "BC climate anomaly report:",
-      html_file_name,
+      "bc_monthly_climate_summary_November_2023",
       target = "_blank",
       style = "font-size:20px;",
-      href = html_file_name,
+      href = "bc_monthly_climate_summary_November_2023.html",
       img(
         src = "html_logo.png",
-        height = "3%",
-        width = "3%",
+        height = "2%",
+        width = "2%",
+        align = "center"
+      )
+    )
+  })
+
+  # October
+  # HTML in the shiny www folder
+  output$doc_html_mon_summ_2 <- renderUI({
+    a(
+      "bc_monthly_climate_summary_October_2023",
+      target = "_blank",
+      style = "font-size:20px;",
+      href = "bc_monthly_climate_summary_October_2023.html",
+      img(
+        src = "html_logo.png",
+        height = "2%",
+        width = "2%",
+        align = "center"
+      )
+    )
+  })
+
+  # September
+  # HTML in the shiny www folder
+  output$doc_html_mon_summ_1 <- renderUI({
+    a(
+      "bc_monthly_climate_summary_September_2023",
+      target = "_blank",
+      style = "font-size:20px;",
+      href = "bc_monthly_climate_summary_September_2023.html",
+      img(
+        src = "html_logo.png",
+        height = "2%",
+        width = "2%",
+        align = "center"
+      )
+    )
+  })
+
+  # Annual all summary
+  # HTML in the shiny www folder
+  output$doc_html_longterm_rep <- renderUI({
+    a("bc_temperature_precipitation_anomaly_1980_2022",
+      target = "_blank",
+      style = "font-size:20px;",
+      href = "bc_longterm_temp_prcp_anomaly_report_1980_2022_html.html",
+      img(
+        src = "html_logo.png",
+        height = "2%",
+        width = "2%",
         align = "center"
       )
     )

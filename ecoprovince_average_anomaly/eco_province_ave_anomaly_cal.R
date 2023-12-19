@@ -76,7 +76,7 @@ parameters
 min_year <- 1951
 max_year <- 2023
 
-update_month <- c("Jun","Jul","Aug","Sep")
+update_month <- c("Oct","Nov")
 update_year <- "2023"
 
 ## Anomalies Data files -----
@@ -90,7 +90,8 @@ ano_dt_fl %<>%
   mutate(mon = str_extract(ano_dt_fls,
                            paste(months_nam, collapse = "|")),
          par = str_extract(ano_dt_fls,
-                           paste(parameters, collapse = "|")))
+                           paste(parameters, collapse = "|")))%<>%
+  drop_na()
 
 ## Climatology Data files -----
 list.files(path = ano_dt_pth,
@@ -102,7 +103,6 @@ clm_dt_fl <- tibble(dt_pth = clm_dt_fls)
 clm_dt_fl %<>%
   mutate(par = str_extract(clm_dt_fls,
                            paste(parameters, collapse = "|")))
-
 
 # Anomalies and percentage calculation  --------------------------------------------------------
 
@@ -309,7 +309,7 @@ write_csv(
   eco_prv_ano_dt,
   file = paste0(
     "temp_prcp_avg_ano_per_bc_ecoprvnc_data_updated_",
-    update_month[[4]],
+    update_month[[2]],
     "_",
     update_year,
     ".csv"

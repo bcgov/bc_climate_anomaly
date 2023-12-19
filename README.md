@@ -1,8 +1,6 @@
 # bc_climate_anomaly
 
-An app to visualize monthly, seasonal, and annual temperature and precipitation
-anomalies in BC and its sub regions ( eco-regions and watersheds) along
-with their trends.
+An app to visualize monthly, seasonal, and annual climate anomalies for temperature, precipitation, humidity, vapor pressure, and soil moisture in BC and its sub regions ( eco-regions and watersheds) along with their trends.
 
 [![Lifecycle:Stable](https://img.shields.io/badge/Lifecycle-Stable-97ca00)](Redirect-URL)
 
