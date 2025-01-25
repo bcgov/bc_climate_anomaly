@@ -119,9 +119,9 @@ parameters <- c("tmean", "tmax", "tmin", "prcp","vpd","rh","soil_moisture")
 parameters
 
 min_year <- 1951
-max_year <- 2023
+max_year <- 2024
 
-update_month <- "November"
+update_month <- "December"
 update_year <- "2023"
 
 years <- seq(min_year, max_year, 1)
@@ -305,15 +305,15 @@ ui <- fluidPage(
             useShinyjs(),
             pickerInput(
               "major_area",
-              "Select region",
+              "Select region ",
               choices = c("Western North America",
-                          "BC", "Ecoregions", "Watersheds")
+                          "BC", "Ecoprovince", "Watersheds")
             ),
             hidden(
               pickerInput(
                 "ecoprov_area",
                 "Ecoregion",
-                choices = c("All_ecoregions", c(bc_ecoprv_shp$name)),
+                choices = c("All_Ecoprovince", c(bc_ecoprv_shp$name)),
                 multiple = F
               )
             ),
@@ -324,20 +324,20 @@ ui <- fluidPage(
                 choices = c("All_watersheds", c(bc_wtrshd_shp$MJR_WTRSHM)),
                 multiple = F
               )
-            )
+            ),
+            HTML("(Western North America, BC, Ecoprovince, Watersheds)"),
           ),
           br(),
           fluidRow(offset = 3,
                    # div(style = "height:70px;width:100%;background-color: #999999;border-style: dashed;border-color: #000000",)
-                   uiOutput("par_picker")),
+                   uiOutput("par_picker"),
+                   HTML("(Temperature, VPD, Precipitaiton, RH, Soil moisture)"),),
           br(),
           fluidRow(title = "Month",
                    uiOutput("month_picker")),
           br(),
           fluidRow(
-
             helpText(HTML("<h5><b> Choose range of years or specific year(s)</b> </h5>",)),
-
             actionButton("rng_years_choose", "Range of years"),
             actionButton("ab_years_choose", "Specific year(s)"),
            sliderInput(
@@ -363,7 +363,7 @@ ui <- fluidPage(
             # Reset selection
             br(),
             actionButton("reset_input", "Reset"),
-            actionButton("execute_app", "Execute")
+            # actionButton("execute_app", "Execute")
           ),
           fluidRow(column(
             HTML("<h4><b>Location Map</b> </h4>"),
@@ -490,7 +490,7 @@ ui <- fluidPage(
 
     ## Report ----
     tabPanel(
-      title = "Report",
+      title = "Reports",
       value = "report",
       column(width = 12,
              wellPanel(
@@ -510,18 +510,25 @@ ui <- fluidPage(
               fluidRow(
                 box(
                   width = 8,
-                  height = "12vh",
+                  height = "60vh",
                   status = "primary",
-                  uiOutput("doc_html_mon_summ_3"),
-                  uiOutput("doc_html_mon_summ_2"),
-                  uiOutput("doc_html_mon_summ_1")
-                )
-              ),
-              fluidRow(
-                box(
-                  width = 8,
-                  height = "12vh",
-                  status = "primary",
+                  uiOutput("doc_html_ann_summ_2024"),
+                  uiOutput("doc_html_mon_summ_dec2024"),
+                  uiOutput("doc_html_mon_summ_nov2024"),
+                  uiOutput("doc_html_mon_summ_oct2024"),
+                  uiOutput("doc_html_mon_summ_sep2024"),
+                  uiOutput("doc_html_mon_summ_aug2024"),
+                  uiOutput("doc_html_mon_summ_jul2024"),
+                  uiOutput("doc_html_mon_summ_jun2024"),
+                  uiOutput("doc_html_mon_summ_may2024"),
+                  uiOutput("doc_html_mon_summ_apr2024"),
+                  uiOutput("doc_html_mon_summ_mar2024"),
+                  uiOutput("doc_html_mon_summ_feb2024"),
+                  uiOutput("doc_html_mon_summ_jan2024"),
+                  uiOutput("doc_html_mon_summ_dec2023"),
+                  uiOutput("doc_html_mon_summ_nov2023"),
+                  uiOutput("doc_html_mon_summ_oct2023"),
+                  uiOutput("doc_html_mon_summ_sep2023"),
                   uiOutput("doc_html_longterm_rep")
                 )
               ))),
@@ -642,7 +649,7 @@ server <- function(session, input, output) {
   # Filters ------
   # # Filter : Area
   observeEvent(input$major_area, {
-    if (input$major_area == "Ecoregions") {
+    if (input$major_area == "Ecoprovince") {
       showElement("ecoprov_area")
       hideElement("wtrshd_area")
     } else if (input$major_area == "Watersheds") {
@@ -653,7 +660,7 @@ server <- function(session, input, output) {
       hideElement("wtrshd_area")
     }
 
-    # to select watersheds within ecoregions
+    # to select watersheds within Ecoprovince
 
     # selection1 <- input$ecoprov_area
     # if(input$wtrshd_area != "All"){
@@ -682,8 +689,7 @@ server <- function(session, input, output) {
       )
     pickerInput(
       "par_picker",
-      "Select climate variable"
-      ,
+      "Select climate variable",
       choices = par_choices,
       selected = "tmean"
     )
@@ -782,10 +788,10 @@ server <- function(session, input, output) {
       sel_area_shpfl <- bc_shp
     } else if (input$major_area == "Western North America") {
       sel_area_shpfl <- wna_shp
-    } else if (input$major_area == "Ecoregions") {
+    } else if (input$major_area == "Ecoprovince") {
       bc_ecoprv_shp %>%
         filter(name == input$ecoprov_area) -> sel_area_shpfl
-      if (input$ecoprov_area == "All_ecoregions")
+      if (input$ecoprov_area == "All_Ecoprovince")
         sel_area_shpfl <- bc_shp
     } else if (input$major_area == "Watersheds") {
       bc_wtrshd_shp %>%
@@ -884,7 +890,7 @@ server <- function(session, input, output) {
       region = "BC"
     } else if (input$major_area == "Western North America") {
       region = "Western North America"
-    } else if (input$major_area == "Ecoregions") {
+    } else if (input$major_area == "Ecoprovince") {
       region = input$ecoprov_area
     } else if (input$major_area == "Watersheds") {
       region = region = input$wtrshd_area
@@ -911,8 +917,8 @@ server <- function(session, input, output) {
     #browser()
 
 # For sample run ----
-
-# monn = "annual"
+#
+# monn = "Dec"
 # parr = "tmean"
 # sel_yrs <- seq(1951,2023,1)
 # sel_yrs
@@ -924,7 +930,7 @@ server <- function(session, input, output) {
 #            par == parr) -> ano_dt_fl_mon
 # ano_dt_sel_rast <- rast(ano_dt_fl_mon$dt_pth)
 # ano_dt_sel_rast
-# terra::plot(ano_dt_sel_rast,70:nlyr(ano_dt_sel_rast))
+# # terra::plot(ano_dt_sel_rast,70:nlyr(ano_dt_sel_rast))
 
 ####
 
@@ -933,7 +939,7 @@ server <- function(session, input, output) {
       terra::crop(ano_dt_sel_rast, sel_area_shpfl, mask = T)
     ano_dt_sel_rast
     # plot(ano_dt_sel_rast)
-
+    names(ano_dt_sel_rast)
      # Filter for selected year (s)
      sel_yrs <- get_years()
 
@@ -1272,8 +1278,8 @@ server <- function(session, input, output) {
           fillOpacity = 0
         )
 
-    } else if (input$ecoprov_area == "All_ecoregions" &&
-               input$major_area == "Ecoregions") {
+    } else if (input$ecoprov_area == "All_Ecoprovince" &&
+               input$major_area == "Ecoprovince") {
       sel_area_shpfl <- bc_ecoprv_shp['name']
 
       leaflet(sel_area_shpfl) %>%
@@ -1304,7 +1310,7 @@ server <- function(session, input, output) {
   observeEvent(input$loc_map_shape_click, {
     nm <- input$loc_map_shape_click$id
     print(nm)
-    if (input$major_area == "Ecoregions") {
+    if (input$major_area == "Ecoprovince") {
       updatePickerInput(session, "ecoprov_area", selected = nm)
     } else if (input$major_area == "Watersheds") {
       updateSelectInput(session, "wtrshd_area", selected = nm)
@@ -1418,13 +1424,13 @@ server <- function(session, input, output) {
       ) +
       scale_x_continuous(
         name =  "Longitude (°W) ",
-        breaks = seq(xmi - 5, xmx + 5, 10),
+        # breaks = seq(xmi - 5, xmx + 5, 10),
         labels = abs,
         expand = c(0.01, 0.01)
       ) +
       scale_y_continuous(
         name = "Latitude (°N) ",
-        breaks = seq(ymi - 1, ymx + 1, 6),
+        # breaks = seq(ymi - 1, ymx + 1, 6),
         labels = abs,
         expand = c(0.01, 0.01)
       ) +
@@ -2487,12 +2493,12 @@ server <- function(session, input, output) {
       # Climate plot title ( use log for prcp)
       if (parr == "prcp") {
         par_title <-  paste0(get_region(), " mean ",
-                             parr,"","(", get_unit(),")" ," (log-scale)",
+                             get_par_full(),"","(", get_unit(),")" ," (log-scale)",
                              " : ",
                              monn)
       } else{
         par_title <-  paste0(get_region(), " ",
-                             parr, " ", "(", get_unit(),")" ,
+                             get_par_full(), " ", "(", get_unit(),")" ,
                              " : ",
                              monn)
       }
@@ -2572,9 +2578,249 @@ server <- function(session, input, output) {
 
   # Reports ----
 
+  # Annual summary of 2024
+  # HTML in the shiny www folder
+  output$doc_html_ann_summ_2024 <- renderUI({
+    a(
+      "BC climate summary 2024",
+      target = "_blank",
+      style = "font-size:20px;",
+      href = "2_bc_annual_climate_summary_report_html_2024.html",
+      img(
+        src = "html_logo.png",
+        height = "2%",
+        width = "2%",
+        align = "center"
+      )
+    )
+  })
+
+  # December 2024
+  # HTML in the shiny www folder
+  output$doc_html_mon_summ_dec2024 <- renderUI({
+    a(
+      "bc_monthly_climate_summary_December_2024",
+      target = "_blank",
+      style = "font-size:20px;",
+      href = "bc_monthly_climate_summary_December_2024.html",
+      img(
+        src = "html_logo.png",
+        height = "2%",
+        width = "2%",
+        align = "center"
+      )
+    )
+  })
+
+  # November 2024
+  # HTML in the shiny www folder
+  output$doc_html_mon_summ_nov2024 <- renderUI({
+    a(
+      "bc_monthly_climate_summary_November_2024",
+      target = "_blank",
+      style = "font-size:20px;",
+      href = "bc_monthly_climate_summary_November_2024.html",
+      img(
+        src = "html_logo.png",
+        height = "2%",
+        width = "2%",
+        align = "center"
+      )
+    )
+  })
+
+  # October 2024
+  # HTML in the shiny www folder
+  output$doc_html_mon_summ_oct2024 <- renderUI({
+    a(
+      "bc_monthly_climate_summary_October_2024",
+      target = "_blank",
+      style = "font-size:20px;",
+      href = "bc_monthly_climate_summary_October_2024.html",
+      img(
+        src = "html_logo.png",
+        height = "2%",
+        width = "2%",
+        align = "center"
+      )
+    )
+  })
+
+  # September 2024
+  # HTML in the shiny www folder
+  output$doc_html_mon_summ_sep2024 <- renderUI({
+    a(
+      "bc_monthly_climate_summary_September_2024",
+      target = "_blank",
+      style = "font-size:20px;",
+      href = "bc_monthly_climate_summary_September_2024.html",
+      img(
+        src = "html_logo.png",
+        height = "2%",
+        width = "2%",
+        align = "center"
+      )
+    )
+  })
+
+  # August 2024
+  # HTML in the shiny www folder
+  output$doc_html_mon_summ_aug2024 <- renderUI({
+    a(
+      "bc_monthly_climate_summary_August_2024",
+      target = "_blank",
+      style = "font-size:20px;",
+      href = "bc_monthly_climate_summary_August_2024.html",
+      img(
+        src = "html_logo.png",
+        height = "2%",
+        width = "2%",
+        align = "center"
+      )
+    )
+  })
+
+  # July 2024
+  # HTML in the shiny www folder
+  output$doc_html_mon_summ_jul2024 <- renderUI({
+    a(
+      "bc_monthly_climate_summary_July_2024",
+      target = "_blank",
+      style = "font-size:20px;",
+      href = "bc_monthly_climate_summary_July_2024.html",
+      img(
+        src = "html_logo.png",
+        height = "2%",
+        width = "2%",
+        align = "center"
+      )
+    )
+  })
+
+  # June 2024
+  # HTML in the shiny www folder
+  output$doc_html_mon_summ_jun2024 <- renderUI({
+    a(
+      "bc_monthly_climate_summary_June_2024",
+      target = "_blank",
+      style = "font-size:20px;",
+      href = "bc_monthly_climate_summary_June_2024.html",
+      img(
+        src = "html_logo.png",
+        height = "2%",
+        width = "2%",
+        align = "center"
+      )
+    )
+  })
+
+
+  # MAY 2024
+  # HTML in the shiny www folder
+  output$doc_html_mon_summ_may2024 <- renderUI({
+    a(
+      "bc_monthly_climate_summary_May_2024",
+      target = "_blank",
+      style = "font-size:20px;",
+      href = "bc_monthly_climate_summary_May_2024.html",
+      img(
+        src = "html_logo.png",
+        height = "2%",
+        width = "2%",
+        align = "center"
+      )
+    )
+  })
+
+  # April 2024
+  # HTML in the shiny www folder
+  output$doc_html_mon_summ_apr2024 <- renderUI({
+    a(
+      "bc_monthly_climate_summary_April_2024",
+      target = "_blank",
+      style = "font-size:20px;",
+      href = "bc_monthly_climate_summary_April_2024.html",
+      img(
+        src = "html_logo.png",
+        height = "2%",
+        width = "2%",
+        align = "center"
+      )
+    )
+  })
+
+  # March 2024
+  # HTML in the shiny www folder
+  output$doc_html_mon_summ_mar2024 <- renderUI({
+    a(
+      "bc_monthly_climate_summary_March_2024",
+      target = "_blank",
+      style = "font-size:20px;",
+      href = "bc_monthly_climate_summary_March_2024.html",
+      img(
+        src = "html_logo.png",
+        height = "2%",
+        width = "2%",
+        align = "center"
+      )
+    )
+  })
+
+  # February 2024
+  # HTML in the shiny www folder
+  output$doc_html_mon_summ_feb2024 <- renderUI({
+    a(
+      "bc_monthly_climate_summary_February_2024",
+      target = "_blank",
+      style = "font-size:20px;",
+      href = "bc_monthly_climate_summary_February_2024.html",
+      img(
+        src = "html_logo.png",
+        height = "2%",
+        width = "2%",
+        align = "center"
+      )
+    )
+  })
+
+
+  # January 2024
+  # HTML in the shiny www folder
+  output$doc_html_mon_summ_jan2024 <- renderUI({
+    a(
+      "bc_monthly_climate_summary_January_2024",
+      target = "_blank",
+      style = "font-size:20px;",
+      href = "bc_monthly_climate_summary_January_2024.html",
+      img(
+        src = "html_logo.png",
+        height = "2%",
+        width = "2%",
+        align = "center"
+      )
+    )
+  })
+
+  # December
+  # HTML in the shiny www folder
+  output$doc_html_mon_summ_dec2023 <- renderUI({
+    a(
+      "bc_monthly_climate_summary_December_2023",
+      target = "_blank",
+      style = "font-size:20px;",
+      href = "bc_monthly_climate_summary_December_2023.html",
+      img(
+        src = "html_logo.png",
+        height = "2%",
+        width = "2%",
+        align = "center"
+      )
+    )
+  })
+
   # November
   # HTML in the shiny www folder
-  output$doc_html_mon_summ_3 <- renderUI({
+  output$doc_html_mon_summ_nov2023 <- renderUI({
     a(
       "bc_monthly_climate_summary_November_2023",
       target = "_blank",
@@ -2591,7 +2837,7 @@ server <- function(session, input, output) {
 
   # October
   # HTML in the shiny www folder
-  output$doc_html_mon_summ_2 <- renderUI({
+  output$doc_html_mon_summ_oct2023 <- renderUI({
     a(
       "bc_monthly_climate_summary_October_2023",
       target = "_blank",
@@ -2608,7 +2854,7 @@ server <- function(session, input, output) {
 
   # September
   # HTML in the shiny www folder
-  output$doc_html_mon_summ_1 <- renderUI({
+  output$doc_html_mon_summ_sep2023 <- renderUI({
     a(
       "bc_monthly_climate_summary_September_2023",
       target = "_blank",
@@ -2659,8 +2905,8 @@ server <- function(session, input, output) {
   # App deployment date ----
   output$deploymentDate <- renderText({
     paste0("This app was last updated on ",
-           readLines("deployment_history.txt"),
-           ".")
+           readLines("deployment_history.txt"), '.'
+           )
   })
 
 }
