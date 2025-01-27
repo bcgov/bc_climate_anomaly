@@ -41,15 +41,23 @@ format:
 #   pdf-engine-opt: -xelatex
 # editor_options:
 #  chunk_output_type: console
-
 ---
+
+```{=html}
 <!-- 
 below modfies the quarto to create print to pdf button and change HTML document to print friendly by changing the format.
 -->
-::: {.print-button-container}
-<button id="printButton" class="print-button">Print to PDF</button>
+```
+
+::: print-button-container
+<button id="printButton" class="print-button">
+
+Print to PDF
+
+</button>
 :::
 
+```{=html}
 <style>
 /* General styles for the browser view (from Quarto theme) are untouched */
 
@@ -101,6 +109,9 @@ below modfies the quarto to create print to pdf button and change HTML document 
   padding: 5px;
 }
 </style>
+```
+
+```{=html}
 <script>
 document.getElementById("printButton").addEventListener("click", function () {
   // Add the print-specific class to the <html> element
@@ -115,7 +126,7 @@ document.getElementById("printButton").addEventListener("click", function () {
   }, 1000);
 });
 </script>
-
+```
 
 ```{r}
 #| label: setup
@@ -1592,7 +1603,6 @@ Overall, precipitation levels in BC did not deviate substantially from the norma
 
 Seasonally, the year began with below-normal precipitation in January (4% decrease), February (14% decrease), and March (41% decrease). Although May and June were wetter then normal, drier-than-average conditions continue again in July (21% decrease) and August (15% decrease) however with notable spatial variability (@fig-bc_mon_prcp_dist_plt).
 
-
 ```{r prcp timeseries anomaly plt}
 #| include: true
 #| output: true
@@ -1655,5 +1665,16 @@ parrs_ann_summary_results_lst[[2]]$prcp_mon_ano_dist_plt_bc_2024+
 
 ```
 
-
 The information presented here complements the detailed insights available in the <a href='https://bcgov-env.shinyapps.io/bc_climate_anomaly/'>BC Climate Anomaly Shiny App</a>. For a more detailed breakdown of seasonal and monthly climate trends in BC, we encourage you to explore the app. If you have any questions or require further information, please do not hesitate to contact the author.
+
+::: {style="font-size: 60%;"}
+
+**Disclaimer:** This report has been prepared using <a href='https://www.ecmwf.int/en/era5-land'>ERA5-Land</a> data from the European Centre for Medium-Range Weather Forecasts (ECMWF), as available at the time of preparation. Please note that the original data may be subject to updates or revisions. Any modifications to the original data may result in adjustments to the findings presented in this report.
+
+:::
+
+```{r copy report to www}
+#| include: False
+ file.copy(from = '2_bc_annual_climate_summary_report_html_2024.html',
+           to = "../www/", overwrite = T)
+```
