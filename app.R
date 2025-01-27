@@ -195,6 +195,17 @@ ui <- fluidPage(
               <h5> The code and data of this app are available through GitHub at <a href='https://github.com/bcgov/bc_climate_anomaly.git'> https://github.com/bcgov/bc_climate_anomaly.</a></h5>"
           )
         ),
+        column(
+          width = 12,
+          HTML(
+            "<h5> <b>Disclaimer</b><h5>
+              <h8>  This report has been prepared using <a href='https://www.ecmwf.int/en/era5-land'>ERA5-Land</a> data
+              from the European Centre for Medium-Range Weather Forecasts (ECMWF),
+              as available at the time of preparation.
+              Please note that the original data may be subject to updates or revisions.
+              Any modifications to the original data may result in adjustments to the findings presented in this report.</h8>"
+          )
+        ),
         column(width = 12,
                textOutput("deploymentDate"),),
         ###### footer ----

@@ -3485,3 +3485,9 @@ prcp_rh_sm_ann_lngtrn_plt_f +
 ```
 
 This report compliment the <a href='https://bcgov-env.shinyapps.io/bc_climate_anomaly/'> BC climate anomaly app </a>. Should you have any questions, please contact <a href= 'mailto: Aseem.Sharma@gov.bc.ca'>Aseem Sharma </a>.
+
+::: {style="font-size: 60%;"}
+
+**Disclaimer:** This report has been prepared using <a href='https://www.ecmwf.int/en/era5-land'>ERA5-Land</a> data from the European Centre for Medium-Range Weather Forecasts (ECMWF), as available at the time of preparation. Please note that the original data may be subject to updates or revisions. Any modifications to the original data may result in adjustments to the findings presented in this report.
+
+:::
