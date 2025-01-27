@@ -1,0 +1,10 @@
+h1 {
+    color: #2596be;
+}
+h2 {
+    color: #2596be;
+}
+
+h1.title {
+    color: #216b48; /* Replace with your desired color */
+}

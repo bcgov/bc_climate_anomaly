@@ -1,0 +1,1659 @@
+---
+title: "BC annual climate report for 2024"
+author:
+ name: "Aseem Sharma e-mail: aseem.sharma@gov.bc.ca"
+ corresponding: true
+ email: Aseem.Sharma@gov.bc.ca
+ affiliations:
+    id: "FFEC"
+    name: "Future Forest Ecosystems Centre, FCCSB, OCF, BC Ministry of Forests" 
+date: "`r paste('Date:', format(Sys.time(), '%d %B, %Y'))`"
+code-annotations: false
+execute:
+  echo: false
+  warning: false
+  output: false
+cap-location: bottom
+editor: visual
+wrap: auto
+format: 
+ html:
+  fig-format: png
+  toc_float: true
+  toc-location: left
+  toc: true
+  toc-depth: 6
+  toc-title: "Contents"
+  number-sections: true
+  number-depth: 0
+  embed-resources: true
+  self-contained: true
+  theme: united 
+  css: style.css
+#  pdf:
+#   lof: true
+#   lot: false
+#   number-sections: false
+#   fig-pos: 'H'
+#   fig-format: png
+#   fig-dpi: 150
+#   pdf-engine: latexmk
+#   pdf-engine-opt: -xelatex
+# editor_options:
+#  chunk_output_type: console
+
+---
+<!-- 
+below modfies the quarto to create print to pdf button and change HTML document to print friendly by changing the format.
+-->
+::: {.print-button-container}
+<button id="printButton" class="print-button">Print to PDF</button>
+:::
+
+<style>
+/* General styles for the browser view (from Quarto theme) are untouched */
+
+.print-button-container {
+  margin-top: 20px;
+  text-align: right;
+}
+
+.print-button {
+  background-color: #007bff;
+  color: white;
+  border: none;
+  padding: 10px 15px;
+  font-size: 14px;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.print-button:hover {
+  background-color: #0056b3;
+}
+
+/* Print-specific styles (only active when .print-mode is applied) */
+.print-mode body {
+  background-color: white;
+  color: black;
+  font-size: 12pt;
+}
+
+.print-mode .print-button-container {
+  display: none; /* Hide the print button during printing */
+}
+
+.print-mode h1, .print-mode h2, .print-mode h3 {
+  page-break-after: avoid;
+}
+
+.print-mode p {
+  margin: 1em 0;
+}
+
+.print-mode table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.print-mode th, .print-mode td {
+  border: 1px solid #000;
+  padding: 5px;
+}
+</style>
+<script>
+document.getElementById("printButton").addEventListener("click", function () {
+  // Add the print-specific class to the <html> element
+  document.documentElement.classList.add("print-mode");
+
+  // Trigger the print dialog
+  window.print();
+
+  // Remove the print-specific class after a brief delay
+  setTimeout(function () {
+    document.documentElement.classList.remove("print-mode");
+  }, 1000);
+});
+</script>
+
+
+```{r}
+#| label: setup
+#| include: false
+knitr::opts_chunk$set(echo = FALSE, dpi = 400)
+```
+
+```{r required}
+#| include: false
+#| results: hold
+#| cache: false
+
+# Required -------------------------------
+rqr_pkgs <-
+  c(
+    'terra',
+    'sf',
+    "tidyverse",
+    'lubridate',
+    'gt',
+    'zoo',
+    'magrittr',
+    "Kendall",
+    "zyp",
+    "tidyterra",
+    "colorspace",
+    "cptcity",
+    "quarto",
+    'patchwork',
+    'kableExtra',
+    'foreach',
+    'doParallel'
+  )
+# Install packages if not
+installed_rqr_pkgs <- rqr_pkgs %in% rownames(installed.packages())
+if (any(installed_rqr_pkgs == FALSE)) {
+  install.packages(rqr_pkgs[!installed_rqr_pkgs])
+}
+# Load:
+lapply(rqr_pkgs , require, character.only = TRUE)
+
+# setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
+```
+
+```{r paths}
+#| include: false
+#| results: 'hold'
+#| cache: false
+# Paths ------------------------
+# setwd(getwd())
+shp_fls_pth <- '../shapefiles/'
+ano_dt_pth <-  '../ano_clm_data/'
+ann_summ_rslts_pth <- './ann_summ_results/'
+
+```
+
+```{r datafiles requirements }
+#| include: false
+#| cache: false
+
+# Data files ------------------
+# Shape files --------------------------------
+# Domain Shape files
+xmi = -140
+xmx = -108
+ymi = 39
+ymx = 60
+
+# BC plot limit
+xlim <- c(-140, -113)
+ylim <- c(47.5, 60)
+
+# Update year
+min_year <- 1951
+max_year <- 2024
+
+# List of shape files
+list.files(path = shp_fls_pth,
+           pattern = ".shp",
+           full.names = T) -> shp_fls_lst
+shp_fls_lst
+
+# BC
+bc_shp <- st_read(shp_fls_lst[str_detect(shp_fls_lst,"bc_shapefile")== T])
+# plot(st_geometry(bc_shp))
+
+# BC eco-regions
+bc_ecoprv_shp <- st_read(shp_fls_lst[str_detect(shp_fls_lst,"bc_ecoprovince")== T])
+# plot(st_geometry(bc_ecoprv_shp))
+
+# BC watersheds
+bc_wtrshd_shp <- st_read(shp_fls_lst[str_detect(shp_fls_lst,"bc_watersheds")== T])
+# plot(st_geometry(bc_wtrshd_shp))
+
+# Western North America
+
+na_shp <- st_read(shp_fls_lst[str_detect(shp_fls_lst,"north_america")== T])
+sf_use_s2(FALSE)
+wna_shp <-
+  st_crop(
+    na_shp,
+    xmin = xmi,
+    ymin = ymi,
+    xmax = xmx,
+    ymax = ymx
+  )
+# plot(st_geometry(wna_shp))
+
+## Months, parameters ----
+months_nam <-
+  c(
+    "annual",
+    "winter",
+    "spring",
+    "summer",
+    "fall",
+    "Jan",
+    "Feb",
+    "Mar",
+    "Apr",
+    "May",
+    "Jun",
+    "Jul",
+    "Aug",
+    "Sep",
+    "Oct",
+    "Nov",
+    "Dec"
+  )
+months_nam
+
+parameters <- c("tmean",  "prcp","soil_moisture")
+parameters
+
+update_year <- 2024
+update_month <- 'December'
+
+
+years <- seq(min_year, max_year, 1)
+years
+length(years)
+curr_ann_yr <- as.Date(paste0(update_year,update_month,"15"),format = "%Y%B%d" )
+curr_ann_yr
+
+cur_ann_nam <- format(as.Date(curr_ann_yr), "%B %Y")
+cur_yr_nam <- format(as.Date(curr_ann_yr), "%Y")
+cur_ann_only <- format(as.Date(curr_ann_yr), "%B")
+
+## Anomalies Data files -----
+list.files(path = ano_dt_pth,
+           pattern = ".*_ano_.*\\.nc",
+           full.names = T) -> ano_dt_fls
+ano_dt_fls
+
+ano_dt_fl <- tibble(dt_pth = ano_dt_fls)
+ano_dt_fl %<>%
+  mutate(mon = str_extract(ano_dt_fls,
+                           paste(months_nam, collapse = "|")),
+         par = str_extract(ano_dt_fls,
+                           paste(parameters, collapse = "|")))%<>%
+  drop_na()
+tail(ano_dt_fl)
+
+## Climatology Data files -----
+list.files(path = ano_dt_pth,
+           pattern = ".*_clm_.*\\.nc",
+           full.names = T) -> clm_dt_fls
+head(clm_dt_fls)
+
+clm_dt_fl <- tibble(dt_pth = clm_dt_fls)
+clm_dt_fl %<>%
+  mutate(par = str_extract(clm_dt_fls,
+                           paste(parameters, collapse = "|")))%<>%
+  drop_na()
+
+# Spatial average analysis for BC
+sel_area_shpfl <- bc_shp
+region <- "BC"
+```
+
+```{r analysis plot funtions}
+#| include: false
+#| cache: false
+
+# Anomalies analysis and plots --------------
+#For plot
+months_nam
+
+ # #Colorspace
+# hcl_palettes(plot = TRUE)
+# hcl_palettes("Diverging",n=20,plot=T)
+# divergingx_palettes(plot=T,n=21)
+
+# Annual climate summary calculations and plot function ------
+ann_clm_sum_cal_plt_fun <- function(ano_dt_fls,clm_dt_fls, parr) {
+
+  # ano_dt_fls <- ano_dt_fl
+  # clm_dt_fls <- clm_dt_fl
+  # parr <- "tmean"
+
+ano_dt_fls %>%
+  filter(par==parr) -> ano_dt_fl_parr
+  
+    # Climatology
+  clm_dt_fls %>%
+    filter(par == parr) -> clm_dt_fl_i
+  
+  clm_dt_rast <- rast(clm_dt_fl_i$dt_pth)
+  clm_dt_rast
+  names(clm_dt_rast) <- months_nam
+  
+## Monthly spatial anomaly of BC for year   -----
+months <- c("Jan" ,"Feb", "Mar","Apr","May","Jun","Jul",
+            "Aug","Sep","Oct","Nov","Dec")
+
+# i<- 1
+monthly_anomaly_lst <- list()
+for ( i in 1:length(months)){
+mon_i <- months[[i]]
+
+ano_dt_fl_parr%>%
+    filter(mon==mon_i) -> ano_dt_fl_mn_i
+ ano_dt_fl_mn_i
+  
+ monn <- mon_i
+ 
+## Full name and units for parameters and months -----
+    
+    # Get parameter name & unit
+    if (parr == 'tmin') {
+      parr_full = "Minimum temperature"
+      unt = "°C"
+    } else if (parr == 'tmax') {
+      parr_full = "Maximum temperature"
+      unt = "°C"
+    } else if (parr == 'tmean') {
+      parr_full = "average temperature"
+      unt = "°C"
+    } else if (parr == 'prcp') {
+      parr_full = "Precipitation"
+      unt = "mm"
+    } else if (parr == 'rh') {
+      parr_full = "Relative Humidity (RH)"
+      unt = "%"
+    } else if (parr == 'vpd') {
+      parr_full = "Vapor Pressure Deficit (VPD)"
+      unt = "kPa"
+    } else if (parr == 'soil_moisture') {
+      parr_full = "Volumetric soil moisture (0-1m)"
+      unt = "m\U00B3/m"
+    }
+    unt
+    parr_full
+    
+    # Get months name full
+    if (monn == 'annual') {
+      mon_full = "Annual"
+    } else if (monn == 'spring') {
+      mon_full = "Spring"
+    } else if (monn == 'summer') {
+      mon_full = "Summer"
+    } else if (monn == 'fall') {
+      mon_full = "Fall"
+    } else if (monn == 'winter') {
+      mon_full = "Winter"
+    } else if (monn == 'Jan') {
+      mon_full = "January"
+    } else if (monn == 'Feb') {
+      mon_full = "February"
+    } else if (monn == 'Mar') {
+      mon_full = "March"
+    } else if (monn == 'Apr') {
+      mon_full = "April"
+    } else if (monn == 'May') {
+      mon_full = "May"
+    } else if (monn == 'Jun') {
+      mon_full = "June"
+    } else if (monn == 'Jul') {
+      mon_full = "July"
+    } else if (monn == 'Aug') {
+      mon_full = "August"
+    } else if (monn == 'Sep') {
+      mon_full = "September"
+    } else if (monn == 'Oct') {
+      mon_full = "October"
+    } else if (monn == 'Nov') {
+      mon_full = "November"
+    } else if (monn == 'Dec') {
+      mon_full = "December"
+    }
+    mon_full
+    
+  
+## Read data for given month and parameter -----
+    ano_dt_rast_mn_i <- rast(ano_dt_fl_mn_i$dt_pth)
+    names(ano_dt_rast_mn_i)
+    
+    # plot(ano_dt_rast_mn_i )
+    # Current month date
+    mon_i_date <- as.Date(paste0(cur_yr_nam,'-',mon_i,'-15'),format ='%Y-%b-%d' )
+    
+  #Climatology 
+  clm_dt_rast_mon <-
+    subset(clm_dt_rast, which(names(clm_dt_rast) %in% monn))
+  clm_dt_rast_mon
+  
+  if (parr == 'prcp' | parr == 'soil_moisture') {
+     ano_dt_rast_mn_i1 <- ( ano_dt_rast_mn_i/ clm_dt_rast_mon) * 100
+    #If prcp anomalies are very high ( > 200 %) then convert and limit to 200.
+     ano_dt_rast_mn_i2 <-
+      ifel( ano_dt_rast_mn_i1 > 201, 200,  ano_dt_rast_mn_i1)
+     ano_dt_rast_mn_i3 <-
+      ifel( ano_dt_rast_mn_i2 < -201, -200,  ano_dt_rast_mn_i2)
+     ano_dt_rast_mn_i <- ano_dt_rast_mn_i3
+  } else{
+    ano_dt_rast_mn_i <-  ano_dt_rast_mn_i
+  }
+  # plot( ano_dt_rast_mn_i,40:44)
+   ano_dt_rast_mn_i
+   
+   # Crop for BC
+    ano_dt_bc_mon_i_rast <-
+      terra::crop(ano_dt_rast_mn_i, sel_area_shpfl, mask = T)
+    ano_dt_bc_mon_i_rast
+   
+    ano_dt_bc_mon_i_rast_cur_yr <- subset(ano_dt_bc_mon_i_rast,   which(names(ano_dt_bc_mon_i_rast) %in%   mon_i_date))
+    # plot(ano_dt_bc_mon_i_rast24)
+    names(ano_dt_bc_mon_i_rast_cur_yr ) <- mon_i
+    terra::time(ano_dt_bc_mon_i_rast_cur_yr ) <- mon_i_date
+  
+ monthly_anomaly_lst[[i]] <- ano_dt_bc_mon_i_rast_cur_yr 
+}
+
+# Monthly anomaly plot
+bc_mon_ano_cur_yr_dt <- rast(monthly_anomaly_lst)
+# plot(bc_mon_ano_cur_yr_dt)
+names(bc_mon_ano_cur_yr_dt)
+minmax(bc_mon_ano_cur_yr_dt)
+
+# Overall minimum and maximum across all layers
+minval_all <- min(global(bc_mon_ano_cur_yr_dt, fun = 'min', na.rm = TRUE))
+maxval_all <- max(global(bc_mon_ano_cur_yr_dt, fun = 'max', na.rm = TRUE))
+
+minval <- (-1) * max(abs(minval_all),abs(maxval_all))
+maxval <- (1) * max(abs(minval_all),abs(maxval_all))
+
+if(maxval < 5) {
+  minval_brk <- seq(round(minval/1)* 1, 0, 0.5)
+  maxval_brk <- seq(0, round(maxval/1)*1, 0.5)
+  brks_seq <- unique(c(minval_brk, maxval_brk))
+  
+} else if (maxval > 5 & maxval < 11) {
+  minval_brk <- seq(round(minval/1)* 1, 0, 1)
+  maxval_brk <- seq(0, round(maxval/1)*1, 1)
+  brks_seq <- unique(c(minval_brk, maxval_brk)) 
+  
+} else if (maxval > 10 & maxval < 21) {
+  minval_brk <- seq(round(minval/2)* 2, 0, 2)
+  maxval_brk <- seq(0, round(maxval/2)*2,2)
+  brks_seq <- unique(c(minval_brk, maxval_brk)) 
+  
+} else if (maxval > 20 & maxval < 41) {
+  minval_brk <- seq(round(minval/5)* 5, 0, 5)
+  maxval_brk <- seq(0, round(maxval/5)*5, 5)
+  brks_seq <- unique(c(minval_brk, maxval_brk)) 
+  
+} else if (maxval > 40 & maxval < 101) {
+  minval_brk <- seq(round(minval/10)* 10, 0, 10)
+  maxval_brk <- seq(0, round(maxval/10)*10, 10)
+  brks_seq <- unique(c(minval_brk, maxval_brk))
+  
+} else if (maxval > 100 & maxval < 1000) {
+  minval_brk <- seq(round(minval/20)* 20, 0, 20)
+  maxval_brk <- seq(0, round(maxval/20)*20, 20)
+  brks_seq <- unique(c(minval_brk, maxval_brk))
+}
+brks_seq
+
+# Title 
+    if (parr == "prcp" |parr == "soil_moisture") {
+      par_title <-  paste0('BC monthly ',
+        parr_full, " anomaly  (% of normal) ", max_year)
+    } else{
+      par_title <-  paste0('BC monthly ', parr_full, " anomaly", " (", unt,") ", max_year)
+    }
+  
+bc_mon_ano_plt_cur_yr <- ggplot()+
+  geom_spatraster(data = bc_mon_ano_cur_yr_dt)+
+  scale_fill_gradientn(
+    name = paste0(parr, " anomaly ", unt),
+    colours = cpt(pal = "ncl_BlWhRe",
+                  n = 100,
+                  rev = F),
+    na.value = "transparent",
+    limits = c(minval, maxval),
+    breaks = brks_seq
+  ) +
+  facet_wrap(. ~ lyr) +
+  # theme_void()+
+  geom_sf(
+    data = sel_area_shpfl,
+    colour = "black",
+    linewidth = 1.5,
+    fill = NA,
+    alpha = 0.8
+  ) +
+  # geom_sf(
+  #   data =  bc_ecoprv_shp,
+  #   colour = "black",
+  #   size = 1,
+  #   fill = NA,
+  #   alpha = 0.7
+  # ) +
+  # coord_sf(xlim = xlim, ylim = ylim)+
+  scale_x_continuous(
+    name =  "Longitude (°W) ",
+    breaks = seq(xmi - 5, xmx + 5, 10),
+    labels = abs,
+    expand = c(0.01, 0.01)
+  ) +
+  scale_y_continuous(
+    name = "Latitude (°N) ",
+    # breaks = seq((ymi - 1), (ymx + 1), 6),
+    # labels = abs,
+    expand = c(0.01, 0.01)
+  ) +
+  theme(
+    panel.spacing = unit(0.1, "lines"),
+    panel.grid.minor = element_blank(),
+    panel.grid.major = element_line(
+      color = "gray60",
+      linewidth = 0.02,
+      linetype = "dashed"
+    ),
+    axis.line = element_line(colour = "gray70", linewidth = 0.08),
+    axis.ticks.length = unit(-0.20, "cm"),
+    element_line(colour = "black", linewidth =  1),
+    axis.title.y = element_text(
+      angle = 90,
+      face = "plain",
+      size = 15,
+      colour = "Black",
+      margin = unit(c(-1, -1, -1, -1), "mm")
+    ),
+    axis.title.x = element_text(
+      angle = 0,
+      face = "plain",
+      size = 15,
+      colour = "Black",
+      margin = unit(c(-1, -1, -1, -1), "mm")
+    ),
+    axis.text.x = element_text(
+      angle = 0,
+      hjust = 0.5,
+      vjust = 0.5,
+      colour = "black",
+      size = 14,
+      margin = margin(
+        t = 2,
+        r = 2,
+        b = 2,
+        l = 2
+      )
+    ),
+    axis.text.y = element_text(
+      angle = 90,
+      hjust = 0.5,
+      vjust = 0.5,
+      colour = "black",
+      size = 14,
+      margin = margin(
+        t = 2,
+        r = 2,
+        b = 2,
+        l = 2
+      )
+    ),
+    plot.title = element_text(
+      angle = 0,
+      face = "bold",
+      size = 13,
+      colour = "Black"
+    ),
+    legend.position = 'right',
+    legend.direction = "vertical",
+    legend.margin = margin(0, 0, 0, 0),
+    legend.box.margin = margin(-5, -5, -5, -5),
+    legend.title = element_text(size = 15),
+    legend.text = element_text(margin = margin(t = -5), size = 16),
+    strip.text.x = element_text(size = 12, angle = 0),
+    strip.text.y = element_text(size = 12, face = "bold"),
+    axis.text = element_text(margin = -5),
+    strip.background = element_rect(color = "black", fill = "white"),
+    strip.text = element_text(
+      face = "bold",
+      size = 18,
+      colour = 'black'
+    )
+  ) +
+  guides(
+    fill = guide_colorbar(
+      barwidth = 1.5,
+      barheight = 22,
+      label.vjust = 0.5,
+      label.hjust = 0.0,
+      title.vjust = 0.5,
+      title.hjust = 0.5,
+      title = NULL,
+      # title.position = NULL,
+      ticks.colour = 'black',
+      # ticks.linewidth = 1,
+      frame.colour = 'black',
+      # frame.linewidth = 1,
+      # draw.ulim = FALSE,
+      # draw.llim = TRUE,
+    )
+  ) +
+  theme(
+    axis.title.x = element_blank(),
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank(),
+    axis.title.y = element_blank(),
+    axis.text.y = element_blank(),
+    axis.ticks.y = element_blank()
+  )
+bc_mon_ano_plt_cur_yr 
+  
+  if (parr == "prcp" &
+      maxval > 200 |
+      parr == "soil_moisture" &
+      maxval > 200 | parr == "rh" & maxval > 200) {
+    bc_mon_ano_plt_cur_yr  <- bc_mon_ano_plt_cur_yr +
+      scale_fill_gradientn(
+        name = paste0(parr, " anomaly ", unt),
+        colours = cpt(pal = "cmocean_curl", n = 100, rev = T),
+        na.value = "transparent",
+        limits = c(minval, maxval),
+        breaks = brks_seq
+      )
+  } else if (parr == "prcp" |
+             parr == "soil_moisture" | parr == "rh") {
+    bc_mon_ano_plt_cur_yr  <- bc_mon_ano_plt_cur_yr  +
+      scale_fill_gradientn(
+        name = paste0(parr, "  anomaly (%) "),
+        colours = cpt(pal = "cmocean_curl", n = 100, rev = T),
+        na.value = "transparent",
+        limits = c(minval, maxval),
+        breaks = brks_seq
+      )
+  }
+  bc_mon_ano_plt_cur_yr  <- bc_mon_ano_plt_cur_yr  +
+    labs(
+        # tag = plt_wtrmrk,
+         title = par_title,
+         subtitle = "Relative to 1981-2010 climatology") +
+    theme(
+      plot.tag.position = "bottom",
+      plot.tag = element_text(
+        color = 'gray50',
+        hjust = 1,
+        vjust = 0,
+        size = 8
+      )
+    )+
+  theme(# Change plot and panel background
+  plot.background=element_rect(fill = "white"),
+  panel.background = element_rect(fill = 'white'))
+  bc_mon_ano_plt_cur_yr 
+  
+ggsave(
+  paste0(
+    ann_summ_rslts_pth, parr,
+    '_monthly_anomaly_distrbtn_plt_',
+    max_year,'.png'
+  ),
+  plot = bc_mon_ano_plt_cur_yr,
+  width = 13,
+  height = 9.5,
+  units = "in",
+  dpi = 350,
+  scale = 0.9,
+  limitsize = F
+ )
+
+## Annual anomaly distribution plot for the year----
+# Annual anomaly distribution plot
+ano_dt_fl_parr%>%
+  filter(mon=='annual') -> ano_dt_fl_ann
+ano_dt_fl_ann
+monn <- unique(ano_dt_fl_ann$mon)
+
+#Read data for annual 
+ano_dt_rast <- rast(ano_dt_fl_ann$dt_pth)
+names(ano_dt_rast)
+
+  #Climatology 
+  clm_dt_rast_mon <-
+    subset(clm_dt_rast, which(names(clm_dt_rast) %in% monn))
+
+   if (parr == 'prcp' | parr == 'soil_moisture') {
+    ano_dt_rast_per1 <- (ano_dt_rast /  clm_dt_rast_mon) * 100
+    #If prcp anomalies are very high ( > 200 %) then convert and limit to 200.
+    ano_dt_rast_per2 <-
+      ifel(ano_dt_rast_per1 > 201, 200, ano_dt_rast_per1)
+    ano_dt_rast_per3 <-
+      ifel(ano_dt_rast_per2 < -201, -200, ano_dt_rast_per2)
+    ano_dt_rast <- ano_dt_rast_per3
+  } else{
+    ano_dt_rast <- ano_dt_rast
+  }
+  # plot(ano_dt_rast,40:44)
+  ano_dt_rast
+
+ano_dt_shp_rast <- crop(ano_dt_rast,sel_area_shpfl, mask= T)
+names(ano_dt_shp_rast)
+# plot(ano_dt_shp_rast)
+# Annual temperature distribution for max year 
+ano_dt_rast_cur_yr <- subset(ano_dt_shp_rast, which(names(ano_dt_shp_rast) %in% paste0('ann_',cur_yr_nam)))
+# plot(ano_dt_rast_cur_yr)
+
+# Overall minimum and maximum across all layers
+minval_all <- min(global(ano_dt_rast_cur_yr, fun = 'min', na.rm = TRUE))
+maxval_all <- max(global(ano_dt_rast_cur_yr, fun = 'max', na.rm = TRUE))
+
+minval <- (-1) * max(abs(minval_all),abs(maxval_all))
+maxval <- (1) * max(abs(minval_all),abs(maxval_all))
+
+if(maxval < 5) {
+  minval_brk <- seq(round(minval/1)* 1, 0, 0.5)
+  maxval_brk <- seq(0, round(maxval/1)*1, 0.5)
+  brks_seq <- unique(c(minval_brk, maxval_brk))
+  
+} else if (maxval > 5 & maxval < 11) {
+  minval_brk <- seq(round(minval/1)* 1, 0, 1)
+  maxval_brk <- seq(0, round(maxval/1)*1, 1)
+  brks_seq <- unique(c(minval_brk, maxval_brk)) 
+  
+} else if (maxval > 10 & maxval < 21) {
+  minval_brk <- seq(round(minval/2)* 2, 0, 2)
+  maxval_brk <- seq(0, round(maxval/2)*2,2)
+  brks_seq <- unique(c(minval_brk, maxval_brk)) 
+  
+} else if (maxval > 20 & maxval < 41) {
+  minval_brk <- seq(round(minval/5)* 5, 0, 5)
+  maxval_brk <- seq(0, round(maxval/5)*5, 5)
+  brks_seq <- unique(c(minval_brk, maxval_brk)) 
+  
+} else if (maxval > 40 & maxval < 101) {
+  minval_brk <- seq(round(minval/10)* 10, 0, 10)
+  maxval_brk <- seq(0, round(maxval/10)*10, 10)
+  brks_seq <- unique(c(minval_brk, maxval_brk))
+  
+} else if (maxval > 100 & maxval < 1000) {
+  minval_brk <- seq(round(minval/20)* 20, 0, 20)
+  maxval_brk <- seq(0, round(maxval/20)*20, 20)
+  brks_seq <- unique(c(minval_brk, maxval_brk))
+}
+brks_seq
+
+# Title 
+if (parr == "prcp" |parr == "soil_moisture") {
+  par_title <-  paste0('BC ',
+                       parr_full, " anomaly  (% of normal) ", max_year)
+} else{
+  par_title <-  paste0('BC ', parr_full, " anomaly", " (", unt,") ", max_year)
+}
+
+bc_ann_ano_plt_cur_yr <- ggplot()+
+  geom_spatraster(data = ano_dt_rast_cur_yr)+
+  scale_fill_gradientn(
+    name = paste0(parr, " anomaly ", unt),
+    colours = cpt(pal = "ncl_BlWhRe",
+                  n = 100,
+                  rev = F),
+    na.value = "transparent",
+    limits = c(minval, maxval),
+    breaks = brks_seq
+  ) +
+  # facet_wrap(. ~ lyr) +
+  geom_sf(
+    data = sel_area_shpfl,
+    colour = "black",
+    linewidth = 1.5,
+    fill = NA,
+    alpha = 0.8
+  ) +
+  # geom_sf(
+  #   data = bc_ecoprv_shp,
+  #   colour = "black",
+  #   linewidth = 1.5,
+  #   fill = NA,
+  #   alpha = 0.8
+  # ) +
+  # coord_sf(xlim = xlim, ylim = ylim)+
+  scale_x_continuous(
+    name =  "Longitude (°W) ",
+    breaks = seq(xmi - 5, xmx + 5, 10),
+    labels = abs,
+    expand = c(0.01, 0.01)
+  ) +
+  scale_y_continuous(
+    name = "Latitude (°N) ",
+    # breaks = seq((ymi - 1), (ymx + 1), 6),
+    # labels = abs,
+    expand = c(0.01, 0.01)
+  ) +
+  theme(
+    panel.spacing = unit(0.1, "lines"),
+    panel.grid.minor = element_blank(),
+    panel.grid.major = element_line(
+      color = "gray60",
+      linewidth = 0.02,
+      linetype = "dashed"
+    ),
+    axis.line = element_line(colour = "gray70", linewidth = 0.08),
+    axis.ticks.length = unit(-0.20, "cm"),
+    element_line(colour = "black", linewidth =  1),
+    axis.title.y = element_text(
+      angle = 90,
+      face = "plain",
+      size = 15,
+      colour = "Black",
+      margin = unit(c(-1, -1, -1, -1), "mm")
+    ),
+    axis.title.x = element_text(
+      angle = 0,
+      face = "plain",
+      size = 15,
+      colour = "Black",
+      margin = unit(c(-1, -1, -1, -1), "mm")
+    ),
+    axis.text.x = element_text(
+      angle = 0,
+      hjust = 0.5,
+      vjust = 0.5,
+      colour = "black",
+      size = 14,
+      margin = margin(
+        t = 2,
+        r = 2,
+        b = 2,
+        l = 2
+      )
+    ),
+    axis.text.y = element_text(
+      angle = 90,
+      hjust = 0.5,
+      vjust = 0.5,
+      colour = "black",
+      size = 14,
+      margin = margin(
+        t = 2,
+        r = 2,
+        b = 2,
+        l = 2
+      )
+    ),
+    plot.title = element_text(
+      angle = 0,
+      face = "bold",
+      size = 13,
+      colour = "Black"
+    ),
+    legend.position = c(0.1,0.4), # 'right',
+    legend.direction = "vertical",
+    legend.margin = margin(0, 0, 0, 0),
+    legend.box.margin = margin(-5, -5, -5, -5),
+    legend.title = element_text(size = 15),
+    legend.text = element_text(margin = margin(t = -5), size = 16),
+    strip.text.x = element_text(size = 12, angle = 0),
+    strip.text.y = element_text(size = 12, face = "bold"),
+    axis.text = element_text(margin = -5),
+    strip.background = element_rect(color = "black", fill = "gray90"),
+    strip.text = element_text(
+      face = "bold",
+      size = 18,
+      colour = 'black'
+    )
+  ) +
+  guides(
+    fill = guide_colorbar(
+      barwidth = 1.6,
+      barheight = 25,
+      label.vjust = 0.5,
+      label.hjust = 0.0,
+      title.vjust = 0.5,
+      title.hjust = 0.5,
+      title = NULL,
+      # title.position = NULL,
+      ticks.colour = 'black',
+      # ticks.linewidth = 1,
+      frame.colour = 'black',
+      # frame.linewidth = 1,
+      # draw.ulim = FALSE,
+      # draw.llim = TRUE,
+    )
+  ) +
+  theme(
+    axis.title.x = element_blank(),
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank(),
+    axis.title.y = element_blank(),
+    axis.text.y = element_blank(),
+    axis.ticks.y = element_blank()
+  )
+bc_ann_ano_plt_cur_yr 
+
+if (parr == "prcp" &
+    maxval > 200 |
+    parr == "soil_moisture" &
+    maxval > 200 | parr == "rh" & maxval > 200) {
+  bc_ann_ano_plt_cur_yr  <- bc_ann_ano_plt_cur_yr +
+    scale_fill_gradientn(
+      name = paste0(parr, " anomaly ", unt),
+      colours = cpt(pal = "cmocean_curl", n = 100, rev = T),
+      na.value = "transparent",
+      limits = c(minval, maxval),
+      breaks = brks_seq
+    )
+} else if (parr == "prcp" |
+           parr == "soil_moisture" | parr == "rh") {
+  bc_ann_ano_plt_cur_yr  <- bc_ann_ano_plt_cur_yr  +
+    scale_fill_gradientn(
+      name = paste0(parr, "  anomaly (%) "),
+      colours = cpt(pal = "cmocean_curl", n = 100, rev = T),
+      na.value = "transparent",
+      limits = c(minval, maxval),
+      breaks = brks_seq
+    )
+}
+bc_ann_ano_plt_cur_yr  <- bc_ann_ano_plt_cur_yr  +
+  labs(
+    # tag = plt_wtrmrk,
+       title = par_title,
+       subtitle = "Relative to 1981-2010 climatology") +
+  theme(
+    plot.tag.position = "bottom",
+    plot.tag = element_text(
+      color = 'gray50',
+      hjust = 1,
+      vjust = 0,
+      size = 8
+    )
+  )+
+  theme(# Change plot and panel background
+  plot.background=element_rect(fill = "white"),
+  panel.background = element_rect(fill = 'white'))
+bc_ann_ano_plt_cur_yr 
+
+ggsave(
+  paste0(
+    ann_summ_rslts_pth, parr,
+    '_annual_anomaly_distrbtn_plt_',
+    max_year,'.png'
+  ),
+  plot = bc_ann_ano_plt_cur_yr,
+  width = 11,
+  height = 9.5,
+  units = "in",
+  dpi = 350,
+  scale = 0.9,
+  limitsize = F
+)
+
+## BC anomaly timeseries plot 1950 to current year ( annual ) ------------
+ano_dt_shp_rast
+# plot(ano_dt_shp_rast)
+yr_df <- tibble(paryr = names(ano_dt_shp_rast))
+yr_df %<>%
+  mutate(yr = as.numeric(str_extract(paryr, "[0-9]+")))
+names(ano_dt_shp_rast) <- yr_df$yr
+
+# Shapefile spatial average anomalies by year
+ano_shp_av_dt <-
+  tibble(rownames_to_column(global(
+    ano_dt_shp_rast, fun = "mean", na.rm = T
+  ), "yr")) %>%
+  dplyr::select(yr, ano = mean)
+ano_shp_dt <- ano_shp_av_dt%>%
+  drop_na()
+ano_shp_dt
+ano_shp_dt$yr <-
+  as.numeric(str_extract( ano_shp_dt$yr, "[0-9]+"))
+ano_shp_dt$par <- parr
+ano_shp_dt$mon <- monn
+ano_shp_dt$region <- region
+ano_shp_dt
+tail(ano_shp_dt)
+
+# anomaly plot
+minval <- (-1) * (max(abs(ano_shp_dt$ano)))
+maxval <- (1) * (max(abs(ano_shp_dt$ano)))
+minyr <- min(ano_shp_dt$yr)
+maxyr <- max(ano_shp_dt$yr)
+
+if(maxval < 5) {
+  minval_brk <- seq(round(minval/1)* 1, 0, 0.5)
+  maxval_brk <- seq(0, round(maxval/1)*1, 0.5)
+  brks_seq <- unique(c(minval_brk, maxval_brk))
+  
+} else if (maxval > 5 & maxval < 11) {
+  minval_brk <- seq(round(minval/1)* 1, 0, 1)
+  maxval_brk <- seq(0, round(maxval/1)*1, 1)
+  brks_seq <- unique(c(minval_brk, maxval_brk)) 
+  
+} else if (maxval > 10 & maxval < 21) {
+  minval_brk <- seq(round(minval/2)* 2, 0, 2)
+  maxval_brk <- seq(0, round(maxval/2)*2,2)
+  brks_seq <- unique(c(minval_brk, maxval_brk)) 
+  
+} else if (maxval > 20 & maxval < 41) {
+  minval_brk <- seq(round(minval/5)* 5, 0, 5)
+  maxval_brk <- seq(0, round(maxval/5)*5, 5)
+  brks_seq <- unique(c(minval_brk, maxval_brk)) 
+  
+} else if (maxval > 40 & maxval < 101) {
+  minval_brk <- seq(round(minval/10)* 10, 0, 10)
+  maxval_brk <- seq(0, round(maxval/10)*10, 10)
+  brks_seq <- unique(c(minval_brk, maxval_brk))
+  
+} else if (maxval > 100 & maxval < 1000) {
+  minval_brk <- seq(round(minval/20)* 20, 0, 20)
+  maxval_brk <- seq(0, round(maxval/20)*20, 20)
+  brks_seq <- unique(c(minval_brk, maxval_brk))
+}
+brks_seq
+
+# Positive and negative anomalies and 3 years moving average to create bar plot
+ano_shp_dt %<>%
+  mutate(pos_neg = if_else(ano <= 0, "neg", "pos")) %>%
+  mutate(ano_mv = rollmean(ano, 3, fill = list(NA, NULL, NA)))
+ano_shp_dt
+tail(ano_shp_dt)
+
+if (parr == "prcp" |parr == "soil_moisture") {
+  par_title <-  paste0('BC ',
+                       parr_full, " "," (% of normal) 1950 -", max_year)
+} else{
+  par_title <-  paste0('BC ', parr_full, " ", " (", unt,") 1950 -", max_year)
+}
+
+if (parr == "prcp" |parr == "soil_moisture") {
+  y_axis_lab <- paste0(parr_full, " anomaly (% of normal)")
+} else{
+  y_axis_lab <- paste0(parr_full, " anomaly ", "(", unt, ")")
+}
+
+ano_shp_trn_plt <-
+  ggplot(data = ano_shp_dt, aes(x = yr, y = ano)) +
+  # annotate(geom = 'text',label = plt_wtrmrk,x = Inf,y = -Inf,
+  #   hjust = 1,vjust = -0.5,
+  #   color = 'gray80',
+  #   size = 3.0
+  # ) +
+  geom_bar(stat = "identity",aes(fill = ano), width = 0.7,
+           show.legend = FALSE
+  ) +
+  geom_hline(yintercept = 0,color = "gray10",linewidth = 0.5) +
+  scale_fill_gradientn(name = paste0(parr, " anomaly ", unt),
+                       colours = cpt(pal = "ncl_BlWhRe",
+                                     n = 100,
+                                     rev = F),
+                       limits = c(minval,maxval)
+                       # breaks = c(-5,5,0.2)
+  ) +
+  # geom_line(
+  #   aes(y = ano_mv, color = "3-yrs moving mean"),
+  #   linewidth = 1.1,
+  #   alpha = 0.7,
+  #   na.rm = T
+  # ) +
+  # geom_line(color = "green", size = 2) +
+  geom_smooth(method="loess", size=1.5, se=F, color='magenta', alpha = 0.6)+
+  scale_x_continuous(
+    name = " ",
+    breaks = seq(1950, maxyr, 2),
+    expand = c(0.02, 0.02)
+  ) +
+  scale_y_continuous(name = y_axis_lab,
+                     limits = c(minval,maxval),
+                     breaks = brks_seq) +
+  labs(title = par_title) +
+  # scale_color_manual(
+  #   " ",
+  #   values = c(
+  #     "3-yrs moving mean" = "green",
+  #     "1950-trend" = "black",
+  #     "1980-trend" = "deepskyblue2"
+  #   ),
+  #   labels =  c(
+  #     "3-yrs moving mean" = "3-yrs moving mean",
+  #     "1950-trend" = "1950-trend",
+  #     "1980-trend" = "1980-trend"
+  #   )
+  # ) +
+  theme_bw() +
+  theme(
+    # panel.spacing=unit(0.1,"lines"),
+    panel.grid.minor = element_blank(),
+    panel.grid.major = element_line(
+      color = "gray75",
+      linewidth = 0.03,
+      linetype = "dashed"
+    ),
+    axis.line = element_line(colour = "black", linewidth = 1),
+    axis.ticks.length = unit(-0.20, "cm"),
+    element_line(colour = "black", linewidth =  1),
+    axis.title.y = element_text(
+      angle = 90,
+      face = "plain",
+      size = 13,
+      colour = "Black",
+      margin = unit(c(1, 1, 1, 1), "mm")
+    ),
+    axis.title.x = element_text(
+      angle = 0,
+      face = "plain",
+      size = 13,
+      colour = "Black",
+      margin = unit(c(1, 1, 1, 1), "mm")
+    ),
+    axis.text.x = element_text(
+      angle = 90,
+      hjust = 0.5,
+      vjust = 0.5,
+      colour = "black",
+      size = 12,
+      margin = margin(
+        t = 2,
+        r = 2,
+        b = 2,
+        l = 2
+      )
+    ),
+    axis.text.y = element_text(
+      angle = 0,
+      hjust = 0.5,
+      vjust = 0.5,
+      colour = "black",
+      size = 12,
+      margin = margin(
+        t = 2,
+        r = 2,
+        b = 2,
+        l = 2
+      )
+    ),
+    plot.title = element_text(
+      angle = 0,
+      face = "bold",
+      size = 13,
+      colour = "Black"
+    ),
+    legend.position = c(0.5,0.08),
+    legend.direction = "horizontal",
+    legend.background = element_rect(fill =NA, color = 'black'),
+    legend.margin = margin(0, 0, 0, 0),
+    legend.box.margin = margin(0, 0, 0, 0),
+    legend.title = element_text(size = 13),
+    legend.text = element_text(margin = margin(t = -5), size = 13),
+    strip.text.x = element_text(size = 12, angle = 0),
+    strip.text.y = element_text(size = 12, face = "bold"),
+    axis.text = element_text(margin = -5),
+    strip.background = element_rect(fill = "black"),
+    strip.text = element_text(colour = 'Black')
+  )
+ano_shp_trn_plt
+
+if (parr == "prcp" | parr == "soil_moisture" |parr == "rh") {
+  ano_shp_trn_plt <- ano_shp_trn_plt +
+    scale_fill_gradientn(
+      name = paste0(parr, "  anomaly ", unt),
+      colours = cpt(pal = "cmocean_curl",
+                    n = 100,
+                    rev = T),
+      limits = c(minval, maxval),
+      breaks = brks_seq
+    )
+}
+ano_shp_trn_plt <- ano_shp_trn_plt+
+  labs(
+    # tag = plt_wtrmrk,
+       title = par_title,
+       subtitle = "Relative to 1981-2010 climatology") +
+  theme(
+    plot.tag.position = "bottom",
+    plot.tag = element_text(
+      color = 'gray50',
+      hjust = 1,
+      vjust = 0,
+      size = 8
+    )
+  )
+ano_shp_trn_plt
+
+ ano_shp_trn_plt <- ano_shp_trn_plt+
+   theme(
+  # get rid of panel grids
+ panel.grid.major = element_line(
+      color = "gray75",
+      linewidth = 0.09,
+      linetype = "dashed"
+    ),
+  panel.grid.minor = element_blank(),
+  # Change plot and panel background
+  plot.background=element_rect(fill = "white"),
+  panel.background = element_rect(fill = 'white'))
+ ano_shp_trn_plt 
+
+ggsave(
+  paste0(ann_summ_rslts_pth,parr,"_ann_ano_ts_plt_1950_", max_year,
+    ".png"),
+  plot = ano_shp_trn_plt,
+  width = 16,
+  height = 7.5,
+  units = "in",
+  dpi = 320,
+  scale = 0.8,
+  limitsize = F
+)
+
+## Ranking table ------------
+
+# Ranking table
+ano_shp_dt%>%
+  mutate(ano_rank = rank(-rank(ano)))%>%
+  dplyr::select(yr, rank = ano_rank, change = ano) -> bc_ano_rnk_cur_yr
+bc_ano_rnk_cur_yr%<>%
+  # filter(rank < 16)%<>%
+   arrange(rank)
+# bc_ano_rnk_cur_yr$parr <- parr
+
+bc_ann_warm_rnk_tbl <- bc_ano_rnk_cur_yr
+
+write_csv(
+  bc_ann_warm_rnk_tbl,
+  paste0(
+    ann_summ_rslts_pth,
+    parr,
+    '_bc_ann_change_ranking_table.csv'
+  )
+)
+
+
+# Rate of change  ----
+ano_shp_dt%<>%
+      mutate(ano_rank = rank(-rank(ano)))
+
+## Trends magnitudes and change over the years
+  # Trend 1950 -2024
+    ano_shp_dt %<>%
+      filter(yr > 1950) %<>%
+      mutate(# trnd =zyp.trend.vector(ano)[["trend"]],
+        # incpt =zyp.trend.vector(ano)[["intercept"]],
+        #sig = zyp.trend.vector(ano)[["sig"]])
+        sig = round(MannKendall(ano)[[2]], digits = 2))
+    ano_shp_dt
+    ano_mk_trnd <-
+      zyp.sen(ano ~ yr, ano_shp_dt)##Give the trend###
+    ano_mk_trnd$coefficients
+    ano_shp_dt$trn <-  ano_mk_trnd$coeff[[2]]
+    ano_shp_dt$incpt <-  ano_mk_trnd$coeff[[1]]
+    
+    # Trend on average anomaly 1980 - now
+    ano_shp_dt %>%
+      filter(yr > 1979) %>%
+      mutate(# trnd =zyp.trend.vector(ano)[["trend"]],
+        # incpt =zyp.trend.vector(ano)[["intercept"]],
+        #sig = zyp.trend.vector(ano)[["sig"]])
+        sig = round(MannKendall(ano)[[2]], digits = 2)) -> ano_shp_dt80
+    ano_shp_dt80
+    
+    ano_mk_trnd80 <-
+      zyp.sen(ano ~ yr, ano_shp_dt80)##Give the trend###
+    ano_mk_trnd80$coefficients
+    ano_shp_dt80$trn <-  ano_mk_trnd80$coeff[[2]]
+    ano_shp_dt80$incpt <-  ano_mk_trnd80$coeff[[1]]
+    
+    ## Spatial trends
+    # Spatial trend on annual values
+ ano_dt_shp_rast
+ # plot(ano_dt_shp_rast)
+#MK trend analysis
+mk_sig_cal_fun <-
+  function(x) {
+    m = MannKendall(x)
+    as.numeric(m[2])
+  }  #gives p-value only
+mk_trn_mag_fun <- function(y) {
+  se = zyp.trend.vector(
+    y,
+    x = 1:length(y),
+    conf.intervals = TRUE,
+    preserve.range.for.sig.test = TRUE
+  )
+  c(se[[2]])
+}
+
+ano_trn_sig <- app( ano_dt_shp_rast, mk_sig_cal_fun)
+ano_trn_sig
+# plot(ano_trn_sig)
+ano_trn_mag <- app( ano_dt_shp_rast, mk_trn_mag_fun)
+ano_trn_mag
+# plot(ano_trn_mag)
+
+# Stack trend magnigude and significance 
+ano_sp_mk_trn_sig<-c(ano_trn_mag,ano_trn_sig)
+# plot(ano_sp_mk_trn_sig)
+names(ano_sp_mk_trn_sig)<-c("trnmag","pval")
+
+# Summary table for annual spatial trends -----
+ #  anomaly  summary: annual
+ #  anomaly  summary: annual current year
+cur_yr_ano_mean_sum_tab <- tibble(rownames_to_column(global(
+  ano_dt_rast_cur_yr, fun = "mean", na.rm = T
+))) %>%
+  dplyr::select(mon = rowname, mean_sp_ano = mean)%>%
+  mutate(mean_sp_ano = round(mean_sp_ano,digits=2))
+
+cur_yr_ano_min_sum_tab <- tibble(rownames_to_column(global(
+  ano_dt_rast_cur_yr, fun = "min", na.rm = T
+))) %>%
+  dplyr::select(mon = rowname, min_sp_ano = min)%>%
+  mutate(min_sp_ano = round(min_sp_ano,digits=2))
+
+cur_yr_ano_max_sum_tab <- tibble(rownames_to_column(global(
+  ano_dt_rast_cur_yr, fun = "max", na.rm = T
+))) %>%
+  dplyr::select(mon = rowname, max_sp_ano = max)%>%
+  mutate(max_sp_ano = round(max_sp_ano,digits=2))
+
+cur_yr_ano_mn_mi_sum_tab <- inner_join(cur_yr_ano_mean_sum_tab,cur_yr_ano_min_sum_tab)
+cur_yr_ano_mn_mi_mx_sum_tab <- inner_join(cur_yr_ano_mn_mi_sum_tab,cur_yr_ano_max_sum_tab)
+    
+#  anomaly  summary: Monthly
+mon_ano_mean_sum_tab <- tibble(rownames_to_column(global(
+  bc_mon_ano_cur_yr_dt, fun = "mean", na.rm = T
+))) %>%
+  dplyr::select(mon = rowname, mean_sp_ano = mean)%>%
+  mutate(mean_sp_ano = round(mean_sp_ano,digits=2))
+
+mon_ano_min_sum_tab <- tibble(rownames_to_column(global(
+  bc_mon_ano_cur_yr_dt, fun = "min", na.rm = T
+))) %>%
+  dplyr::select(mon = rowname, min_sp_ano = min)%>%
+  mutate(min_sp_ano = round(min_sp_ano,digits=2))
+
+mon_ano_max_sum_tab <- tibble(rownames_to_column(global(
+  bc_mon_ano_cur_yr_dt, fun = "max", na.rm = T
+))) %>%
+  dplyr::select(mon = rowname, max_sp_ano = max)%>%
+  mutate(max_sp_ano = round(max_sp_ano,digits=2))
+
+mon_ano_mn_mi_sum_tab <- inner_join(mon_ano_mean_sum_tab,mon_ano_min_sum_tab)
+mon_ano_mn_mi_mx_sum_tab <- inner_join(mon_ano_mn_mi_sum_tab,mon_ano_max_sum_tab)
+
+# Annual monthly merge
+ann_mon_ano_mn_mi_mx_sum_tab <- bind_rows(mon_ano_mn_mi_mx_sum_tab, cur_yr_ano_mn_mi_mx_sum_tab)
+
+ann_mon_ano_mn_mi_mx_sum_tab%<>%
+  dplyr::select(mon,mean = mean_sp_ano,
+                min = min_sp_ano,
+                max = max_sp_ano)%<>%
+  mutate(par = 'ano_spatial')
+
+# Spatial Trend:: annual
+ ano_trn_mag_shp <- crop(ano_trn_mag, sel_area_shpfl, mask = T) 
+ names(ano_trn_mag_shp) <- paste0('sp_trn_',max_year)
+ # plot(ano_trn_mag_shp)
+#Current year spatial trendsummary 
+cur_yr_trn_mean_sum_tab <- tibble(rownames_to_column(global(
+  ano_trn_mag_shp, fun = "mean", na.rm = T
+))) %>%
+  dplyr::select(mon = rowname, mean_sp_trn = mean)%>%
+  mutate(mean_sp_trn = round(mean_sp_trn,digits=2))
+cur_yr_trn_mean_sum_tab 
+
+cur_yr_trn_min_sum_tab <- tibble(rownames_to_column(global(
+  ano_trn_mag_shp, fun = "min", na.rm = T
+))) %>%
+  dplyr::select(mon = rowname, min_sp_trn = min)%>%
+  mutate(min_sp_trn = round(min_sp_trn,digits=2))
+
+cur_yr_trn_max_sum_tab <- tibble(rownames_to_column(global(
+  ano_trn_mag_shp, fun = "max", na.rm = T
+))) %>%
+  dplyr::select(mon = rowname, max_sp_trn = max)%>%
+  mutate(max_sp_trn = round(max_sp_trn,digits=2))
+
+cur_yr_trn_mn_mi_sum_tab <- inner_join(cur_yr_trn_mean_sum_tab,cur_yr_trn_min_sum_tab)
+cur_yr_trn_mn_mi_mx_sum_tab <- inner_join(cur_yr_trn_mn_mi_sum_tab,cur_yr_trn_max_sum_tab)
+
+cur_yr_trn_mn_mi_mx_sum_tab%<>%
+  dplyr::select(mon,mean = mean_sp_trn,
+                min = min_sp_trn,
+                max = max_sp_trn)%<>%
+  mutate(par = 'trn_spatial')
+
+cur_yr_ano_trn_sum_tab <- bind_rows(ann_mon_ano_mn_mi_mx_sum_tab,cur_yr_trn_mn_mi_mx_sum_tab)
+
+ # linear trend
+ cur_yr_ano_trn_sum_tab$lin_trn_ann <- round(ano_shp_dt$trn[1],digits=2)
+ cur_yr_ano_trn_sum_tab$lin_trn_pval_ann <- round(ano_shp_dt$sig[1],digits=2)
+#annual anomaly ranking by season
+rank_no <- ano_shp_dt%>%
+  filter(yr == max(yr))
+
+# Merge wuth ling term and 1980s trend
+cur_yr_ano_trn_sum_tab%<>%
+  mutate(sp_lin_trn1950 =ano_mk_trnd$coeff[[2]],
+        sp_lin_trn1980 =ano_mk_trnd80$coeff[[2]],
+        ano_rnk_pos = round(rank_no$ano_rank,digits=2))
+cur_yr_ano_trn_sum_tab$yr <- max_year
+cur_yr_ano_trn_sum_tab$par <- parr
+cur_yr_ano_trn_sum_tab
+
+write_csv(
+ cur_yr_ano_trn_sum_tab,
+  paste0(
+    ann_summ_rslts_pth,
+    parr,
+    '_bc_ann_sp_lin_ano_trn_summary_tbl.csv'
+  )
+)
+
+# Final outputs list ------
+# To include in the list with name
+reslts <-  list(bc_mon_ano_plt_cur_yr, bc_ann_ano_plt_cur_yr,
+              ano_shp_trn_plt,bc_ann_warm_rnk_tbl, cur_yr_ano_trn_sum_tab)
+names(reslts) <- c(
+  paste0(parr, "_mon_ano_dist_plt_bc_",max_year),
+  paste0(parr, "_ann_ano_dist_plt_bc_",max_year),
+  paste0(parr, "_ann_ano_lin_plt_bc_",max_year),
+  paste0(parr, "_ann_ano_ranktop15_tbl_bc_",max_year),
+  paste0(parr, "_ann_ano_trn_summary_tbl_bc_",max_year)
+)
+return(reslts)
+}
+
+# Credit  -----
+plt_wtrmrk <-
+  "Created by Aseem Sharma (aseem.sharma@gov.bc.ca), BC Ministry of Forests. Data credit: ERA5land/C3S/ECMWF."
+plt_wtrmrk
+
+parameters
+
+parrs_ann_summary_results_lst <- list()
+for (k in 1:length(parameters)){
+  parr <- parameters[[k]]
+  parr
+  parrs_ann_summary_results_lst[[k]] <- 
+    ann_clm_sum_cal_plt_fun(ano_dt_fls = ano_dt_fl,
+                            clm_dt_fls = clm_dt_fl,
+                            parr =  parr)
+}
+
+parrs_ann_summary_results_lst
+
+```
+
+This report provides a summary of British Columbia (BC)'s average climate conditions in 2024 using two key indicators: average temperature and total precipitation from <a href='https://cds.climate.copernicus.eu/cdsapp#!/dataset/reanalysis-era5-land?tab=overview'>ERA5-Land hourly dataset</a>.
+
+# BC temperature in 2024
+
+In 2024, the average annual temperature in BC increased by 0.96°C, ranking it as the 8^th^ warmest year on record since 1950 (@fig-bc_ann_temp_ano_ts). Globally, 2024 was the warmest year ever recorded; however, in BC, the warmest year remains 2023, which saw an average temperature increase of 2.15°C. Notably, seven of the ten warmest years in BC have occurred since 2010 (@tbl-bc_ann_temp_rank) .
+
+The temperature increase in 2024 varied across regions, with the Southern and Central Interior BC experiencing the most significant rises (approximately 2°C), while the Coastal and Northeastern region observed relatively smaller increases (@fig-bc_ann_ano_dist_plt). The year began with a cooler-than-average January (0.38°C lower than normal) but ended with an exceptionally warm December, with some areas recording temperatures more than 7°C above normal (@fig-bc_mon_temp_dist_plt). May and June were relatively cooler than average, while July, August, and September experienced above-average temperatures.
+
+Between 1950 (1980) and 2024, BC's average temperature rose significantly, increasing by 2.21°C (1.07°C).
+
+```{r temp timeseries anomaly plt}
+#| include: true
+#| output: true
+#| cache: false
+#| fig-align: left
+#| fig-height: 7
+#| fig-width: 12
+#| label: fig-bc_ann_temp_ano_ts
+#| fig-cap: !expr "paste('Annual average air temperature anomalies for BC 1950 - 2024. The bluish bars represent cooler-than-normal years, while the reddish bars indicate warmer-than-normal years. Anomalies are calculated relative to the 1981–2010 climatological baseline. The magenta line represents the moving regression. *Data credit: ERA5land/C3S/ECMWF*')"
+
+
+parrs_ann_summary_results_lst[[1]]$tmean_ann_ano_lin_plt_bc_2024+
+  theme(
+  plot.title = element_text(size = rel(2)),   
+  axis.title.x = element_text(size = rel(2)),
+  axis.title.y = element_text(size = rel(1.5)),
+  axis.text = element_text(size = rel(2))
+)
+
+```
+
+```{r temp ann ano dist plt}
+#| include: true
+#| output: true
+#| cache: false
+#| fig-align: left
+#| fig-height: 8
+#| fig-width: 13
+#| label: fig-bc_ann_ano_dist_plt
+#| fig-cap: "BC's average air temperature anomaly for 2024 relative to the 1981–2010 reference period. The bluish areas represent cooler-than-normal temperatures, while the reddish areas indicate warmer-than-normal temperatures for 2024. *Data credit: ERA5land/C3S/ECMWF*"
+
+
+parrs_ann_summary_results_lst[[1]]$tmean_ann_ano_dist_plt_bc_2024+
+  theme(
+  plot.title = element_text(size = rel(1.0)),   
+  axis.title.x = element_text(size = rel(1.2)),
+  axis.title.y = element_text(size = rel(1.2)),
+  axis.text = element_text(size = rel(1.1))
+)
+
+```
+
+```{r temp ranking table}
+#| include: true
+#| output: true
+#| cache: false
+#| label: tbl-bc_ann_temp_rank
+#| tbl-cap: !expr "paste('Mean air temperature change and ranking relative to the 1981-2010 average for the top 15 warmest years between 1950 and 2024 in BC.*Data credit: ERA5land/C3S/ECMWF*')"
+
+#| tbl-cap-location: top
+
+tmp_rnk_tbl <- parrs_ann_summary_results_lst[[1]]$tmean_ann_ano_ranktop15_tbl_bc_2024
+tmp_rnk_tbl%<>%
+  slice(1:15)%<>%
+   gt() %>%
+  tab_header(
+    title = "BC annual warming ranks"
+  ) %>%
+  rm_header()%>%
+  fmt_number(
+    columns = c(change),
+    decimals = 2
+  ) %>%
+  cols_label(
+    yr = "Year",
+    rank = "Rank",
+    change = "Warming (°C)"
+  ) %>%
+  tab_style(
+    style = cell_text(weight = "bold"),
+    locations = cells_column_labels(everything())
+  ) %>%
+  tab_options(
+    table.font.size = 16,
+    table.width = pct(50)
+  )
+tmp_rnk_tbl
+
+```
+
+```{r temp mon ano dist plt}
+#| include: true
+#| output: true
+#| cache: false
+#| fig-align: left
+#| fig-height: 12
+#| fig-width: 16
+#| label: fig-bc_mon_temp_dist_plt
+#| fig-cap: !expr "paste('Monthly average air temperature anomalies for BC in 2024. The bluish areas represent months with cooler-than-normal temperatures, while the reddish areas indicate months with warmer-than-normal temperatures.*Data credit: ERA5land/C3S/ECMWF*')"
+
+parrs_ann_summary_results_lst[[1]]$tmean_mon_ano_dist_plt_bc_2024+
+  theme(
+  plot.title = element_text(size = rel(2)),   
+  axis.title.x = element_text(size = rel(1.1)),
+  axis.title.y = element_text(size = rel(1.1)),
+  axis.text = element_text(size = rel(2))
+)
+
+```
+
+# BC precipitation in 2024
+
+Overall, precipitation levels in BC did not deviate substantially from the normal in 2024, with a slight decrease of 2.7% relative to the 1981-2010 climatological average. This marks a continuation of the declining total precipitation observed since 2022 (@fig-bc_ann_prcp_ano_ts). However, there was considerable spatial variability across the province. Northwestern BC experienced a reduction in precipitation exceeding 30%, while the central Interior recorded increases of up to 25% (@fig-bc_ann_ano_prcp_dist_plt).
+
+Seasonally, the year began with below-normal precipitation in January (4% decrease), February (14% decrease), and March (41% decrease). Although May and June were wetter then normal, drier-than-average conditions continue again in July (21% decrease) and August (15% decrease) however with notable spatial variability (@fig-bc_mon_prcp_dist_plt).
+
+
+```{r prcp timeseries anomaly plt}
+#| include: true
+#| output: true
+#| cache: false
+#| fig-align: left
+#| fig-height: 7
+#| fig-width: 12
+#| label: fig-bc_ann_prcp_ano_ts
+#| fig-cap: !expr "paste('Annual precipitation anomalies ( % of normal) for BC 1950 - 2024. The greenish bars represent wetter-than-normal years, while the brownish bars indicate drier-than-normal years. Anomalies are calculated relative to the 1981–2010 climatological baseline. The magenta line represents the moving regression. *Data credit: ERA5land/C3S/ECMWF*')"
+
+
+parrs_ann_summary_results_lst[[2]]$prcp_ann_ano_lin_plt_bc_2024+
+  theme(
+  plot.title = element_text(size = rel(2)),   
+  axis.title.x = element_text(size = rel(2)),
+  axis.title.y = element_text(size = rel(1.5)),
+  axis.text = element_text(size = rel(2))
+)
+
+```
+
+```{r prcp ann ano dist plt}
+#| include: true
+#| output: true
+#| cache: false
+#| fig-align: left
+#| fig-height: 8
+#| fig-width: 13
+#| label: fig-bc_ann_ano_prcp_dist_plt
+#| fig-cap: "BC's average precipitation anomaly for 2024 relative to the 1981–2010 reference period. The greenish areas represent wetter-than-normal precipitation areas, while the brownish areas indicate drier-than-normal precipitation for 2024. *Data credit: ERA5land/C3S/ECMWF*"
+
+
+parrs_ann_summary_results_lst[[2]]$prcp_ann_ano_dist_plt_bc_2024+
+  theme(
+  plot.title = element_text(size = rel(1.0)),   
+  axis.title.x = element_text(size = rel(1.2)),
+  axis.title.y = element_text(size = rel(1.2)),
+  axis.text = element_text(size = rel(1.1))
+)
+
+```
+
+```{r prcp mon ano dist plt}
+#| include: true
+#| output: true
+#| cache: false
+#| fig-align: left
+#| fig-height: 12
+#| fig-width: 16
+#| label: fig-bc_mon_prcp_dist_plt
+#| fig-cap: !expr "paste('Monthly total precipitation anomalies (% of normal) for BC in 2024. The greenish areas represent wetter-than-normal precipitation areas, while the brownish areas indicate drier-than-normal precipitation.*Data credit: ERA5land/C3S/ECMWF*')"
+
+parrs_ann_summary_results_lst[[2]]$prcp_mon_ano_dist_plt_bc_2024+
+  theme(
+  plot.title = element_text(size = rel(2)),   
+  axis.title.x = element_text(size = rel(1.1)),
+  axis.title.y = element_text(size = rel(1.1)),
+  axis.text = element_text(size = rel(2))
+)
+
+```
+
+
+The information presented here complements the detailed insights available in the <a href='https://bcgov-env.shinyapps.io/bc_climate_anomaly/'>BC Climate Anomaly Shiny App</a>. For a more detailed breakdown of seasonal and monthly climate trends in BC, we encourage you to explore the app. If you have any questions or require further information, please do not hesitate to contact the author.

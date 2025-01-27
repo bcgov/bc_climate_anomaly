@@ -1,0 +1,12 @@
+name: bc_climate_anomaly_app
+title: bc_climate_anomaly_app
+username: bcgov-env
+account: bcgov-env
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 12060095
+bundleId:
+url: https://bcgov-env.shinyapps.io/bc_climate_anomaly_app/
+version: 1
+asMultiple: FALSE
+asStatic: FALSE

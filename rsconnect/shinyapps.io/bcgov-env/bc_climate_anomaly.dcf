@@ -1,13 +1,12 @@
 name: bc_climate_anomaly
-title: bc_climate_anomaly
+title: bc_climate_anomaly_app
 username: bcgov-env
 account: bcgov-env
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
 appId: 9795863
-bundleId: 7905185
+bundleId: 9697401
 url: https://bcgov-env.shinyapps.io/bc_climate_anomaly/
 version: 1
 asMultiple: FALSE
 asStatic: FALSE
-ignoredFiles: .RData|app_working_oct23.R|climate_stripes/bc_annual_tmean_ano_stripe.png|climate_stripes/bc_annual_tmean_ano_stripe_withtitle.png|climate_stripes/BC_tmean_anomaly_timeseries_annual_1951_2022_data.csv|climate_stripes/climate_stripe_plot.R|CODE_OF_CONDUCT.md|COMPLIANCE.yaml|CONTRIBUTING.md|deployment_date_function.R|ecoprovince_average_anomaly/bc_warehouse_data_download.R|ecoprovince_average_anomaly/eco_province_ave_anomaly_cal.R|ecoprovince_average_anomaly/temp_prcp_avg_ano_per_bc_ecoprvnc_data_updated_Sep_2023.csv|feedback/BC Climatology feedback.xlsx|LICENSE|README.md

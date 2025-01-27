@@ -74,10 +74,10 @@ parameters <- c("tmean", "tmax", "tmin", "prcp")
 parameters
 
 min_year <- 1951
-max_year <- 2023
+max_year <- 2024
 
-update_month <- c("Oct","Nov")
-update_year <- "2023"
+update_month <- c("December")
+update_year <- "2024"
 
 ## Anomalies Data files -----
 list.files(path = ano_dt_pth,
@@ -103,7 +103,8 @@ clm_dt_fl <- tibble(dt_pth = clm_dt_fls)
 clm_dt_fl %<>%
   mutate(par = str_extract(clm_dt_fls,
                            paste(parameters, collapse = "|")))
-
+clm_dt_fl%<>%
+  drop_na()
 # Anomalies and percentage calculation  --------------------------------------------------------
 
 #Function to calculate spatially averaged anomalies and percentage of  anomalies for BC and ecoprovince region of BC
@@ -290,8 +291,11 @@ for (i in 1:nrow(ano_dt_fl)) {
 eco_prv_ano_dt <- bind_rows(eco_prv_ano_dt_lst)
 eco_prv_ano_dt%<>%
   drop_na()
-# eco_prv_ano_dt %<>%
-#   filter(yr >= update_year)
+eco_prv_ano_dt %>%
+  filter(mon == 'annual' & subregion == 'GEORGIA DEPRESSION' & par == 'tmean') -> tst
+
+ggplot(tst)+
+  geom_line(aes(x= yr,y=ano))
 
 # Read csv upto 2022 and add updated month
 # ecoprv22_dt <-
@@ -309,7 +313,7 @@ write_csv(
   eco_prv_ano_dt,
   file = paste0(
     "temp_prcp_avg_ano_per_bc_ecoprvnc_data_updated_",
-    update_month[[2]],
+    update_month[[1]],
     "_",
     update_year,
     ".csv"
