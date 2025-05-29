@@ -16,7 +16,6 @@
 # limitations under the License.
 
 # Required -------------------
-library('sf')
 library('terra')
 library('tidyterra')
 library('tidyverse')
@@ -33,19 +32,19 @@ ano_dt_pth <-  '../ano_clm_data/'
 ## Eco-region and BC Shape files --------------
 # List of shape files
 list.files(path = shp_fls_pth,
-           pattern = ".shp",
-           full.names = T) -> shp_fls_lst
+           pattern = "\\.(shp|gpkg)$",
+           full.names = TRUE,
+           ignore.case = TRUE) -> shp_fls_lst
 shp_fls_lst
 
-# BC
-bc_shp <-
-  st_read(shp_fls_lst[str_detect(shp_fls_lst, "bc_shapefile") == T])
-# plot(st_geometry(bc_shp))
 
-# BC eco-regions
-bc_ecoprv_shp <-
-  st_read(shp_fls_lst[str_detect(shp_fls_lst, "bc_ecoprovince") == T])
-# plot(st_geometry(bc_ecoprv_shp))
+# BC
+bc_shp <-vect(shp_fls_lst[str_detect(shp_fls_lst, "bc_shapefile") == T])
+# plot(bc_shp)
+
+# BC eco-province
+bc_ecoprv_shp <- vect(shp_fls_lst[str_detect(shp_fls_lst, "bc_ecoprovince") == T])
+# plot(bc_ecoprv_shp)
 
 ## Months, parameters ----
 months_nam <-
@@ -74,10 +73,10 @@ parameters <- c("tmean", "tmax", "tmin", "prcp")
 parameters
 
 min_year <- 1951
-max_year <- 2024
+max_year <- 2025
 
-update_month <- c("December")
-update_year <- "2024"
+update_month <- c("April")
+update_year <- "2025"
 
 ## Anomalies Data files -----
 list.files(path = ano_dt_pth,
@@ -105,9 +104,9 @@ clm_dt_fl %<>%
                            paste(parameters, collapse = "|")))
 clm_dt_fl%<>%
   drop_na()
-# Anomalies and percentage calculation  --------------------------------------------------------
 
-#Function to calculate spatially averaged anomalies and percentage of  anomalies for BC and ecoprovince region of BC
+# Anomalies and percentage calculation  --------------------------------------------------------
+# Function to calculate spatially averaged anomalies and percentage of  anomalies for BC and ecoprovince region of BC
 
 # i<-1
 ano_subregion_clip_fun <-
@@ -166,6 +165,7 @@ ano_subregion_clip_fun <-
         bc_ano_dt_shp_i, fun = "mean", na.rm = T
       ), "yrmn")) %>%
       dplyr::select(yrmn, ano = mean)
+    tail(bc_ano_shp_av_dt_i)
 
     #Calculate climatology
     clm_dt_fl %>%

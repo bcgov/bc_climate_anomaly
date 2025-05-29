@@ -108,42 +108,35 @@ ylim <- c(47.5, 60)
 # read following values from render .r file
 
 min_year <- 1951
-max_year <- 2024
+max_year <- 2025
 
-update_month <- "December"
-update_year <- "2024"
+update_month <- "April"
+update_year <- "2025"
+
+# List of shape files
+# Shape files --------------
+# Domain
+xmi = -140
+xmx = -108
+ymi = 39
+ymx = 60
 
 # List of shape files
 list.files(path = shp_fls_pth,
-           pattern = ".shp",
-           full.names = T) -> shp_fls_lst
+           pattern = "\\.(shp|gpkg)$",
+           full.names = TRUE,
+           ignore.case = TRUE) -> shp_fls_lst
 shp_fls_lst
 
-# BC
-bc_shp <- st_read(shp_fls_lst[str_detect(shp_fls_lst,"bc_shapefile")== T])
-# plot(st_geometry(bc_shp))
-
-# BC eco-regions
-bc_ecoprv_shp <- st_read(shp_fls_lst[str_detect(shp_fls_lst,"bc_ecoprovince")== T])
-# plot(st_geometry(bc_ecoprv_shp))
-
-# BC watersheds
-bc_wtrshd_shp <- st_read(shp_fls_lst[str_detect(shp_fls_lst,"bc_watersheds")== T])
-# plot(st_geometry(bc_wtrshd_shp))
-
 # Western North America
+na_shp <-   vect(shp_fls_lst[str_detect(shp_fls_lst, "north_america") == T])
+# plot(na_shp)
+wna_shp <- crop(na_shp, ext(xmi,xmx,ymi,ymx))
+# plot(wna_shp)
 
-na_shp <- st_read(shp_fls_lst[str_detect(shp_fls_lst,"north_america")== T])
-sf_use_s2(FALSE)
-wna_shp <-
-  st_crop(
-    na_shp,
-    xmin = xmi,
-    ymin = ymi,
-    xmax = xmx,
-    ymax = ymx
-  )
-# plot(st_geometry(wna_shp))
+# BC
+bc_shp <-vect(shp_fls_lst[str_detect(shp_fls_lst, "bc_shapefile") == T])
+# plot(bc_shp)
 
 ## Months, parameters ----
 months_nam <-
@@ -792,7 +785,7 @@ spatial_ano_12mon_plt <-  ggplot() +
   coord_sf(xlim = xlim, ylim = ylim)+
   theme(
     panel.spacing = unit(0.1, "lines"),
-    panel.grid.minor = element_blank(),
+    panel.grid.minor = element_blank(), 
     panel.grid.major = element_line(
       color = "gray60",
       linewidth = 0.02,
@@ -3487,7 +3480,5 @@ prcp_rh_sm_ann_lngtrn_plt_f +
 This report compliment the <a href='https://bcgov-env.shinyapps.io/bc_climate_anomaly/'> BC climate anomaly app </a>. Should you have any questions, please contact <a href= 'mailto: Aseem.Sharma@gov.bc.ca'>Aseem Sharma </a>.
 
 ::: {style="font-size: 60%;"}
-
 **Disclaimer:** This report has been prepared using <a href='https://www.ecmwf.int/en/era5-land'>ERA5-Land</a> data from the European Centre for Medium-Range Weather Forecasts (ECMWF), as available at the time of preparation. Please note that the original data may be subject to updates or revisions. Any modifications to the original data may result in adjustments to the findings presented in this report.
-
 :::
