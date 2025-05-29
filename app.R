@@ -15,27 +15,27 @@
 # limitations under the License.
 
 # Required -------------------
-library('shiny')
-library('shinydashboard')
-library('shinyWidgets')
-library("shinythemes")
-library("shinyjs")
-library('shinyalert')
-library('markdown')
-library('rmarkdown')
-library('sf')
-library('terra')
-library('leaflet')
-library('tidyterra')
-library('tidyverse')
-library('magrittr')
-library('lubridate')
-library("DT")
-library('zoo')
-library('zyp')
-library('viridisLite')
-library('cptcity')
-library('plotly')
+# List of required packages
+required_packages <- c(
+  'shiny', 'shinydashboard', 'shinyWidgets', 'shinythemes', 'shinyjs', 'shinyalert',
+  'markdown', 'rmarkdown',
+  'terra', 'tidyterra','leaflet',
+  'tidyverse', 'magrittr', 'lubridate',
+  'zoo', 'zyp',
+  'cptcity', 'colorspace', 'plotly', 'shinycssloaders'
+)
+
+# Install missing packages silently
+# install_if_missing <- function(pkg) {
+#   if (!requireNamespace(pkg, quietly = TRUE)) {
+#     install.packages(pkg, repos = "https://cloud.r-project.org", quiet = TRUE)
+#   }
+# }
+#
+# invisible(lapply(required_packages, install_if_missing))
+
+# Load all packages
+lapply(required_packages, library, character.only = TRUE)
 
 # Load and process input data -------
 ## Paths --
@@ -45,10 +45,10 @@ ano_dt_pth <-  './ano_clm_data/'
 
 # Credit  -----
 plt_wtrmrk <-
-  "Created by Aseem Sharma (aseem.sharma@gov.bc.ca), BC Ministry of Forests. Data credit: ERA5land/C3S/ECMWF."
+  "@Aseem R. Sharma, BC Ministry of Forests. Data credit: ERA5land/C3S/ECMWF."
 plt_wtrmrk
 
-## Shape files --------------
+# Shape files --------------
 # Domain
 xmi = -140
 xmx = -108
@@ -57,61 +57,69 @@ ymx = 60
 
 # List of shape files
 list.files(path = shp_fls_pth,
-           pattern = ".shp",
-           full.names = T) -> shp_fls_lst
+           pattern = "\\.(shp|gpkg)$",
+           full.names = TRUE,
+           ignore.case = TRUE) -> shp_fls_lst
 shp_fls_lst
 
+# Western North America
+na_shp <-   vect(shp_fls_lst[str_detect(shp_fls_lst, "north_america") == T])
+# plot(na_shp)
+wna_shp <- crop(na_shp, ext(xmi,xmx,ymi,ymx))
+# plot(wna_shp)
+
 # BC
-bc_shp <-
-  st_read(shp_fls_lst[str_detect(shp_fls_lst, "bc_shapefile") == T])
-# plot(st_geometry(bc_shp))
+bc_shp <-vect(shp_fls_lst[str_detect(shp_fls_lst, "bc_shapefile") == T])
+# plot(bc_shp)
+
+# BC eco-province
+bc_ecoprv_shp <- vect(shp_fls_lst[str_detect(shp_fls_lst, "bc_ecoprovince") == T])
+# plot(bc_ecoprv_shp)
+# text(bc_ecoprv_shp, "code", cex = 0.8, col = "black")
+
+# Remove coastal ecoprovince
+bc_ecoprv_shp %<>%
+  filter(code != 'NEP')
+# plot(bc_ecoprv_shp)
+# text(bc_ecoprv_shp, "code", cex = 0.8, col = "black")
 
 # BC eco-regions
-bc_ecoprv_shp <-
-  st_read(shp_fls_lst[str_detect(shp_fls_lst, "bc_ecoprovince") == T])
-# plot(st_geometry(bc_ecoprv_shp))
+bc_ecorgn_shp <-vect(shp_fls_lst[str_detect(shp_fls_lst, "bc_ecoregions") == T])
+# plot(bc_ecorgns_shp)
+
+# BC eco-sections
+bc_ecosec_shp <- vect(shp_fls_lst[str_detect(shp_fls_lst, "bc_ecosections") == T])
+# plot(bc_ecosec_shp)
+# bc_ecosec_shp$ECOSEC_NM
+bc_ecosec_shp <- project(bc_ecosec_shp, "EPSG:4326")
+
+# FLP tables ( Forest landscape planning)
+bc_flp_shp <- vect(shp_fls_lst[str_detect(shp_fls_lst, "flp") == T])
+# plot(bc_flp_shp)
+
+bc_flp_shp %<>%
+  mutate(flp_unit_nam = paste0('FLP- ', ORG_UNIT))
 
 # BC watersheds
-bc_wtrshd_shp <-
-  st_read(shp_fls_lst[str_detect(shp_fls_lst, "bc_watersheds") == T])
-# plot(st_geometry(bc_wtrshd_shp))
+bc_wtrshd_shp <- vect(shp_fls_lst[str_detect(shp_fls_lst, "bc_watersheds") == T])
+# plot(bc_wtrshd_shp)
 
-# Western North America
-na_shp <-
-  st_read(shp_fls_lst[str_detect(shp_fls_lst, "north_america") == T])
-sf_use_s2(FALSE)
+# BC FWA watersheds ( Freshwater atlas watersheds)
+bc_fwa_shp <- vect(shp_fls_lst[str_detect(shp_fls_lst, "fwa_watersheds") == T])
+# plot(bc_wtrshd_shp)
+bc_fwa_shp <- project(bc_fwa_shp, "EPSG:4326")
 
-wna_shp <-
-  st_crop(
-    na_shp,
-    xmin = xmi,
-    ymin = ymi,
-    xmax = xmx,
-    ymax = ymx
-  )
-# plot(st_geometry(wna_shp))
-# wna_shp <- sf::st_cast(wna_shp, "MULTIPOLYGON")
+# BC municipalities
+bc_muni_shp <-  vect(shp_fls_lst[str_detect(shp_fls_lst, "bc_municipalities") == T])
+# plot(bc_muni_shp)
+bc_muni_shp <- project(bc_muni_shp, "EPSG:4326")
 
 ## Months, parameters ----
 months_nam <-
   c(
-    "annual",
-    "winter",
-    "spring",
-    "summer",
-    "fall",
-    "Jan",
-    "Feb",
-    "Mar",
-    "Apr",
-    "May",
-    "Jun",
-    "Jul",
-    "Aug",
-    "Sep",
-    "Oct",
-    "Nov",
-    "Dec"
+    "annual","winter","spring","summer","fall",
+    "Jan","Feb","Mar","Apr","May","Jun","Jul",
+    "Aug","Sep","Oct","Nov","Dec"
   )
 months_nam
 
@@ -119,10 +127,10 @@ parameters <- c("tmean", "tmax", "tmin", "prcp","vpd","rh","soil_moisture")
 parameters
 
 min_year <- 1951
-max_year <- 2024
+max_year <- 2025
 
-update_month <- "December"
-update_year <- "2023"
+update_month <- "April"
+update_year <- "2025"
 
 years <- seq(min_year, max_year, 1)
 yr_choices <- sort(years, decreasing = T)
@@ -140,7 +148,7 @@ ano_dt_fl %<>%
          par = str_extract(ano_dt_fls,
                            paste(parameters, collapse = "|")))
 
-## Climatology Data files -----
+## Climatology Data files -----------------------------
 list.files(path = ano_dt_pth,
            pattern = ".*_clm_.*\\.nc",
            full.names = T) -> clm_dt_fls
@@ -151,14 +159,26 @@ clm_dt_fl %<>%
   mutate(par = str_extract(clm_dt_fls,
                            paste(parameters, collapse = "|")))
 
-#  UI ----
+
+# for reports
+report_suffixes <- c(
+  "apr2025", "mar2025", "feb2025", "jan2025",
+  "ann2024",
+  "dec2024", "nov2024", "oct2024", "sep2024",
+  "aug2024", "jul2024", "jun2024", "may2024", "apr2024", "mar2024",
+  "feb2024", "jan2024", "dec2023", "nov2023", "oct2023", "sep2023",
+  "longterm"
+)
+
+
+#  UI --------------------------------------
 ui <- fluidPage(
   navbarPage(
     id = "bc_clm",
     title = "BC Climate Anomaly",
     theme = "bcgov.css",
 
-    ## Intro page ----
+    ## Intro page --------------------------
     tabPanel(
       title = "Introduction",
       value = "intro",
@@ -192,14 +212,14 @@ ui <- fluidPage(
               <a href= 'mailto: Aseem.Sharma@gov.bc.ca'>Aseem.Sharma@gov.bc.ca</a> <br>
               <br>
               <h4><b>Code</b></h4>
-              <h5> The code and data of this app are available through GitHub at <a href='https://github.com/bcgov/bc_climate_anomaly.git'> https://github.com/bcgov/bc_climate_anomaly.</a></h5>"
+              <h5> The code and data of this app are available through GitHub at <a href='https://github.com/bcgov/bc_climate_anomaly.git' target='_blank'> https://github.com/bcgov/bc_climate_anomaly.</a></h5>"
           )
         ),
         column(
           width = 12,
           HTML(
             "<h5> <b>Disclaimer</b><h5>
-              <h8>  This report has been prepared using <a href='https://www.ecmwf.int/en/era5-land'>ERA5-Land</a> data
+              <h8>  This app and the climate reports here have been prepared using <a href='https://www.ecmwf.int/en/era5-land'>ERA5-Land</a> data
               from the European Centre for Medium-Range Weather Forecasts (ECMWF),
               as available at the time of preparation.
               Please note that the original data may be subject to updates or revisions.
@@ -208,7 +228,8 @@ ui <- fluidPage(
         ),
         column(width = 12,
                textOutput("deploymentDate"),),
-        ###### footer ----
+
+    ###### footer ----------------------------
         column(
           width = 12,
           style = "background-color:#003366; border-top:2px solid #fcba19;",
@@ -253,11 +274,11 @@ ui <- fluidPage(
       )
     ),
 
-    ## About page ----
+    ## About page ---------------------
     tabPanel(
       "About",
-      includeMarkdown("about_bc_climate_anomaly_app.Rmd"),
-      ###### footer ----
+      withMathJax(includeMarkdown("about_bc_climate_anomaly_app.Rmd")),
+      ###### footer ---------------------------
       column(
         width = 12,
         style = "background-color:#003366; border-top:2px solid #fcba19;",
@@ -301,7 +322,7 @@ ui <- fluidPage(
       )
     ),
 
-    ## App page ----
+    ## App page ----------------------------
     tabPanel(
       title = "Anomaly App",
       sidebarLayout(
@@ -310,21 +331,40 @@ ui <- fluidPage(
           id = "selection-panel",
           # style = "position:fixed; width:24%; max-height: 100vh;",
           width = 3,
-          ##### filters -----
+          ##### Filters ------------------
           helpText(HTML("<h4><b> Filter/Selections</b> </h4>",)),
+          helpText(HTML("<p> After selection click <i> <b> Run Analysis</i></b> to get outputs. </p>",)),
           fluidRow(
             useShinyjs(),
             pickerInput(
               "major_area",
               "Select region ",
               choices = c("Western North America",
-                          "BC", "Ecoprovince", "Watersheds")
+                          "BC", "Ecoprovinces", "Ecoregions", 'Ecosections', "Major watersheds",
+                          'FWA watersheds', 'FLP boundaries', 'Municipalities'),
+              selected = 'BC'
             ),
             hidden(
               pickerInput(
                 "ecoprov_area",
-                "Ecoregion",
-                choices = c("All_Ecoprovince", c(bc_ecoprv_shp$name)),
+                "Ecoprovinces",
+                choices = c("Ecoprovinces (select one)", c(bc_ecoprv_shp$name)),
+                multiple = F
+              )
+            ),
+            hidden(
+              pickerInput(
+                "ecorgn_area",
+                "Ecoregions",
+                choices = c("Ecoregions (select one)", c(bc_ecorgn_shp$CRGNNM)),
+                multiple = F
+              )
+            ),
+            hidden(
+              pickerInput(
+                "ecosec_area",
+                "Ecosections",
+                choices = c("Ecosections (select one)", c(bc_ecosec_shp$ECOSEC_NM)),
                 multiple = F
               )
             ),
@@ -332,11 +372,36 @@ ui <- fluidPage(
               selectInput(
                 "wtrshd_area",
                 "Watershed",
-                choices = c("All_watersheds", c(bc_wtrshd_shp$MJR_WTRSHM)),
+                choices = c("Major watersheds (select one)", c(bc_wtrshd_shp$MJR_WTRSHM)),
                 multiple = F
               )
             ),
-            HTML("(Western North America, BC, Ecoprovince, Watersheds)"),
+            hidden(
+              selectInput(
+                "fwa_area",
+                "FWA watersheds",
+                choices = c("FWA watersheds (select one)", c(bc_fwa_shp$WATERSHE_2)),
+                multiple = F
+              )
+            ),
+            hidden(
+              selectInput(
+                "flp_area",
+                "FLP boundaries",
+                choices = c("FLP boundaries (select one)", c(bc_flp_shp$flp_unit_nam)),
+                multiple = F
+              )
+            ),
+            hidden(
+              pickerInput(
+                "muni_area",
+                "Municipalities",
+                choices = c("Municipalities (select one)", c(bc_muni_shp$ABRVN)),
+                multiple = F
+              )
+            ),
+            HTML("(Western North America, BC, Eco-provinces/regions/sections,
+                 Major Watersheds, FWA watersheds, FLP boundaries, Municipalities)"),
           ),
           br(),
           fluidRow(offset = 3,
@@ -371,93 +436,120 @@ ui <- fluidPage(
                         choices = yr_choices,
                         multiple = T,
                         selected = max_year)),
-            # Reset selection
+
+            # Run analysis and Reset selection
+           br(),
+           actionButton("run_ana_button", "Run analysis"), actionButton("reset_input", "Reset"),
             br(),
-            actionButton("reset_input", "Reset"),
-            # actionButton("execute_app", "Execute")
-          ),
+           ),
           fluidRow(column(
             HTML("<h4><b>Location Map</b> </h4>"),
             title = "Map Location",
             width = 12,
-            leafletOutput("loc_map", height = "22vh")
+            withSpinner(leafletOutput("loc_map", height = "22vh"),type = 6)
           )),
           br(),
-        ),
+          br(),
+          fluidRow(column(width = 12, wellPanel(
+            style = "background-color: white;",
+            HTML(
+              '<h4>For climate extreme indices (CEI) refer to <a href="https://bcgov-env.shinyapps.io/bc_climate_extremes_app/" target="_blank"><b>bc_climate_extremes_app</b></a></h4>'
+            )
+            ,
+          ))),
+
+      ),
         mainPanel(
           tags$head(tags$style(HTML(
             '.box {margin: 25px;}'
           ))),
           width = 9,
-          ##### Anomaly map plot ------
-          column(width = 12,
+      ##### Linear trends and spatial anomaly map plots and summary ---------------------
+          column(width = 10,
                  wellPanel(
-                   HTML("<h4><b>Spatial anomaly map</b> </h4>")
+                   HTML("<h4><b> Time series, linear trends and spatial anomaly maps</b> </h4>")
                  )),
           fluidRow(column(
             width = 12,
-            box(
+            offset = 0.1,
+            tabBox(
               width = 12,
-              plotOutput("ano_map", height = "70vh"),
-              downloadButton(outputId = "download_ano_plt",
-                             label = "Download plot"),
-              downloadButton(outputId = "download_ano_data",
-                             label = "Download raster data"),
+              tabPanel(
+                width = 12,
+                status = 'primary',
+                title = "Time-series plot",
+                withSpinner(plotlyOutput("lnr_trn_plt", height = "60vh"),type =6),
+                downloadButton(outputId = "download_lnr_trn_plt",
+                               label = "Download plot"),
+                downloadButton(outputId = "download_ano_ts_data",
+                               label = "Download anomaly time series data"),
+              ),
+              tabPanel(
+                width = 12,
+                status = 'primary',
+                title = "Spatial anomaly maps",
+                withSpinner(plotOutput("sptl_ano_map", height = "70vh"),type =6),
+                downloadButton(outputId = "download_sptl_ano_plt",
+                               label = "Download plot"),
+                downloadButton(outputId = "download_sptl_ano_data",
+                               label = "Download raster data"),
+              ),
             )
           )),
-          ###### climate normal map and anomalies overview ----
+  ###### climate normal map and  spatial trends maps (1950s 1980s) --------------------------
           fluidRow(
             box(
-              width = 6,
+              width = 4,
               align="left",
               wellPanel(HTML(
                 "<h5><b>Climate Normal (1981-2010)</b> </h5>"
               )),
               uiOutput("clm_nor_title", height = "30vh"),
-              plotOutput("clm_nor_map", width = "100%", height = "30vh"),
+              withSpinner(plotOutput("clm_nor_map", width = "100%", height = "30vh"),type =6),
               downloadButton(outputId = "download_clm_nor_plt",
                              label = "Download plot"),
               downloadButton(outputId = "download_clm_nor_data",
                              label = "Download raster data"),
             ),
             box(
-              width = 6,
-              status = "primary",
-              wellPanel(HTML("<h5><b>Anomalies Overview</b> </h5>")),
-              uiOutput("anomaly_overview", height = "30vh"),
-              br(),
-              DTOutput('ano_ovr_tbl')
+              width = 4,
+              align="left",
+              wellPanel(HTML(
+                "<h5><b> Spatial trends since 1950 </b> </h5>"
+              )),
+              uiOutput("clm_trn50_title", height = "30vh"),
+              withSpinner(plotOutput("clm_trn50_map", width = "100%", height = "30vh"),type =6),
+              downloadButton(outputId = "download_clm_trn50_plt",
+                             label = "Download plot"),
+              downloadButton(outputId = "download_clm_trn50_data",
+                             label = "Download raster data"),
+            ),
+            box(
+              width = 4,
+              align="left",
+              wellPanel(HTML(
+                "<h5><b> Spatial trends since 1980 </b> </h5>"
+              )),
+              uiOutput("clm_trn80_title", height = "30vh"),
+              withSpinner(plotOutput("clm_trn80_map", width = "100%", height = "30vh"),type =6),
+              downloadButton(outputId = "download_clm_trn80_plt",
+                             label = "Download plot"),
+              downloadButton(outputId = "download_clm_trn80_data",
+                             label = "Download raster data"),
             )
           ),
-          ##### trend plots ----
-          column(width = 12,
-                 wellPanel(
-                   HTML("<h4><b>Time-series and trend </b> </h4>")
-                 )),
-          fluidRow(column(
-            width = 12,
-            offset = 0.5,
-            tabBox(
-              width = 12,
-              tabPanel(
-                status = 'primary',
-                title = "Time-series plot",
-                plotlyOutput("spatial_trn_plt", height = "60vh"),
-                downloadButton(outputId = "download_avtrn_plt",
-                               label = "Download plot"),
-                downloadButton(outputId = "download_ano_ts_data",
-                               label = "Download anomaly time series data"),
-              ),
-              # tabPanel(
-              #   status = 'primary',
-              #   title = "Timeseries line plot",
-              #   echarts4rOutput("echarts_trn_plt", height = "50vh")
-              # )
-            )
-          )),
+
+  ##### App disclaimer -----------------------
+
+  column(width = 12,
+           HTML("<h5><b> Disclaimer:</b> </h5> <h6> This analysis utilizes ERA5-Land data.
+                Any modifications to the dataset or discrepancies in the results due to data
+                changes should be carefully considered by users. </h6>")
+         ),
         ),
       ),
-      ##### footer -----
+
+      ##### footer ---------------------------
       HTML("<br>",
            "<br>"),
       column(
@@ -499,51 +591,36 @@ ui <- fluidPage(
       )
     ),
 
-    ## Report ----
+    ## Report -----------------------------
     tabPanel(
       title = "Reports",
       value = "report",
-      column(width = 12,
-             wellPanel(
-               HTML("<h3><b>BC climate summary and anomaly reports</b></h2>"),
-               HTML(
-                 "<h4>The following links provide reports on monthly climate summary and spatial climate anomaly map and long term trends in HTML format.</h>"
-               )
-             ),
-            fluidPage(#   fluidRow(
-              #   box(
-              #     width = 8,
-              #     status = "primary",
-              #     height = "12vh",
-              #     uiOutput("doc_pdf")
-              #   )
-              # ),
-              fluidRow(
-                box(
-                  width = 8,
-                  height = "60vh",
-                  status = "primary",
-                  uiOutput("doc_html_ann_summ_2024"),
-                  uiOutput("doc_html_mon_summ_dec2024"),
-                  uiOutput("doc_html_mon_summ_nov2024"),
-                  uiOutput("doc_html_mon_summ_oct2024"),
-                  uiOutput("doc_html_mon_summ_sep2024"),
-                  uiOutput("doc_html_mon_summ_aug2024"),
-                  uiOutput("doc_html_mon_summ_jul2024"),
-                  uiOutput("doc_html_mon_summ_jun2024"),
-                  uiOutput("doc_html_mon_summ_may2024"),
-                  uiOutput("doc_html_mon_summ_apr2024"),
-                  uiOutput("doc_html_mon_summ_mar2024"),
-                  uiOutput("doc_html_mon_summ_feb2024"),
-                  uiOutput("doc_html_mon_summ_jan2024"),
-                  uiOutput("doc_html_mon_summ_dec2023"),
-                  uiOutput("doc_html_mon_summ_nov2023"),
-                  uiOutput("doc_html_mon_summ_oct2023"),
-                  uiOutput("doc_html_mon_summ_sep2023"),
-                  uiOutput("doc_html_longterm_rep")
-                )
-              ))),
-      ###### footer ----
+      column(
+        width = 12,
+        wellPanel(
+          HTML("<h3><b>BC climate summary and anomaly reports</b></h3>"),
+          HTML("<h4>The following links provide reports on monthly climate summaries, spatial anomaly maps, and long-term trends in HTML format.</h4>")
+        ),
+        fluidPage(
+          fluidRow(
+            box(
+              width = 12,
+              status = "primary",
+              div(
+                style = "display: flex; flex-wrap: wrap; gap: 24px;",
+                lapply(report_suffixes, function(suffix) {
+                  tags$div(
+                    style = "display: inline-block;",
+                    uiOutput(paste0("doc_html_mon_summ_", suffix))
+                  )
+                })
+              )
+            )
+          )
+        )
+      ),
+
+      ###### footer ----------------------------
       column(
         width = 12,
         style = "background-color:#003366; border-top:2px solid #fcba19;",
@@ -582,7 +659,7 @@ ui <- fluidPage(
         )
       )
     ),
-    ## Climate Stripes  ----
+    ## Climate Stripes  -----------------------
     tabPanel(
       title = "Climate stripes",
       value = "clm_stripes",
@@ -629,7 +706,7 @@ ui <- fluidPage(
                          label = "Download climate stripe plot wihtout title"),
           imageOutput("bc_clm_strp_withouttitle"))
       ),
-        ###### footer ----
+        ###### footer ---------------------
         column(
           width = 12,
           style = "background-color:#003366; border-top:2px solid #fcba19;",
@@ -673,7 +750,7 @@ ui <- fluidPage(
         )
       ),
 
-    ## Feedback and links ----
+    ## Feedback and links --------------------------
     tabPanel(
       title = "Feedback & Links",
       value = "feed_link",
@@ -695,10 +772,12 @@ ui <- fluidPage(
           "<h5><b>Here are the links to other apps developed in FFEC.</b></h5>
           <a href= 'https://bcgov-env.shinyapps.io/cmip6-BC/'> CMIP6-BC </a>
                                <br>
+         <a href= 'https://bcgov-env.shinyapps.io/bc_climate_extremes_app/'> BC_climate_extremes_app </a>
+                               <br>
           <br>"
         )
       ),
-      ###### footer ----
+      ###### footer -----------------------
       column(
         width = 12,
         style = "background-color:#003366; border-top:2px solid #fcba19;",
@@ -747,35 +826,173 @@ ui <- fluidPage(
 server <- function(session, input, output) {
   options(warn = -1)
 
-  # Maps and plots tab ----
-  # Filters ------
-  # # Filter : Area
-  observeEvent(input$major_area, {
-    if (input$major_area == "Ecoprovince") {
-      showElement("ecoprov_area")
-      hideElement("wtrshd_area")
-    } else if (input$major_area == "Watersheds") {
-      showElement("wtrshd_area")
-      hideElement("ecoprov_area")
-    } else{
-      hideElement("ecoprov_area")
-      hideElement("wtrshd_area")
-    }
+# Maps and plots tab ---------------------
+  # Filters, selections, namings  -----------------------
+  ## Filter : Area ----------------------------
+    observeEvent(input$major_area, {
+      if (input$major_area == "Ecoprovinces") {
+        showElement("ecoprov_area")
+        hideElement("wtrshd_area")
+        hideElement("fwa_area")
+        hideElement("flp_area")
+        hideElement("ecorgn_area")
+        hideElement("ecosec_area")
+        hideElement("muni_area")
+      } else if (input$major_area == "Ecoregions"){
+        hideElement("ecoprov_area")
+        hideElement("wtrshd_area")
+        hideElement("fwa_area")
+        hideElement("flp_area")
+        showElement("ecorgn_area")
+        hideElement("ecosec_area")
+        hideElement("muni_area")
+      } else if (input$major_area == "Ecosections"){
+        hideElement("ecoprov_area")
+        hideElement("wtrshd_area")
+        hideElement("fwa_area")
+        hideElement("flp_area")
+        hideElement("ecorgn_area")
+        showElement("ecosec_area")
+        hideElement("muni_area")
+      } else if (input$major_area == "Major watersheds") {
+        hideElement("ecoprov_area")
+        showElement("wtrshd_area")
+        hideElement("fwa_area")
+        hideElement("flp_area")
+        hideElement("ecorgn_area")
+        hideElement("ecosec_area")
+        hideElement("muni_area")
+      } else if (input$major_area == "FWA watersheds") {
+        hideElement("ecoprov_area")
+        hideElement("wtrshd_area")
+        showElement("fwa_area")
+        hideElement("flp_area")
+        hideElement("ecorgn_area")
+        hideElement("ecosec_area")
+        hideElement("muni_area")
+      } else if (input$major_area == "Municipalities") {
+        hideElement("ecoprov_area")
+        hideElement("wtrshd_area")
+        hideElement("fwa_area")
+        hideElement("flp_area")
+        hideElement("ecorgn_area")
+        hideElement("ecosec_area")
+        showElement("muni_area")
+      }  else if (input$major_area == "FLP boundaries") {
+        hideElement("ecoprov_area")
+        hideElement("wtrshd_area")
+        hideElement("fwa_area")
+        showElement("flp_area")
+        hideElement("ecorgn_area")
+        hideElement("ecosec_area")
+        hideElement("muni_area")
+      } else {
+        hideElement("muni_area")
+        hideElement("ecosec_area")
+        hideElement("ecorgn_area")
+        hideElement("ecoprov_area")
+        hideElement("wtrshd_area")
+        hideElement("fwa_area")
+        hideElement("flp_area")
+      }
+    })
 
-    # to select watersheds within Ecoprovince
+    ### Area (interactive shapefiles )
 
-    # selection1 <- input$ecoprov_area
-    # if(input$wtrshd_area != "All"){
-    #   updatePickerInput(session, "wtrshd_area", choices = "All")
-    # }
-    # if(selection1 %in% eco_wrtshd$eco_nm){
-    #   options2 <- eco_wrtshd[eco_nm == selection1, wrt_nm]
-    #   updatePickerInput(session, "wtrshd_area", choices = c("All", options2),selected = "All")
-    # }
+    get_shapefile <- reactive({
+      if (input$major_area == "Western North America") {
+        sel_area_shpfl <- wna_shp
 
-  })
+      } else if (input$major_area == "BC") {
+        sel_area_shpfl <- bc_shp
 
-  # Filter : parameter
+      } else if (input$major_area == "Ecoprovinces") {
+        if (input$ecoprov_area == "Ecoprovinces (select one)") {
+          sel_area_shpfl <- bc_shp
+        } else {
+          sel_area_shpfl <- bc_ecoprv_shp %>%
+            filter(name == input$ecoprov_area)
+        }
+
+      } else if (input$major_area == "Ecoregions") {
+        if (input$ecorgn_area == "Ecoregions (select one)") {
+          sel_area_shpfl <- bc_shp
+        } else {
+          sel_area_shpfl <- bc_ecorgn_shp %>%
+            filter(CRGNNM == input$ecorgn_area)
+        }
+
+      } else if (input$major_area == "Ecosections") {
+        if (input$ecosec_area == "Ecosections (select one)") {
+          sel_area_shpfl <- bc_shp
+        } else {
+          sel_area_shpfl <- bc_ecosec_shp %>%
+            filter(ECOSEC_NM == input$ecosec_area)
+        }
+
+      } else if (input$major_area == "Major watersheds") {
+        if (input$wtrshd_area == "Major watersheds (select one)") {
+          sel_area_shpfl <- bc_shp
+        } else {
+          sel_area_shpfl <- bc_wtrshd_shp %>%
+            filter(MJR_WTRSHM == input$wtrshd_area)
+        }
+
+      } else if (input$major_area == "FWA watersheds") {
+        if (input$fwa_area == "FWA watersheds (select one)") {
+          sel_area_shpfl <- bc_shp
+        } else {
+          sel_area_shpfl <- bc_fwa_shp %>%
+            filter(WATERSHE_2 == input$fwa_area)
+        }
+
+      } else if (input$major_area == "FLP boundaries") {
+        if (input$flp_area == "FLP boundaries (select one)") {
+          sel_area_shpfl <- bc_shp
+        } else {
+          sel_area_shpfl <- bc_flp_shp %>%
+            filter(flp_unit_nam == input$flp_area)
+        }
+      } else if (input$major_area == "Municipalities") {
+        if (input$muni_area == "Municipalities (select one)") {
+          sel_area_shpfl <- bc_shp
+        } else {
+          sel_area_shpfl <- bc_muni_shp %>%
+            filter(ABRVN == input$muni_area)
+        }
+      }
+
+      sel_area_shpfl
+    })
+
+    # Region name (interactive)
+    get_region <- reactive({
+      region <- NULL
+
+      if (input$major_area == "BC") {
+        region <- "BC"
+      } else if (input$major_area == "Western North America") {
+        region <- "Western North America"
+      } else if (input$major_area == "Ecoprovinces") {
+        region <- input$ecoprov_area
+      } else if (input$major_area == "Ecoregions") {
+        region <- input$ecorgn_area
+      } else if (input$major_area == "Ecosections") {
+        region <- input$ecosec_area
+      } else if (input$major_area == "Municipalities") {
+        region <- input$muni_area
+      } else if (input$major_area == "Major watersheds") {
+        region <- input$wtrshd_area
+      } else if (input$major_area == "FWA watersheds") {
+        region <- input$fwa_area
+      } else if (input$major_area == "FLP boundaries") {
+        region <- input$flp_area
+      }
+
+      region
+    })
+
+  ## Filter : variable ---------------------------------
 
   output$par_picker <- renderUI({
     par_choices <- parameters
@@ -797,7 +1014,7 @@ server <- function(session, input, output) {
     )
   })
 
-  # Filter : month
+  ## Filter : time  --------------------------------------
   output$month_picker <- renderUI({
     mon_choices <- months_nam
     mon_choices <- list(
@@ -824,57 +1041,27 @@ server <- function(session, input, output) {
       "Select month or season or annual"
       ,
       choices = mon_choices,
-      selected = "summer"
+      selected = "annual"
     )
   })
-  # Filter year range or specific year (s)
-  # output$year_range <- renderUI({
-  #   min_year <- min_year
-  #   max_year <- max_year
-  #   sliderInput(
-  #     "year_range",
-  #     "Select range of years or specific year (s)"
-  #     ,
-  #     min_year,
-  #     max_year
-  #     ,
-  #     value = c((max_year - 5), (max_year)),
-  #     sep = ""
-  #   )
-  # })
-
-  # # Filter by year of choice
-  # output$year_specific <- renderUI({
-  #   yr_choices <- sort(years, decreasing = T)
-  #   selectInput("year_specific",
-  #               "year(s)",
-  #               choices = yr_choices,
-  #               multiple = T,
-  #               selected = max_year)
-  # })
 
   #interactive years choices
-
   whichInput <- reactiveValues(type = "range")
-
-
   observeEvent(input$rng_years_choose, {
-
     showElement("year_range")
     hideElement("year_specific")
     whichInput$type <- "range"
-
   })
 
   observeEvent(input$ab_years_choose, {
     showElement("year_specific")
     hideElement("year_range")
     whichInput$type <- "specific"
-
   })
 
 
-  # get values for naming etc ------
+  # Get values (variables name and unit )-------------------------
+  ### Years
   get_years <- reactive({
     if (whichInput$type == "specific") {
       sel_yrs <- input$year_specific
@@ -883,48 +1070,8 @@ server <- function(session, input, output) {
     }
   })
 
-  # Area shape file interactive
 
-  get_shapefile <- reactive({
-    if (input$major_area == "BC") {
-      sel_area_shpfl <- bc_shp
-    } else if (input$major_area == "Western North America") {
-      sel_area_shpfl <- wna_shp
-    } else if (input$major_area == "Ecoprovince") {
-      bc_ecoprv_shp %>%
-        filter(name == input$ecoprov_area) -> sel_area_shpfl
-      if (input$ecoprov_area == "All_Ecoprovince")
-        sel_area_shpfl <- bc_shp
-    } else if (input$major_area == "Watersheds") {
-      bc_wtrshd_shp %>%
-        filter(MJR_WTRSHM == input$wtrshd_area) -> sel_area_shpfl
-      if (input$wtrshd_area == "All_watersheds")
-        sel_area_shpfl <- bc_shp
-    }
-    sel_area_shpfl
-  })
-
-  # Get unit interactively
-  # Units
-  get_unit <- reactive({
-    req(input$par_picker)
-    if (input$par_picker == "tmax" | input$par_picker == "tmin" | input$par_picker == "tmean") {
-      unt <- "°C"
-    } else if (input$par_picker == "prcp") {
-      unt <- "mm"
-    } else if (input$par_picker == "rh") {
-      unt <- "%"
-    } else if (input$par_picker == "vpd") {
-      unt <- "kPa"
-    } else if (input$par_picker == "soil_moisture") {
-      unt <- "m\U00B3/m"
-    }else {
-      unt <- " "
-    }
-    unt
-  })
-
-  #Get parameter name full
+  # Variables ( parameters) full name (interactive)
   get_par_full <-  reactive({
     req(input$par_picker)
     if (input$par_picker == 'tmin') {
@@ -945,70 +1092,138 @@ server <- function(session, input, output) {
     parr_full
   })
 
-# Get months name full
-  get_mon_full <-  reactive({
-    req(input$month_picker)
-    if (input$month_picker == 'annual') {
-      mon_full = "annual"
-    } else if (input$month_picker == 'spring') {
-      mon_full = "spring"
-    } else if (input$month_picker == 'summer') {
-      mon_full = "summer"
-    } else if (input$month_picker == 'fall') {
-      mon_full = "fall"
-    } else if (input$month_picker == 'winter') {
-      mon_full = "winter"
-    } else if (input$month_picker == 'Jan') {
-      mon_full = "January"
-    } else if (input$month_picker == 'Feb') {
-      mon_full = "February"
-    } else if (input$month_picker == 'Mar') {
-      mon_full = "March"
-    } else if (input$month_picker == 'Apr') {
-      mon_full = "April"
-    } else if (input$month_picker == 'May') {
-      mon_full = "May"
-    } else if (input$month_picker == 'Jun') {
-      mon_full = "June"
-    } else if (input$month_picker == 'Jul') {
-      mon_full = "July"
-    } else if (input$month_picker == 'Aug') {
-      mon_full = "August"
-    } else if (input$month_picker == 'Sep') {
-      mon_full = "September"
-    } else if (input$month_picker == 'Oct') {
-      mon_full = "October"
-    } else if (input$month_picker == 'Nov') {
-      mon_full = "November"
-    } else if (input$month_picker == 'Dec') {
-      mon_full = "December"
+  ## Units ( interactive)
+  get_unit <- reactive({
+    req(input$par_picker)
+    if (input$par_picker == "tmax" | input$par_picker == "tmin" | input$par_picker == "tmean") {
+      unt <- "°C"
+    } else if (input$par_picker == "prcp") {
+      unt <- "mm"
+    } else if (input$par_picker == "rh") {
+      unt <- "%"
+    } else if (input$par_picker == "vpd") {
+      unt <- "kPa"
+    } else if (input$par_picker == "soil_moisture") {
+      unt <- "m\U00B3/m"
+    }else {
+      unt <- " "
     }
+    unt
+  })
+
+# Months/Seasons full name ( interactive)
+  get_mon_full <- reactive({
+    req(input$month_picker)
+
+    month_lookup <- c(
+      annual = "Annual",
+      spring = "Spring",
+      summer = "Summer",
+      fall = "Fall",
+      winter = "Winter",
+      Jan = "January", Feb = "February", Mar = "March", Apr = "April",
+      May = "May", Jun = "June", Jul = "July", Aug = "August",
+      Sep = "September", Oct = "October", Nov = "November", Dec = "December"
+    )
+
+    mon_full <- month_lookup[[input$month_picker]]
+
+    if (is.null(mon_full)) mon_full <- "Unknown"
     mon_full
   })
 
-  #Get regions name
-  get_region <- reactive({
-    if (input$major_area == "BC") {
-      region = "BC"
-    } else if (input$major_area == "Western North America") {
-      region = "Western North America"
-    } else if (input$major_area == "Ecoprovince") {
-      region = input$ecoprov_area
-    } else if (input$major_area == "Watersheds") {
-      region = region = input$wtrshd_area
+  # Location map plot -------------------------------------------
+  output$loc_map <- renderLeaflet({
+    req(
+      input$ecoprov_area,
+      input$wtrshd_area,
+      input$major_area,
+      input$fwa_area,
+      input$flp_area
+    )
+
+    # Default shape
+    sel_area_shpfl <- get_shapefile()
+    lyr_id <- NULL
+
+    # Select appropriate shapefile based on inputs
+    if (input$major_area == "Major watersheds" &&
+        input$wtrshd_area == "Major_watersheds (select one)") {
+      sel_area_shpfl <- bc_wtrshd_shp['MJR_WTRSHM']
+      lyr_id <- "MJR_WTRSHM"
+
+    } else if (input$major_area == "Ecoprovinces" &&
+               input$ecoprov_area == "Ecoprovinces (select one)") {
+      sel_area_shpfl <- bc_ecoprv_shp['name']
+      lyr_id <- "name"
+
+    } else if (input$major_area == "Ecoregions" &&
+               input$ecorgn_area == "Ecoregions (select one)") {
+      sel_area_shpfl <- bc_ecorgn_shp['CRGNNM']
+      lyr_id <- "CRGNNM"
+
+    } else if (input$major_area == "Ecosections" &&
+               input$ecosec_area == "Ecosections (select one)") {
+      sel_area_shpfl <- bc_ecosec_shp['ECOSEC_NM']
+      lyr_id <- "ECOSEC_NM"
+
+    } else if (input$major_area == "Municipalities" &&
+               input$muni_area == "Municipalities (select one)") {
+      sel_area_shpfl <- bc_muni_shp['ABRVN']
+      lyr_id <- "ABRVN"
+
+    } else if (input$major_area == "FLP boundaries" &&
+               input$flp_area == "FLP boundaries (select one)") {
+      sel_area_shpfl <- bc_flp_shp['flp_unit_nam']
+      lyr_id <- "flp_unit_nam"
     }
-    region
+
+    # Render leaflet map
+    leaflet(sel_area_shpfl) %>%
+      addTiles() %>%
+      addPolygons(
+        layerId = if (!is.null(lyr_id)) as.formula(paste0("~", lyr_id)) else NULL,
+        popup = if (!is.null(lyr_id)) as.formula(paste0("~", lyr_id)) else NULL,
+        color = "Red",
+        weight = 1,
+        opacity = 1,
+        fill = TRUE,
+        fillOpacity = 0
+      )
   })
 
-  # Spatial anomaly data : reactive to selection
-  reactive_ano_dt_fl <- reactive({
+  observeEvent(input$loc_map_shape_click, {
+    nm <- input$loc_map_shape_click$id
+    print(nm)
+
+    switch(input$major_area,
+           "Ecoprovinces"   = updatePickerInput(session, "ecoprov_area", selected = nm),
+           "Ecoregions"     = updateSelectInput(session, "ecorgn_area", selected = nm),
+           "Ecosections"    = updateSelectInput(session, "ecosec_area", selected = nm),
+           "Major watersheds" = updateSelectInput(session, "wtrshd_area", selected = nm),
+           "FLP boundaries" = updateSelectInput(session, "flp_area", selected = nm),
+           "Municipalities" = updateSelectInput(session, "muni_area", selected = nm)
+           # "FWA watersheds" = updateSelectInput(session, "fwa_area", selected = nm)
+    )
+  })
+
+
+  # Spatial anomaly data and plot:  Reactive ----------------------------------------------------------------
+
+  spatial_ano_dt_plt_rct <- eventReactive(input$run_ana_button, {
     req(input$par_picker)
     req(input$month_picker)
     req(input$year_range)
 
+    ## Filtered spatial anomaly data  ----------
+
     ano_dt_fl %>%
       filter(mon == input$month_picker &
                par == input$par_picker) -> ano_dt_fl_mon
+
+    monn = input$month_picker
+    parr = input$par_picker
+
     ano_dt_sel_rast <- rast(ano_dt_fl_mon$dt_pth)
     ano_dt_sel_rast
     # plot(ano_dt_sel_rast)
@@ -1018,42 +1233,40 @@ server <- function(session, input, output) {
     sel_area_shpfl <- get_shapefile()
     #browser()
 
-# For sample run ----
-#
-# monn = "Dec"
-# parr = "tmean"
-# sel_yrs <- seq(1951,2023,1)
-# sel_yrs
-# sel_area_shpfl <- bc_shp
-# sel_area_shpfl
-# region = "BC"
-# ano_dt_fl %>%
-#   filter(mon == monn &
-#            par == parr) -> ano_dt_fl_mon
-# ano_dt_sel_rast <- rast(ano_dt_fl_mon$dt_pth)
-# ano_dt_sel_rast
-# # terra::plot(ano_dt_sel_rast,70:nlyr(ano_dt_sel_rast))
+    ### For sample run ----
+    # monn = "annual"
+    # parr = "tmean"
+    # sel_yrs <- seq(1951,2025,1)
+    # sel_yrs
+    # sel_area_shpfl <- wna_shp
+    # sel_area_shpfl
+    # region = "WNA"
+    # ano_dt_fl %>%
+    #   filter(mon == monn &
+    #            par == parr) -> ano_dt_fl_mon
+    # ano_dt_sel_rast <- rast(ano_dt_fl_mon$dt_pth)
+    # ano_dt_sel_rast
+    # terra::plot(ano_dt_sel_rast,70:nlyr(ano_dt_sel_rast))
 
-####
-
-# The spatial plot -------------------
     ano_dt_sel_rast <-
-      terra::crop(ano_dt_sel_rast, sel_area_shpfl, mask = T)
+      terra::crop(ano_dt_sel_rast,
+                  sel_area_shpfl,
+                  snap = "out",
+                  mask = T)
     ano_dt_sel_rast
     # plot(ano_dt_sel_rast)
     names(ano_dt_sel_rast)
-     # Filter for selected year (s)
-     sel_yrs <- get_years()
 
-    if (length(sel_yrs) > 30) {
-      sel_yrs <- sel_yrs[1:30]
-      shinyalert(
-        html = T,
-        text = tagList(h3(
-          "Too many years selected, maximum 30 allowed."
-        )),
-        showCancelButton = T
-      )
+    # Filter for selected year (s)
+    sel_yrs <- get_years()
+
+    if (length(sel_yrs) > 50) {
+      sel_yrs <- sel_yrs[1:50]
+      shinyalert(html = T,
+                 text = tagList(h3(
+                   "Too many years selected, maximum 50 allowed."
+                 )),
+                 showCancelButton = T)
     }
 
     yr_df <- tibble(paryr = names(ano_dt_sel_rast))
@@ -1061,30 +1274,11 @@ server <- function(session, input, output) {
       mutate(yr = as.numeric(str_extract(paryr, "[0-9]+")))
     names(ano_dt_sel_rast) <- yr_df$yr
 
-    ano_dt_fil_rast <-  subset(ano_dt_sel_rast,
-                               which(names(ano_dt_sel_rast) %in% sel_yrs))
-    ano_dt_fil_rast
-  })
-
-  # Create reactive anomaly plot for display and save ------
-  sp_ano_plt_rct <- reactive({
-    req(input$par_picker)
-    req(input$month_picker)
-    req(input$year_range)
-
-    # other requirements
-    monn = input$month_picker
-    parr = input$par_picker
-
-    # Clip by shapefile of the selected area
-    sel_area_shpfl <- get_shapefile()
-
-    reactive_ano_dt_fl() -> ano_dt_rast
-
-    # ano_dt_rast <-ano_dt_fil_rast
+    ano_dt_rast  <-  subset(ano_dt_sel_rast, which(names(ano_dt_sel_rast) %in% sel_yrs))
+    ano_dt_rast
 
     # Import climatology and calculate % anomaly for precipitation
-    names(ano_dt_rast)
+    # names(ano_dt_rast)
 
     clm_dt_fl %>%
       filter(par == parr) -> clm_dt_fl_par
@@ -1100,7 +1294,7 @@ server <- function(session, input, output) {
 
     # Crop to shpfile
     clm_dt_rast <-
-      terra::crop(clm_dt_sel_rast, sel_area_shpfl, mask = T)
+      terra::crop(clm_dt_sel_rast, sel_area_shpfl,snap="out", mask = T)
     # plot(clm_dt_rast)
     # plot(ano_dt_rast)
 
@@ -1118,6 +1312,41 @@ server <- function(session, input, output) {
     # plot(ano_dt_rast,40:44)
     ano_dt_rast
 
+    ## Spatial anomaly overview summary  --------
+
+    # Year range
+    minyr <- min(sel_yrs)
+    maxyr <- max(sel_yrs)
+
+    mn_ano <-
+      terra::global(ano_dt_rast, fun = "mean", na.rm = T)
+    mn_ano
+    mn_ano <- round(mean(mn_ano$mean, na.rm = T), 2)
+    mi_ano <- terra::global(ano_dt_rast, fun = "min", na.rm = T)
+    mi_ano <- round(min(mi_ano$min, na.rm = T), 2)
+    mx_ano <- terra::global(ano_dt_rast, fun = "max", na.rm = T)
+    mx_ano <- round(max(mx_ano$max, na.rm = T), 2)
+
+    # Combine for a display table
+    if (parr == 'prcp' | parr == 'soil_moisture') {
+      mi_ano_val = paste0(mi_ano)
+      mn_ano_val = paste0(mn_ano, " % of normal")
+      mx_ano_val = paste0(mx_ano)
+    } else {
+      mi_ano_val = paste0(mi_ano)
+      mn_ano_val = paste0(mn_ano, get_unit())
+      mx_ano_val = paste0(mx_ano)
+    }
+
+    # Create a table
+    ano_ovr_dt <-
+      data.frame(
+        "Anomaly" = c("Minimum", "Mean", "Maximum"),
+        "Value" = c(mi_ano_val, mn_ano_val, mx_ano_val)
+      )
+    ano_ovr_dt
+
+    ## Spatial anomaly plot ----------
     ano_rng_lmt <- terra::minmax(ano_dt_rast, compute = T)
     minval <- (-1) * (max(abs(ano_rng_lmt), na.rm = T))
     maxval <- (1) * (max(abs(ano_rng_lmt), na.rm = T))
@@ -1182,7 +1411,9 @@ server <- function(session, input, output) {
     xlim <- c(-140,-113.0)
     ylim <- c(45,61)
 
-   spatial_ano_plt <-  ggplot() +
+    ### plot to display ----
+
+    spatial_ano_plt <-  ggplot() +
       geom_spatraster(data = ano_dt_rast) +
       scale_fill_gradientn(
         name = paste0(parr, " anomaly ", get_unit()),
@@ -1201,7 +1432,7 @@ server <- function(session, input, output) {
         fill = NA,
         alpha = 0.8
       ) +
-     # coord_sf(xlim = xlim, ylim = ylim)+
+      # coord_sf(xlim = xlim, ylim = ylim)+
       scale_x_continuous(
         name =  "Longitude (°W) ",
         breaks = seq(xmi - 5, xmx + 5, 10),
@@ -1314,8 +1545,8 @@ server <- function(session, input, output) {
         axis.ticks.y = element_blank()
       )
 
-    if (parr == "prcp" & maxval > 200 |parr == "soil_moisture" & maxval > 200 ||parr == "rh" & maxval > 200 ) {
-     spatial_ano_plt <- spatial_ano_plt +
+    if (parr == "prcp" & maxval > 200 |parr == "soil_moisture" & maxval > 200 |parr == "rh" & maxval > 200 ) {
+      spatial_ano_plt <- spatial_ano_plt +
         scale_fill_gradientn(
           name = paste0(parr, " anomaly ", get_unit()),
           colours = cpt(pal = "cmocean_curl",
@@ -1338,8 +1569,25 @@ server <- function(session, input, output) {
           breaks = brks_seq
         )
     }
+
     spatial_ano_plt <- spatial_ano_plt +
-      labs(tag = plt_wtrmrk, title = par_title,subtitle = "Baseline: 1981-2010") +
+      labs(
+        tag = plt_wtrmrk,
+        title = par_title,
+        subtitle = paste0(
+          "Baseline: 1981-2010. ",
+          '[',get_region(),  ' anomaly over ',
+          minyr,
+          '-',
+          maxyr,
+          ': Mean = ',
+          ano_ovr_dt[2, 2],
+          ' ,',
+          ' Range = ',ano_ovr_dt[1, 2], ' - ',
+          ano_ovr_dt[3, 2],
+          ']'
+        )
+      ) +
       theme(
         plot.tag.position = "bottom",
         plot.tag = element_text(
@@ -1350,89 +1598,81 @@ server <- function(session, input, output) {
         )
       )
     spatial_ano_plt
-    })
 
-  # Anomaly map plot display ----
-  output$ano_map <- renderPlot({
-    sp_ano_plt_rct()
+
+    ### File name for download ------------
+    fl_nam <-
+      paste0(get_region(),
+             "_",
+             parr,"_anomaly",
+             "_",
+             monn,
+             "_",
+             input$year_range[1],
+             "_",
+             input$year_range[2])
+    fl_nam
+
+    ## final reactive output list  -------------------
+
+    return(list(
+      sptl_ano_data =  ano_dt_rast,
+      sptl_ano_plt = spatial_ano_plt,
+      download_fl_nam = fl_nam
+    ))
+
   })
 
-  # Location map plot ----
-  output$loc_map <- renderLeaflet({
-    req(input$ecoprov_area, input$wtrshd_area, input$major_area)
+  ### Spatial anomaly map display ---------------------
+  output$sptl_ano_map <- renderPlot({
+    spatial_ano_dt_plt_rct()[[2]]
+  })
 
-    # Shape file for location
-    sel_area_shpfl <- get_shapefile()
-
-    if (input$wtrshd_area == "All_watersheds" &&
-        input$major_area == "Watersheds") {
-      sel_area_shpfl <- bc_wtrshd_shp['MJR_WTRSHM']
-
-      leaflet(sel_area_shpfl) %>%
-        addTiles() %>%
-        addPolygons(
-          layerId = ~ MJR_WTRSHM,
-          popup = ~ MJR_WTRSHM,
-          color = "Red",
-          weight = 1,
-          opacity = 1,
-          fill = TRUE,
-          fillOpacity = 0
-        )
-
-    } else if (input$ecoprov_area == "All_Ecoprovince" &&
-               input$major_area == "Ecoprovince") {
-      sel_area_shpfl <- bc_ecoprv_shp['name']
-
-      leaflet(sel_area_shpfl) %>%
-        addTiles() %>%
-        addPolygons(
-          layerId = ~ name,
-          popup = ~ name,
-          color = "Red",
-          weight = 1,
-          opacity = 1,
-          fill = TRUE,
-          fillOpacity = 0
-        )
-    } else{
-      leaflet(sel_area_shpfl) %>%
-        addTiles() %>%
-        addPolygons(
-          color = "Red",
-          weight = 1,
-          opacity = 1,
-          fill = TRUE,
-          fillOpacity = 0
-        )
+   ### Spatial anomaly map and data download ------------------
+   # Spatial anomaly plot download/save
+  output$download_sptl_ano_plt <- downloadHandler(
+    filename = function(file) {
+      paste0(spatial_ano_dt_plt_rct()[[3]], "_plot.png")
+    },
+    content = function(file) {
+      ggsave(
+        file,
+        plot = spatial_ano_dt_plt_rct()[[2]],
+        width = 11,
+        height = 10,
+        units = "in",
+        dpi = 300,
+        scale = 1.0,
+        limitsize = F,
+        device = "png"
+      )
     }
+  )
 
-  })
-
-  observeEvent(input$loc_map_shape_click, {
-    nm <- input$loc_map_shape_click$id
-    print(nm)
-    if (input$major_area == "Ecoprovince") {
-      updatePickerInput(session, "ecoprov_area", selected = nm)
-    } else if (input$major_area == "Watersheds") {
-      updateSelectInput(session, "wtrshd_area", selected = nm)
+  # Spatial anomaly data download as raster (tif )
+  output$download_sptl_ano_data <- downloadHandler(
+    filename = function(file) {
+      paste0(spatial_ano_dt_plt_rct()[[3]], "_data.tif")
+    },
+    content = function(file) {
+      writeRaster(spatial_ano_dt_plt_rct()[[1]],
+                  file,
+                  filetype = "GTiff",
+                  overwrite = TRUE)
     }
-  })
+  )
 
-  # Climate normal plot ----
-   ## Climate normal map title ----
-  clm_plot_title_info <- reactive({
+ # Climate normal plot ----------------------------------------------------------------------------
+  clm_nor_plt_rct <- eventReactive(input$run_ana_button,{
     req(input$par_picker)
     req(input$month_picker)
-
     # other requirements
     monn = input$month_picker
     parr = input$par_picker
 
-
-
     sel_area_shpfl <- get_shapefile()
 
+  ## Climate normal plot title -----
     if (parr == "prcp") {
       clm_nor_title_txt <-
         # Climate plot title ( use log for prcp)
@@ -1447,24 +1687,9 @@ server <- function(session, input, output) {
                                    get_mon_full())
     }
     clm_nor_title_txt
-  })
 
-  output$clm_nor_title <- renderText({
-    clm_plot_title_info()
-  })
 
-  # Climate normal data plot : for normal plot
-  reactive_clm_dt_plt <- reactive({
-    req(input$major_area)
-    req(input$par_picker)
-    req(input$month_picker)
-    req(input$year_range)
-
-    # other requirements
-    monn = input$month_picker
-    parr = input$par_picker
-
-    sel_area_shpfl <- get_shapefile()
+ ## Climate normal plot for display -------
 
     clm_dt_fl %>%
       filter(par == input$par_picker) -> clm_dt_fl_par
@@ -1485,14 +1710,12 @@ server <- function(session, input, output) {
     clm_dt_sel_rast <- clm_dt_sel_rast_mon
 
     # Clip by shape file of the selected area
-    #browser()
-    sel_area_shpfl <- get_shapefile()
-    #browser()
 
     clm_dt_sel_rast <-
-      terra::crop(clm_dt_sel_rast, sel_area_shpfl, mask = T)
+      terra::crop(clm_dt_sel_rast, sel_area_shpfl, snap="out",mask = T)
     # plot(clm_dt_sel_rast)
 
+    # Calculate mean and range of normal values
     mn_clm_val <-
       round(global(clm_dt_sel_rast, 'mean', na.rm = T), digits = 2)
     mi_clm_val <-
@@ -1648,28 +1871,16 @@ server <- function(session, input, output) {
         )
     }
 
-    # Climate plot title ( use log for prcp)
-    # if (parr == "prcp") {
-    #   par_title <-  paste0(get_region(), " mean ",
-    #                        get_par_full(),"\n ","(", get_unit(),")" ," (log-scale)",
-    #                        " : ",
-    #                        get_mon_full())
-    # } else{
-    #   par_title <-  paste0(get_region(), " ",
-    #                        get_par_full(), " ", "(", get_unit(),")" ,
-    #                        " : ",
-    #                        get_mon_full())
-    # }
-    spatial_clm_plt <- spatial_clm_plt +
-      # labs(tag = plt_wtrmrk) +
-      # theme(
-      #   plot.tag.position = "bottom",
-      #   plot.tag = element_text(
-      #     color = 'gray50',
-      #     hjust = 1,
-      #     size = 8
-      #   )
-      # ) +
+  spatial_clm_plt <- spatial_clm_plt +
+      labs(tag = plt_wtrmrk) +
+      theme(
+        plot.tag.position = "bottom",
+        plot.tag = element_text(
+          color = 'gray50',
+          hjust = 1,
+          size = 6
+        )
+      ) +
       labs(
         # title = par_title,
         subtitle = paste0(
@@ -1690,205 +1901,724 @@ server <- function(session, input, output) {
         plot.subtitle = element_text(size = 10)
       )
     spatial_clm_plt
+
+ ## Climate normal data and plot download ---------
+  fl_nam <-
+    paste0(get_region(),
+           "_",
+       get_par_full(),"_climate_normal_1981_2010",
+         "_",
+           get_mon_full())
+  fl_nam
+
+  # Plot with title for download
+
+      # Climate plot title ( use log for prcp)
+      if (parr == "prcp") {
+        par_title <-  paste0(get_region()," ",
+                             get_par_full(),"","(", get_unit(),")" ," (log-scale)",
+                             " : ",
+                             get_mon_full(), " (average 1981-2010)")
+      } else{
+        par_title <-  paste0(get_region(), " ",
+                             get_par_full(), " ", "(", get_unit(),")" ,
+                             " : ",
+                             get_mon_full(), " (average 1981-2010)")
+      }
+
+      spatial_clm_plt_dnwld <-  spatial_clm_plt+
+        labs( title = par_title)
+      spatial_clm_plt_dnwld
+
+  ### Final reactive output list --------------
+
+      return(list(
+        clm_nor_title_txt = clm_nor_title_txt,
+        clm_nor_plt = spatial_clm_plt,
+        clm_nor_plt_dnwld = spatial_clm_plt_dnwld,
+        clm_nor_data =  clm_dt_sel_rast1,
+        download_fl_nam = fl_nam
+      ))
+
+})
+
+  ## Climate normal plot display & download ------------
+
+  # Plot title
+  output$clm_nor_title <- renderText({
+    clm_nor_plt_rct()[[1]]
   })
 
+  # plot display
   output$clm_nor_map <- renderPlot({
-    reactive_clm_dt_plt()
-  })
-  # Climate normal data : for download
-  reactive_clm_dt_fl <- reactive({
-    req(input$major_area)
-    req(input$par_picker)
-    req(input$month_picker)
-    req(input$year_range)
-
-    # other requirements
-    monn = input$month_picker
-    parr = input$par_picker
-
-    sel_area_shpfl <- get_shapefile()
-
-    clm_dt_fl %>%
-      filter(par == input$par_picker) -> clm_dt_fl_par
-    clm_dt_sel_rast <- rast(clm_dt_fl_par$dt_pth)
-    # plot(clm_dt_sel_rast)
-
-    # clm_dt_fl %>%
-    #   filter(par == "tmean") -> clm_dt_fl_par
-    # clm_dt_sel_rast <- rast(clm_dt_fl_par$dt_pth)
-    # clm_dt_sel_rast
-    # sel_area_shpfl <- bc_shp
-
-    names(clm_dt_sel_rast) <- months_nam
-
-    # Select for input month
-    clm_dt_sel_rast_mon <-
-      subset(clm_dt_sel_rast, which(names(clm_dt_sel_rast) %in% monn))
-    clm_dt_sel_rast <- clm_dt_sel_rast_mon
-
-    # Clip by shape file of the selected area
-    #browser()
-    sel_area_shpfl <- get_shapefile()
-    #browser()
-
-    clm_dt_sel_rast <-
-      terra::crop(clm_dt_sel_rast, sel_area_shpfl, mask = T)
-    # plot(clm_dt_sel_rast)
-    clm_dt_sel_rast
+    clm_nor_plt_rct()[[2]]
   })
 
-  # Anomaly overview table caption text ----
-  ano_overview_info <- reactive({
-    req(input$par_picker)
-    req(input$month_picker)
-    req(input$year_range)
-
-    sel_area_shpfl <- get_shapefile()
-
-    # other requirements
-    monn = input$month_picker
-    parr = input$par_picker
-
-    # Years
-    # Filter for selected year (s)
-    if (input$ab_years_choose %% 2 == 0) {
-      sel_yrs <- seq(input$year_range[1], input$year_range[2], 1)
-    } else{
-      sel_yrs <- input$year_specific
-    }
-
-    minyr <- min(sel_yrs)
-    maxyr <- max(sel_yrs)
-
-    ano_overview <-
-      paste0(
-        "The spatially averaged anomaly overview of ",
-        get_region(),
-        "'s ",
-        get_mon_full(),
-        " ",
-        get_par_full(),
-        " ",
-        minyr,
-        "—",
-        maxyr,
-        "."
-      )
-    ano_overview
-  })
-
-  output$anomaly_overview <- renderText({
-    ano_overview_info()
-  })
-
-  # Anomaly overview  table ----
-  output$ano_ovr_tbl <- renderDT({
-    reactive_ano_dt_fl() -> ano_dt_rast
-    sel_area_shpfl <- get_shapefile()
-
-    # Background requirements
-    monn = input$month_picker
-    parr = input$par_picker
-
-    #For percentage of precipitation anomaly
-    names(ano_dt_rast)
-
-    clm_dt_fl %>%
-      filter(par == parr) -> clm_dt_fl_par
-    clm_dt_sel_rast <- rast(clm_dt_fl_par$dt_pth)
-    names(clm_dt_sel_rast) <- months_nam
-
-    # Select for input month
-    clm_dt_sel_rast_mon <-
-      subset(clm_dt_sel_rast, which(names(clm_dt_sel_rast) %in% monn))
-    clm_dt_sel_rast <- clm_dt_sel_rast_mon
-    rm(clm_dt_sel_rast_mon)
-    # Crop to shpfile
-    clm_dt_rast <-
-      terra::crop(clm_dt_sel_rast, sel_area_shpfl, mask = T)
-    # plot(clm_dt_rast)
-    # plot(ano_dt_rast)
-
-    if (parr == 'prcp' | parr == 'soil_moisture') {
-      ano_dt_rast_per1 <- (ano_dt_rast / clm_dt_rast) * 100
-      #If prcp anomalies are very hihgn ( > 200 %) then convert and limit to 200.
-      ano_dt_rast_per2 <-
-        ifel(ano_dt_rast_per1 > 201, 200, ano_dt_rast_per1)
-      ano_dt_rast_per3 <-
-        ifel(ano_dt_rast_per2 < -201, -200, ano_dt_rast_per2)
-      ano_dt_rast_per <- ano_dt_rast_per3
-    } else{
-      ano_dt_rast_per <- ano_dt_rast
-    }
-    # plot(ano_dt_rast_per,1)
-    ano_dt_rast_per
-
-    mn_ano <-
-      terra::global(ano_dt_rast, fun = "mean", na.rm = T)
-    mn_ano
-    mn_ano <- round(mean(mn_ano$mean, na.rm = T), 2)
-    mi_ano <- terra::global(ano_dt_rast, fun = "min", na.rm = T)
-    mi_ano <- round(min(mi_ano$min, na.rm = T), 2)
-    mx_ano <- terra::global(ano_dt_rast, fun = "max", na.rm = T)
-    mx_ano <- round(max(mx_ano$max, na.rm = T), 2)
-
-
-    #Percentage
-    mn_ano_per <-
-      terra::global(ano_dt_rast_per, fun = "mean", na.rm = T)
-    mn_ano_per <- round(mean(mn_ano_per$mean, na.rm = T), 2)
-    mi_ano_per <-
-      terra::global(ano_dt_rast_per, fun = "min", na.rm = T)
-    mi_ano_per <- round(min(mi_ano_per$min, na.rm = T), 2)
-    mx_ano_per <-
-      terra::global(ano_dt_rast_per, fun = "max", na.rm = T)
-    mx_ano_per <- round(max(mx_ano_per$max, na.rm = T), 2)
-
-    #Combine for a display table
-    if (parr == 'prcp' | parr == 'soil_moisture') {
-      mi_ano_val = paste0(mi_ano_per, "% of normal (", mi_ano, get_unit(), ")")
-      mn_ano_val = paste0(mn_ano_per, "% of normal (", mn_ano, get_unit(), ")")
-      mx_ano_val = paste0(mx_ano_per, "% of normal (", mx_ano, get_unit(), ")")
-    } else {
-      mi_ano_val = paste0(mi_ano, get_unit())
-      mn_ano_val = paste0(mn_ano, get_unit())
-      mx_ano_val = paste0(mx_ano, get_unit())
-    }
-
-    # Create a table
-    ano_ovr_dt <-
-      data.frame(
-        "Anomaly" = c("Minimum", "Mean", "Maximum"),
-        "Value" = c(mi_ano_val, mn_ano_val, mx_ano_val)
-      )
-    ano_ovr_dt
-    datatable(
-      ano_ovr_dt,
-      rownames = FALSE,
-      options = list(
-        lengthChange = FALSE,
-        info = FALSE,
-        paging = FALSE,
-        searching = FALSE
-      )
+  # climate normal plot download/save
+    output$download_clm_nor_plt <- downloadHandler(
+      filename = function(file) {
+        paste0(clm_nor_plt_rct()[[5]], "_plot.png")
+      },
+      content = function(file) {
+        ggsave(
+          file,
+          plot =  clm_nor_plt_rct()[[3]],
+          width = 11,
+          height = 9,
+          units = "in",
+          dpi = 300,
+          scale = 0.9,
+          limitsize = F,
+          device = "png"
+        )
+      }
     )
 
-  })
+    # Climate normal data save in tiff
+    output$download_clm_nor_data <- downloadHandler(
+      filename = function(file) {
+        paste0(clm_nor_plt_rct()[[5]], "_data.tif")
+      },
+      content = function(file) {
+        writeRaster(clm_nor_plt_rct()[[4]],
+                    file,
+                    filetype = "GTiff",
+                    overwrite = TRUE)
+      }
+    )
 
-  # Spatially averaged anomaly trend plot -----
-  # clip the anomalies to selected shape file area and calculate spatially average values and trend
-  # Reactive data
-  reactive_ano_dt_fl_sp <- reactive({
+    # Spatial anomaly trends for 1950s and 1980s ---------------------------------------------------------
+
+    spatial_ano_trnd_rct <- eventReactive(input$run_ana_button,{
+      req(input$month_picker)
+      req(input$par_picker)
+      req(input$major_area)
+
+      withProgress(message = 'Calculating spatial trends', value = 0, {
+        incProgress(0.1, detail = "Extracting data ...")
+      # other requirements
+      monn = input$month_picker
+      parr = input$par_picker
+
+      # Load anomaly raster for selected month & parameter
+      ano_dt_fl %>%
+        filter(mon == input$month_picker & par == input$par_picker) -> ano_dt_fl_mon
+      ano_dt_sel_rast <- rast(ano_dt_fl_mon$dt_pth)
+
+      # Clip to shapefile
+      sel_area_shpfl <- get_shapefile()
+      ano_dt_shp_rast <- terra::crop(ano_dt_sel_rast, sel_area_shpfl, snap="out", mask=TRUE)
+
+      # Extract year info
+      yr_df <- tibble(paryr = names(ano_dt_shp_rast)) %>%
+        mutate(yr = as.numeric(str_extract(paryr, "[0-9]+")))
+      names(ano_dt_shp_rast) <- yr_df$yr
+      mx_yr_trn <- max(yr_df$yr)
+
+      # Load and prepare climatology
+      clm_dt_fl %>%
+        filter(par == input$par_picker) -> clm_dt_fl_par
+      clm_dt_sel_rast <- rast(clm_dt_fl_par$dt_pth)
+      names(clm_dt_sel_rast) <- months_nam
+      clm_dt_sel_rast <- subset(clm_dt_sel_rast, which(names(clm_dt_sel_rast) %in% input$month_picker))
+
+      # Crop climatology raster
+      clm_dt_rast <- terra::crop(clm_dt_sel_rast, sel_area_shpfl, snap="out", mask=TRUE)
+
+      # Normalize anomalies
+      if (input$par_picker %in% c("prcp", "soil_moisture")) {
+        ano_dt_shp_rast1 <- (ano_dt_shp_rast / clm_dt_rast) * 100
+        ano_dt_shp_rast2 <- ifel(ano_dt_shp_rast1 > 201, 200, ano_dt_shp_rast1)
+        ano_dt_shp_rast3 <- ifel(ano_dt_shp_rast2 < -201, -200, ano_dt_shp_rast2)
+        ano_dt_shp_rast <- ano_dt_shp_rast3
+      }
+
+      ## Calculate trend: 1950-now  -----------------
+      incProgress(0.15, detail = "Calculating trend (1950-now)...")
+
+      mk_trn_mag_sig_fun <- function(y) {
+        se = zyp.trend.vector(y, x = 1:length(y), conf.intervals = FALSE)
+        c(se[['trend']], se[['sig']])
+      }
+
+      ano_trn_mag_sig50 <- app(ano_dt_shp_rast, mk_trn_mag_sig_fun)
+      names(ano_trn_mag_sig50) <- c("trnmag", "pval")
+      # plot(ano_trn_mag_sig50
+      mn_trn_val50 <-
+        round(global(ano_trn_mag_sig50[[1]], 'mean', na.rm = T), digits = 3)
+      mi_trn_val50 <-
+        round(global(ano_trn_mag_sig50[[1]], 'min', na.rm = T), digits = 3)
+      mx_trn_val50 <-
+        round(global(ano_trn_mag_sig50[[1]], 'max', na.rm = T), digits = 3)
+
+      # Convert to point data
+      ano_sp_mk_trn_sig_dt50 <- as_tibble(ano_trn_mag_sig50, xy = TRUE, na.rm = TRUE) %>%
+        mutate(trnmag = round(trnmag, 3))
+
+      if (parr == 'prcp' | parr == 'soil_moisture') {
+        trn_unt = '% normal'
+      } else {
+        trn_unt = get_unit()
+      }
+
+      #### Plot trend map (1950-now)  ----------
+      incProgress(0.1, detail = "Plotting spatial trend (1950-now)...")
+
+      ano_dt_sig_trn50 <- ano_sp_mk_trn_sig_dt50 %>%
+        dplyr::filter(pval <= 0.1)
+      ano_dt_sig_trn50
+
+      mxtrn50 <- max(abs(ano_sp_mk_trn_sig_dt50$trnmag), na.rm = T)
+      mxtrn50
+
+      ano_dt_sp_trn_sig_plt50 <- ggplot() +
+        geom_tile(data = ano_sp_mk_trn_sig_dt50, aes(x=x,y=y,fill=trnmag),alpha=1)+
+        scale_fill_continuous_diverging(palette="Blue-Red",n_interp=21,
+                                        limits=c(-mxtrn50,mxtrn50),
+                                        # breaks=seq(-1.2, 1.2,0.3),
+                                        # labels=seq(-0.8, 0.8,0.2),
+                                        # name=expression(paste0(parr," trend ", unt, " yr \U2212 \U00B9")))+
+                                        name=bquote(~"trend"~yr^{-1}))+
+        geom_point(data=ano_dt_sig_trn50,aes(x=x,y=y),color="Black",fill="Gray10", alpha=0.4,size=0.3, shape =3)+
+        geom_sf(
+          data = sel_area_shpfl,
+          colour = "black",
+          size = 1,
+          fill = NA,
+          alpha = 0.8
+        ) +
+        scale_x_continuous(
+          name =  "Longitude (°W) ",
+          # breaks = seq(xmi - 5, xmx + 5, 10),
+          labels = abs,
+          expand = c(0.01, 0.01)
+        ) +
+        scale_y_continuous(
+          name = "Latitude (°N) ",
+          # breaks = seq(ymi - 1, ymx + 1, 6),
+          labels = abs,
+          expand = c(0.01, 0.01)
+        ) +
+        theme(
+          panel.spacing = unit(0.1, "lines"),
+          panel.grid.minor = element_blank(),
+          panel.grid.major = element_line(
+            color = "gray60",
+            linewidth = 0.02,
+            linetype = "dashed"
+          ),
+          axis.line = element_line(colour = "gray70", linewidth = 0.08),
+          axis.ticks.length = unit(-0.20, "cm"),
+          element_line(colour = "black", linewidth =  1),
+          axis.title.y = element_text(
+            angle = 90,
+            face = "plain",
+            size = 15,
+            colour = "Black",
+            margin = unit(c(-1, -1, -1, -1), "mm")
+          ),
+          axis.title.x = element_text(
+            angle = 0,
+            face = "plain",
+            size = 15,
+            colour = "Black",
+            margin = unit(c(-1, -1, -1, -1), "mm")
+          ),
+          axis.text.x = element_text(
+            angle = 0,
+            hjust = 0.5,
+            vjust = 0.5,
+            colour = "black",
+            size = 14,
+            margin = margin(
+              t = 2,
+              r = 2,
+              b = 2,
+              l = 2
+            )
+          ),
+          axis.text.y = element_text(
+            angle = 90,
+            hjust = 0.5,
+            vjust = 0.5,
+            colour = "black",
+            size = 14,
+            margin = margin(
+              t = 2,
+              r = 2,
+              b = 2,
+              l = 2
+            )
+          ),
+          plot.title = element_text(
+            angle = 0,
+            face = "bold",
+            size = 15,
+            colour = "Black"
+          ),
+          legend.position = 'right',
+          legend.direction = "vertical",
+          legend.margin = margin(0, 0, 0, 0),
+          legend.box.margin = margin(-5, -5, -5, -5),
+          legend.title = element_text(size = 15),
+          legend.text = element_text(margin = margin(t = -5), size = 16),
+          strip.text.x = element_text(size = 12, angle = 0),
+          strip.text.y = element_text(size = 12, face = "bold"),
+          axis.text = element_text(margin = -5),
+          strip.background = element_rect(color = "black", fill = "gray90"),
+          strip.text = element_text(
+            face = "bold",
+            size = 18,
+            colour = 'black'
+          )
+        ) +
+        guides(
+          fill = guide_colorbar(
+            barwidth = 1.0,
+            barheight = 10,
+            label.vjust = 0.5,
+            label.hjust = 0.0,
+            title.vjust = 0.5,
+            title.hjust = 0.5,
+            title = NULL,
+            # title.position = NULL,
+            ticks.colour = 'black',
+            # ticks.linewidth = 1,
+            frame.colour = 'black',
+            # frame.linewidth = 1,
+            # draw.ulim = FALSE,
+            # draw.llim = TRUE,
+          )
+        ) +
+        theme(
+          axis.title.x = element_blank(),
+          axis.text.x = element_blank(),
+          axis.ticks.x = element_blank(),
+          axis.title.y = element_blank(),
+          axis.text.y = element_blank(),
+          axis.ticks.y = element_blank()
+        )
+      ano_dt_sp_trn_sig_plt50
+
+      if (parr == "prcp" |parr == "soil_moisture" |parr == "rh") {
+        ano_dt_sp_trn_sig_plt50 <- ano_dt_sp_trn_sig_plt50 +
+          scale_fill_continuous_diverging(palette="green-brown",n_interp=21, rev=T,
+                                          limits=c(-mxtrn50,mxtrn50),
+                                          # breaks=seq(-1.2, 1.2,0.3),
+                                          # labels=seq(-0.8, 0.8,0.2),
+                                          # name=expression(paste0(parr," trend ", unt, " yr \U2212 \U00B9")))+
+                                          name=bquote(~"trend"~yr^{-1}))
+      }
+      ano_dt_sp_trn_sig_plt50
+
+      ano_dt_sp_trn_sig_plt50 <-  ano_dt_sp_trn_sig_plt50 +
+        labs(tag = plt_wtrmrk) +
+        theme(
+          plot.tag.position = "bottom",
+          plot.tag = element_text(
+            color = 'gray50',
+            hjust = 1,
+            size = 6
+          )
+        ) +
+        labs(
+          # title = par_title,
+          subtitle = paste0(
+            'Mean = ',
+            mn_trn_val50[[1]]," ",
+            "(", trn_unt," yr", "\u207B", "\u00B9)" ,
+            "  ",
+            "Range = ",
+            "[",
+            mi_trn_val50[[1]],
+            " - ",
+            mx_trn_val50[[1]],"]. "
+          )
+        ) +
+        theme(
+          plot.title = element_text(size = 12, face = 'plain'),
+          plot.subtitle = element_text(size = 10)
+        )
+      ano_dt_sp_trn_sig_plt50
+
+      ## Calculate trend: 1980-now -------------
+      incProgress(0.15, detail = "Calculating trend (1980-now)...")
+
+      ano_dt_shp_rast80 <- subset(ano_dt_shp_rast, 31:nlyr(ano_dt_shp_rast))
+      ano_trn_mag_sig80 <- app(ano_dt_shp_rast80, mk_trn_mag_sig_fun)
+      names(ano_trn_mag_sig80) <- c("trnmag", "pval")
+
+      # plot(ano_trn_mag_sig80
+      mn_trn_val80 <-
+        round(global(ano_trn_mag_sig80[[1]], 'mean', na.rm = T), digits = 3)
+      mi_trn_val80 <-
+        round(global(ano_trn_mag_sig80[[1]], 'min', na.rm = T), digits = 3)
+      mx_trn_val80 <-
+        round(global(ano_trn_mag_sig80[[1]], 'max', na.rm = T), digits = 3)
+
+      # plot (1980-now)
+      ano_sp_mk_trn_sig_dt80 <- as_tibble(ano_trn_mag_sig80, xy = TRUE, na.rm = TRUE) %>%
+        mutate(trnmag = round(trnmag, 3))
+
+      #### Plot trend maps (1980-now) ------
+      incProgress(0.1, detail = "Plotting spatial trend (1980-now)...")
+
+      ano_dt_sig_trn80 <- ano_sp_mk_trn_sig_dt80 %>%
+        dplyr::filter(pval <= 0.1)
+      ano_dt_sig_trn80
+
+      mxtrn80 <- max(abs(ano_sp_mk_trn_sig_dt80$trnmag),na.rm = T)
+      mxtrn80
+
+      ano_dt_sp_trn_sig_plt80 <-ggplot()+
+        geom_tile(data = ano_sp_mk_trn_sig_dt80,aes(x=x,y=y,fill=trnmag),alpha=1)+
+        scale_fill_continuous_diverging(palette="Blue-Red",n_interp=21,
+                                        limits=c(-mxtrn80,mxtrn80),
+                                        # breaks=seq(-1.2, 1.2,0.3),
+                                        # labels=seq(-0.8, 0.8,0.2),
+                                        # name=expression(paste0(parr," trend ", unt, " yr \U2212 \U00B9")))+
+                                        name=bquote(~"trend"~yr^{-1}))+
+        geom_point(data=ano_dt_sig_trn80,aes(x=x,y=y),color="Black",fill="Gray10", alpha=0.4,size=0.3, shape =3)+
+        geom_sf(
+          data = sel_area_shpfl,
+          colour = "black",
+          size = 1,
+          fill = NA,
+          alpha = 0.8
+        ) +
+        scale_x_continuous(
+          name =  "Longitude (°W) ",
+          # breaks = seq(xmi - 5, xmx + 5, 10),
+          labels = abs,
+          expand = c(0.01, 0.01)
+        ) +
+        scale_y_continuous(
+          name = "Latitude (°N) ",
+          # breaks = seq(ymi - 1, ymx + 1, 6),
+          labels = abs,
+          expand = c(0.01, 0.01)
+        ) +
+        theme(
+          panel.spacing = unit(0.1, "lines"),
+          panel.grid.minor = element_blank(),
+          panel.grid.major = element_line(
+            color = "gray60",
+            linewidth = 0.02,
+            linetype = "dashed"
+          ),
+          axis.line = element_line(colour = "gray70", linewidth = 0.08),
+          axis.ticks.length = unit(-0.20, "cm"),
+          element_line(colour = "black", linewidth =  1),
+          axis.title.y = element_text(
+            angle = 90,
+            face = "plain",
+            size = 15,
+            colour = "Black",
+            margin = unit(c(-1, -1, -1, -1), "mm")
+          ),
+          axis.title.x = element_text(
+            angle = 0,
+            face = "plain",
+            size = 15,
+            colour = "Black",
+            margin = unit(c(-1, -1, -1, -1), "mm")
+          ),
+          axis.text.x = element_text(
+            angle = 0,
+            hjust = 0.5,
+            vjust = 0.5,
+            colour = "black",
+            size = 14,
+            margin = margin(
+              t = 2,
+              r = 2,
+              b = 2,
+              l = 2
+            )
+          ),
+          axis.text.y = element_text(
+            angle = 90,
+            hjust = 0.5,
+            vjust = 0.5,
+            colour = "black",
+            size = 14,
+            margin = margin(
+              t = 2,
+              r = 2,
+              b = 2,
+              l = 2
+            )
+          ),
+          plot.title = element_text(
+            angle = 0,
+            face = "bold",
+            size = 15,
+            colour = "Black"
+          ),
+          legend.position = 'right',
+          legend.direction = "vertical",
+          legend.margin = margin(0, 0, 0, 0),
+          legend.box.margin = margin(-5, -5, -5, -5),
+          legend.title = element_text(size = 15),
+          legend.text = element_text(margin = margin(t = -5), size = 16),
+          strip.text.x = element_text(size = 12, angle = 0),
+          strip.text.y = element_text(size = 12, face = "bold"),
+          axis.text = element_text(margin = -5),
+          strip.background = element_rect(color = "black", fill = "gray90"),
+          strip.text = element_text(
+            face = "bold",
+            size = 18,
+            colour = 'black'
+          )
+        ) +
+        guides(
+          fill = guide_colorbar(
+            barwidth = 1.0,
+            barheight = 10,
+            label.vjust = 0.5,
+            label.hjust = 0.0,
+            title.vjust = 0.5,
+            title.hjust = 0.5,
+            title = NULL,
+            # title.position = NULL,
+            ticks.colour = 'black',
+            # ticks.linewidth = 1,
+            frame.colour = 'black',
+            # frame.linewidth = 1,
+            # draw.ulim = FALSE,
+            # draw.llim = TRUE,
+          )
+        ) +
+        theme(
+          axis.title.x = element_blank(),
+          axis.text.x = element_blank(),
+          axis.ticks.x = element_blank(),
+          axis.title.y = element_blank(),
+          axis.text.y = element_blank(),
+          axis.ticks.y = element_blank()
+        )
+      ano_dt_sp_trn_sig_plt80
+
+      if (parr == "prcp" |parr == "soil_moisture" |parr == "rh") {
+        ano_dt_sp_trn_sig_plt80 <- ano_dt_sp_trn_sig_plt80 +
+          scale_fill_continuous_diverging(palette="green-brown",n_interp=21, rev=T,
+                                          limits=c(-mxtrn80,mxtrn80),
+                                          # breaks=seq(-1.2, 1.2,0.3),
+                                          # labels=seq(-0.8, 0.8,0.2),
+                                          # name=expression(paste0(parr," trend ", unt, " yr \U2212 \U00B9")))+
+                                          name=bquote(~"trend"~yr^{-1}))
+      }
+      ano_dt_sp_trn_sig_plt80
+
+      ano_dt_sp_trn_sig_plt80 <-  ano_dt_sp_trn_sig_plt80 +
+        labs(tag = plt_wtrmrk) +
+        theme(
+          plot.tag.position = "bottom",
+          plot.tag = element_text(
+            color = 'gray80',
+            hjust = 1,
+            size = 6
+          )
+        ) +
+        labs(
+          # title = par_title,
+          subtitle = paste0(
+            'Mean = ',
+            mn_trn_val80[[1]]," ",
+            "(", trn_unt," yr", "\u207B", "\u00B9)" ,
+            "  ",
+            "Range = ",
+            "[",
+            mi_trn_val80[[1]],
+            " - ",
+            mx_trn_val80[[1]],
+
+            "]"
+          )
+        ) +
+        theme(
+          plot.title = element_text(size = 12, face = 'plain'),
+          plot.subtitle = element_text(size = 10)
+        )
+      ano_dt_sp_trn_sig_plt80
+
+      ### Plots titles --------------
+      spl_trn_title_txt50 <-  paste0(get_region(), " ",get_mon_full(), ' ',
+                                     get_par_full(), " anomlay trend",
+                                     " (", trn_unt," yr", "\u207B", "\u00B9) since 1950: ", get_mon_full(),". Black dots indicate cells with significant trends.")
+
+      spl_trn_title_txt80 <-  paste0(get_region(), " ",get_mon_full(), ' ',
+                                     get_par_full(), " anomlay trend",
+                                     " (",trn_unt,
+                                     " yr", "\u207B", "\u00B9) since 1980: ", get_mon_full(),". Black dots indicate cells with significant trends.")
+
+      ##  For plot and data downloads ---------
+
+      trnd_fl_nam50 <-
+        paste0(get_region(),
+               "_",
+               get_par_full(),"_spatial_trend_1950_present",
+               "_",
+               get_mon_full())
+      trnd_fl_nam50
+      trnd_fl_nam80 <-
+        paste0(get_region(),
+               "_",
+               get_par_full(),"_spatial_trend_1980_present",
+               "_",
+               get_mon_full())
+      trnd_fl_nam80
+
+      # Plot with title for download
+
+      par_title50 <-  paste0(get_region(), " ",
+                             get_par_full(), " anomaly trend (",trn_unt," yr", "\u207B", "\u00B9): ",get_mon_full(),"1950-present.
+                             Black dots indicate cells with significant trends." )
+      par_title80 <-  paste0(get_region(), " ",
+                             get_par_full(), " anomaly trend (", trn_unt," yr", "\u207B", "\u00B9): ",get_mon_full(),"1980-present.
+                             Black dots indicate cells with significant trends." )
+
+
+      par_title50 <-  paste0(get_region(), " ",
+                             get_par_full(), " anomaly trend (", trn_unt," yr", "\u207B", "\u00B9): ",get_mon_full()," 1950-present.
+                             Black dots indicate cells with significant trends." )
+      par_title80 <-  paste0(get_region(), " ",
+                             get_par_full(), " anomaly trend (", trn_unt," yr", "\u207B", "\u00B9): ",get_mon_full()," 1980-present.
+                             Black dots indicate cells with significant trends." )
+
+      # Plot download
+      ano_dt_sp_trn_sig_plt50_dnwld <-  ano_dt_sp_trn_sig_plt50+
+        labs( title = par_title50)
+      ano_dt_sp_trn_sig_plt50_dnwld
+
+      ano_dt_sp_trn_sig_plt80_dnwld <-  ano_dt_sp_trn_sig_plt80+
+        labs( title = par_title80)
+      ano_dt_sp_trn_sig_plt80_dnwld
+
+      incProgress(0.02, detail = "Finalizing spatial trends ...")
+      # return plot or data here
+      return(list(
+        plt_title_1950 = spl_trn_title_txt50,
+        trn_plt_1950 =  ano_dt_sp_trn_sig_plt50,
+        plt_title_1980 = spl_trn_title_txt80,
+        trn_plt_1980 = ano_dt_sp_trn_sig_plt80,
+
+        dnwld_fl_nam50 = trnd_fl_nam50,
+        dnwld_trn_plt50 =  ano_dt_sp_trn_sig_plt50_dnwld,
+        dnwld_trn_dt50 = ano_trn_mag_sig50,
+
+        download_fl_nam80 = trnd_fl_nam80,
+        downalod_trn_plt80 =  ano_dt_sp_trn_sig_plt80_dnwld,
+        dnwld_trn_dt80 = ano_trn_mag_sig80
+      ))
+      })
+    })
+
+    ### Display and download trend maps and data ----------
+    # Display
+    output$clm_trn50_title <- renderText({
+      spatial_ano_trnd_rct()[[1]]
+    })
+    output$clm_trn50_map <- renderPlot({
+      spatial_ano_trnd_rct()[[2]]
+    })
+
+    output$clm_trn80_title <- renderText({
+      spatial_ano_trnd_rct()[[3]]
+    })
+    output$clm_trn80_map <- renderPlot({
+      spatial_ano_trnd_rct()[[4]]
+    })
+
+    # Download trend maps and data
+    # 1950s plt
+    output$download_clm_trn50_plt <- downloadHandler(
+      filename = function(file) {
+        paste0(spatial_ano_trnd_rct()[[5]], "_plot.png")
+      },
+      content = function(file) {
+        ggsave(
+          file,
+          plot =   spatial_ano_trnd_rct()[[6]],
+          width = 11,
+          height = 9,
+          units = "in",
+          dpi = 300,
+          scale = 0.9,
+          limitsize = F,
+          device = "png"
+        )
+      }
+    )
+
+    # 1950s trend data
+    output$download_clm_trn50_data <- downloadHandler(
+      filename = function(file) {
+        paste0(spatial_ano_trnd_rct()[[5]], "_data.tif")
+      },
+      content = function(file) {
+        writeRaster(spatial_ano_trnd_rct()[[7]],
+                    file,
+                    filetype = "GTiff",
+                    overwrite = TRUE)
+      }
+    )
+
+    # 1980s plt
+    output$download_clm_trn80_plt <- downloadHandler(
+      filename = function(file) {
+        paste0(spatial_ano_trnd_rct()[[8]], "_plot.png")
+      },
+      content = function(file) {
+        ggsave(
+          file,
+          plot =   spatial_ano_trnd_rct()[[9]],
+          width = 11,
+          height = 9,
+          units = "in",
+          dpi = 300,
+          scale = 0.9,
+          limitsize = F,
+          device = "png"
+        )
+      }
+    )
+
+    # 1980s trend data
+    output$download_clm_trn80_data <- downloadHandler(
+      filename = function(file) {
+        paste0(spatial_ano_trnd_rct()[[8]], "_data.tif")
+      },
+      content = function(file) {
+        writeRaster(spatial_ano_trnd_rct()[[10]],
+                    file,
+                    filetype = "GTiff",
+                    overwrite = TRUE)
+      }
+    )
+
+ # Time-series and linear trend -------------------------
+   time_series_trnd_rct <- eventReactive(input$run_ana_button,{
     req(input$month_picker)
     req(input$par_picker)
     req(input$major_area)
 
+    withProgress(message = 'Calculating linear trends', value = 0, {
+      incProgress(0.02, detail = "Filtering data...")
+ ## time series data generate -----------
     ano_dt_fl %>%
       filter(mon == input$month_picker &
                par == input$par_picker) -> ano_dt_fl_mon
+
     ano_dt_sel_rast <- rast(ano_dt_fl_mon$dt_pth)
     ano_dt_sel_rast
     # plot(ano_dt_sel_rast)
+
+    # other requirements
+    monn = input$month_picker
+    parr = input$par_picker
+
+    sel_area_shpfl <- get_shapefile()
 
     # ano_dt_sel_rast <- ano_dt_fil_rast
     # plot(ano_dt_sel_rast)
@@ -1901,7 +2631,7 @@ server <- function(session, input, output) {
     parr = input$par_picker
 
    ano_dt_shp_rast <-
-      terra::crop(ano_dt_sel_rast, sel_area_shpfl, mask = T)
+      terra::crop(ano_dt_sel_rast, sel_area_shpfl, snap="out",mask = T)
     ano_dt_shp_rast
    # plot(ano_dt_shp_rast,72)
     yr_df <- tibble(paryr = names(ano_dt_shp_rast))
@@ -1924,7 +2654,7 @@ server <- function(session, input, output) {
 
     # Crop to shpfile
     clm_dt_rast <-
-      terra::crop(clm_dt_sel_rast, sel_area_shpfl, mask = T)
+      terra::crop(clm_dt_sel_rast, sel_area_shpfl,snap="out", mask = T)
     # plot(clm_dt_rast)
     # plot(ano_dt_shp_rast)
 
@@ -1948,6 +2678,9 @@ server <- function(session, input, output) {
         ano_dt_shp_rast, fun = "mean", na.rm = T
       ), "yr")) %>%
       dplyr::select(yr, ano = mean)
+
+    ano_shp_av_dt$ano <- round(ano_shp_av_dt$ano, digits=4)
+
     ano_shp_av_dt %<>%
       drop_na()
     ano_shp_av_dt$yr <-
@@ -1956,103 +2689,100 @@ server <- function(session, input, output) {
     ano_shp_av_dt$mon <- unique(ano_dt_fl_mon$mon)
     ano_shp_av_dt$region <- get_region()
     ano_shp_av_dt
-  })
 
-  # ggplot2/plotly trend plot  ----
-  spatial_av_trnd_plt_rct <- reactive({
-    reactive_ano_dt_fl_sp() -> ano_shp_dt
-    ano_shp_dt
+    # To download time series
+    ano_shp_av_dt %>%
+      dplyr::select(yr,ano,par,mon,region) -> av_ano_ts
 
-    # ano_shp_dt <-  ano_shp_av_dt
-    # ano_shp_dt$par <- parr
-    # ano_shp_dt$mon <- monn
-    # ano_shp_dt$region <- region
+  ## Trend calculation and plot ------------
 
     # Background requirements for plots
-    parr <- unique(ano_shp_dt$par)
-    monn <- unique(ano_shp_dt$mon)
-    region <- unique(ano_shp_dt$region)
+    parr <- unique(ano_shp_av_dt$par)
+    monn <- unique(ano_shp_av_dt$mon)
+    region <- unique(ano_shp_av_dt$region)
 
     # Trend on average anomaly 1950 - now
-    ano_shp_dt %<>%
+    ano_shp_av_dt %<>%
       filter(yr > 1950) %<>%
       mutate(# trnd =zyp.trend.vector(ano)[["trend"]],
         # incpt =zyp.trend.vector(ano)[["intercept"]],
         #sig = zyp.trend.vector(ano)[["sig"]])
-        sig = round(MannKendall(ano)[[2]], digits = 2))
-    ano_shp_dt
+        sig = round(MannKendall(ano)[[2]], digits = 4))
+    ano_shp_av_dt
 
     ano_mk_trnd <-
-      zyp.sen(ano ~ yr, ano_shp_dt)##Give the trend###
+      zyp.sen(ano ~ yr, ano_shp_av_dt)##Give the trend###
     ano_mk_trnd$coefficients
-    ano_shp_dt$trn <-  ano_mk_trnd$coeff[[2]]
-    ano_shp_dt$incpt <-  ano_mk_trnd$coeff[[1]]
+    ano_shp_av_dt$trn <-  ano_mk_trnd$coeff[[2]]
+    ano_shp_av_dt$incpt <-  ano_mk_trnd$coeff[[1]]
 
-    xs = c(min(ano_shp_dt$yr), max(ano_shp_dt$yr))
-    trn_slp = c(unique(ano_shp_dt$incpt), unique(ano_shp_dt$trn))
+    xs = c(min(ano_shp_av_dt$yr), max(ano_shp_av_dt$yr))
+    trn_slp = c(unique(ano_shp_av_dt$incpt), unique(ano_shp_av_dt$trn))
     ys = cbind(1, xs) %*% trn_slp
-    ano_shp_dt$trn_lab = paste(
+    ano_shp_av_dt$trn_lab = paste(
       "italic(1950-~trend)==",
-      round(ano_shp_dt$trn, 2),"~yr^{-1}~','~italic(p)==",
-      round(ano_shp_dt$sig, 2)
+      round(ano_shp_av_dt$trn, 2),"~yr^{-1}~','~italic(p)==",
+      round(ano_shp_av_dt$sig, 2)
     )
-#
-#     mag_trnd_lab=paste("italic(t)==",round(ano_shp_dt$trn,2),get_unit(),
-#                        "~mm~yr^{-1}~','~italic(p)==",round(ano_shp_dt$sig,2))
+
+    #     mag_trnd_lab=paste("italic(t)==",round(ano_shp_av_dt$trn,2),get_unit(),
+    #                        "~mm~yr^{-1}~','~italic(p)==",round(ano_shp_av_dt$sig,2))
 
     # Trend on average anomaly 1980 - now
-    ano_shp_dt %>%
+    ano_shp_av_dt %>%
       filter(yr > 1979) %>%
       mutate(# trnd =zyp.trend.vector(ano)[["trend"]],
         # incpt =zyp.trend.vector(ano)[["intercept"]],
         #sig = zyp.trend.vector(ano)[["sig"]])
-        sig = round(MannKendall(ano)[[2]], digits = 2)) -> ano_shp_dt80
-    ano_shp_dt80
+        sig = round(MannKendall(ano)[[2]], digits = 2)) -> ano_shp_av_dt80
+    ano_shp_av_dt80
 
     ano_mk_trnd80 <-
-      zyp.sen(ano ~ yr, ano_shp_dt80)##Give the trend###
+      zyp.sen(ano ~ yr, ano_shp_av_dt80)##Give the trend###
     ano_mk_trnd80$coefficients
-    ano_shp_dt80$trn <-  ano_mk_trnd80$coeff[[2]]
-    ano_shp_dt80$incpt <-  ano_mk_trnd80$coeff[[1]]
+    ano_shp_av_dt80$trn <-  ano_mk_trnd80$coeff[[2]]
+    ano_shp_av_dt80$incpt <-  ano_mk_trnd80$coeff[[1]]
 
-    xs80 = c(min(ano_shp_dt80$yr), max(ano_shp_dt80$yr))
-    trn_slp80 = c(unique(ano_shp_dt80$incpt), unique(ano_shp_dt80$trn))
+    xs80 = c(min(ano_shp_av_dt80$yr), max(ano_shp_av_dt80$yr))
+    trn_slp80 = c(unique(ano_shp_av_dt80$incpt), unique(ano_shp_av_dt80$trn))
     ys80 = cbind(1, xs80) %*% trn_slp80
-    ano_shp_dt80$trn_lab = paste(
+    ano_shp_av_dt80$trn_lab = paste(
       "italic(1980-~trend)==",
-      round(ano_shp_dt80$trn, 2),"~yr^{-1}~','~italic(p)==",
-      round(ano_shp_dt80$sig, 2)
+      round(ano_shp_av_dt80$trn, 2),"~yr^{-1}~','~italic(p)==",
+      round(ano_shp_av_dt80$sig, 2)
     )
 
-    # anomaly plot
-    ymin <- (-1) * (max(abs(ano_shp_dt$ano)))
-    ymax <- (1) * (max(abs(ano_shp_dt$ano)))
-    minyr <- min(ano_shp_dt$yr)
-    maxyr <- max(ano_shp_dt$yr)
+    incProgress(0.02, detail = "Plotting linear trend ...")
+
+     # anomaly plot
+    ymin <- (-1) * (max(abs(ano_shp_av_dt$ano)))
+    ymax <- (1) * (max(abs(ano_shp_av_dt$ano)))
+    minyr <- min(ano_shp_av_dt$yr)
+    maxyr <- max(ano_shp_av_dt$yr)
 
     if(ymax < 1){
       ybrk_neg <-
         round(c(seq((-1) * (max(
-          abs(ano_shp_dt$ano)
+          abs(ano_shp_av_dt$ano)
         )), 0, length.out = 2)), digits=2)
       ybrk_neg
       ybrk_pos <-
         round(c(seq(0, (1) * (max(
-          abs(ano_shp_dt$ano)
+          abs(ano_shp_av_dt$ano)
         )), length.out = 2))[-1], digits=2)
       ybrk_pos
     } else {
-    ybrk_neg <-
-      ceiling(c(seq((-1) * (max(
-        abs(ano_shp_dt$ano)
-      )), 0, length.out = 4)))
-    ybrk_neg
-    ybrk_pos <-
-      floor(c(seq(0, (1) * (max(
-        abs(ano_shp_dt$ano)
-      )), length.out = 4)))[-1]
-    ybrk_pos
-}
+      ybrk_neg <-
+        ceiling(c(seq((-1) * (max(
+          abs(ano_shp_av_dt$ano)
+        )), 0, length.out = 4)))
+      ybrk_neg
+      ybrk_pos <-
+        floor(c(seq(0, (1) * (max(
+          abs(ano_shp_av_dt$ano)
+        )), length.out = 4)))[-1]
+      ybrk_pos
+    }
     #create breaks with "00"
 
     if (nchar(abs(ybrk_neg[[1]])) == 4) {
@@ -2081,14 +2811,14 @@ server <- function(session, input, output) {
       ybrks_seq <- c(ybrk_neg, ybrk_pos)
     }else {
       ybrks_seq <- c(ybrk_negn, ybrk_posp)
-      }
+    }
     ybrks_seq
     # Positive and negative anomalies and 3 years moving average to create bar plot
-    ano_shp_dt %<>%
+    ano_shp_av_dt %<>%
       mutate(pos_neg = if_else(ano <= 0, "neg", "pos")) %>%
       mutate(ano_mv = rollmean(ano, 3, fill = list(NA, NULL, NA)))
-    ano_shp_dt
-    tail(ano_shp_dt)
+    ano_shp_av_dt
+    tail(ano_shp_av_dt)
 
     if (parr == "prcp" |parr == "soil_moisture") {
       par_title <-  paste0(get_region(), " ",
@@ -2109,7 +2839,7 @@ server <- function(session, input, output) {
     }
 
     ano_shp_trn_plt <-
-      ggplot(data = ano_shp_dt, aes(x = yr, y = ano)) +
+      ggplot(data = ano_shp_av_dt, aes(x = yr, y = ano)) +
       annotate(
         geom = 'text',
         label = plt_wtrmrk,
@@ -2162,7 +2892,7 @@ server <- function(session, input, output) {
         color = 'black',
         y = ymax - 0.05,
         fill = NA,
-        label = ano_shp_dt$trn_lab[[1]],
+        label = ano_shp_av_dt$trn_lab[[1]],
         size = 4.0, parse=T
       ) +
       # add 80s trend
@@ -2182,7 +2912,7 @@ server <- function(session, input, output) {
         y = ymax - 0.05,
         fill = NA,
         color = 'deepskyblue2',
-        label = ano_shp_dt80$trn_lab[[1]],
+        label = ano_shp_av_dt80$trn_lab[[1]],
         size = 4.0,
         parse = TRUE
       ) +
@@ -2295,85 +3025,20 @@ server <- function(session, input, output) {
     ano_shp_trn_plt<- ano_shp_trn_plt +
       theme(axis.title.y = element_blank())
     ano_shp_trn_plt
-  })
 
-  ## Plotly display ------
-  output$spatial_trn_plt <- renderPlotly({
-    spatial_av_trnd_plt_rct() -> ano_shp_trn_plt
-    reactive_ano_dt_fl_sp() -> ano_shp_dt
-    # Background requirements for plots
-    parr <- unique(ano_shp_dt$par)
-    monn <- unique(ano_shp_dt$mon)
-    region <- unique(ano_shp_dt$region)
-
-
-    # Trend on average anomaly 1950 - now
-    ano_shp_dt %<>%
-      filter(yr > 1950) %<>%
-      mutate(# trnd =zyp.trend.vector(ano)[["trend"]],
-        # incpt =zyp.trend.vector(ano)[["intercept"]],
-        #sig = zyp.trend.vector(ano)[["sig"]])
-        sig = round(MannKendall(ano)[[2]], digits = 2))
-    ano_shp_dt
-
-    ano_mk_trnd <-
-      zyp.sen(ano ~ yr, ano_shp_dt)##Give the trend###
-    ano_mk_trnd$coefficients
-    ano_shp_dt$trn <-  ano_mk_trnd$coeff[[2]]
-    ano_shp_dt$incpt <-  ano_mk_trnd$coeff[[1]]
-
-    ano_shp_dt$trn_lab = paste(
-      "italic(1951-trend)==",
-      round(ano_shp_dt$trn, 2),
-      "~','~italic(p)==",
-      round(ano_shp_dt$sig, 2)
-    )
-
-    # Trend on average anomaly 1980 - now
-    ano_shp_dt %>%
-      filter(yr > 1979) %>%
-      mutate(# trnd =zyp.trend.vector(ano)[["trend"]],
-        # incpt =zyp.trend.vector(ano)[["intercept"]],
-        #sig = zyp.trend.vector(ano)[["sig"]])
-        sig = round(MannKendall(ano)[[2]], digits = 2)) -> ano_shp_dt80
-    ano_shp_dt80
-
-    ano_mk_trnd80 <-
-      zyp.sen(ano ~ yr, ano_shp_dt80)##Give the trend###
-    ano_mk_trnd80$coefficients
-    ano_shp_dt80$trn <-  ano_mk_trnd80$coeff[[2]]
-    ano_shp_dt80$incpt <-  ano_mk_trnd80$coeff[[1]]
-
-    ano_shp_dt80$trn_lab = paste(
-      "italic(1980-trend)==",
-      round(ano_shp_dt80$trn, 2),
-      "~','~italic(p)==",
-      round(ano_shp_dt80$sig, 2)
-    )
-
-    if (parr == "prcp" |parr == "soil_moisture") {
-      par_title <-  paste0(get_region(), " ",
-                           get_par_full(), " ", "anomaly", " (% of normal)",
-                           ": ",
-                           get_mon_full())
-    } else{
-      par_title <-  paste0(get_region(), " ",
-                           get_par_full(), " ", "anomaly"," (", get_unit(),")",
-                           ": ",
-                           get_mon_full())
-    }
+    # plotly display
 
     trn1980_lab <-
       paste0('1980-trend = ',
-             round(ano_shp_dt80$trn[[1]], 2),'yr<sup>-1</sup>','<span>&#44;</span> ',
+             round(ano_shp_av_dt80$trn[[1]], 2),'yr<sup>-1</sup>','<span>&#44;</span> ',
              ' <i>p<i>=',
-             round(ano_shp_dt80$sig[[1]], 2) )
+             round(ano_shp_av_dt80$sig[[1]], 2) )
     trn1980_lab
     trn1950_lab <-
       paste0('1950-trend = ',
-             round(ano_shp_dt$trn[[1]], 2),'yr<sup>-1</sup>','<span>&#44;</span> ',
+             round(ano_shp_av_dt$trn[[1]], 2),'yr<sup>-1</sup>','<span>&#44;</span> ',
              ' <i>p<i>=',
-             round(ano_shp_dt$sig[[1]], 2) )
+             round(ano_shp_av_dt$sig[[1]], 2) )
     trn1950_lab
 
     #Convert to plotly
@@ -2431,82 +3096,8 @@ server <- function(session, input, output) {
       layout(xaxis = list(showgrid = FALSE),
              yaxis = list(showgrid = FALSE))
     ano_shp_trn_plty
-  })
 
-  # Download data save plots ---------------
-
-   ## Spatial anomaly map and raster data download ----
-  file_nam_info <- reactive({
-    req(input$par_picker)
-    req(input$month_picker)
-    req(input$year_range)
-
-
-    sel_area_shpfl <- get_shapefile()
-    # plot(st_geometry(sel_area_shpfl))
-
-    # other requirements
-    monn = input$month_picker
-    parr = input$par_picker
-
-    fl_nam <-
-      paste0(get_region(),
-             "_",
-             parr,"_anomaly",
-             "_",
-             monn,
-             "_",
-             input$year_range[1],
-             "_",
-             input$year_range[2])
-    fl_nam
-  })
-
-  # Spatial anomaly data download as raster (tif )
-  output$download_ano_data <- downloadHandler(
-    filename = function(file) {
-      paste0(file_nam_info(), "_data.tif")
-    },
-    content = function(file) {
-      writeRaster(reactive_ano_dt_fl(),
-                  file,
-                  filetype = "GTiff",
-                  overwrite = TRUE)
-    }
-  )
-
-  # Spatial anomaly map save
-  output$download_ano_plt <- downloadHandler(
-    filename = function(file) {
-      paste0(file_nam_info(), "_plot.png")
-    },
-    content = function(file) {
-      ggsave(
-        file,
-        plot = sp_ano_plt_rct(),
-        width = 11,
-        height = 10,
-        units = "in",
-        dpi = 300,
-        scale = 1.0,
-        limitsize = F,
-        device = "png"
-      )
-    }
-  )
-
-  ## Anomaly time series and plot download ----
-  file_nam_info_sp_av <- reactive({
-    req(input$par_picker)
-    req(input$month_picker)
-    req(input$year_range)
-
-    sel_area_shpfl <- get_shapefile()
-
-    # other requirements
-    monn = input$month_picker
-    parr = input$par_picker
-
+    ### File name for download -----
     # Year range
     if (monn != "annual") {
       mx_yr = max_year
@@ -2525,142 +3116,60 @@ server <- function(session, input, output) {
              "_",
              mx_yr)
     fl_nam
+    incProgress(0.05, detail = "Finalizing linear trend ...")
+  # Final return list
+    return(list(lnr_trn_ptly_plt =  ano_shp_trn_plty,
+                fl_nam_dwnld = fl_nam,
+                lnr_trn_plt_dwnld =  ano_shp_trn_plt,
+                ts_data_csv = av_ano_ts
+                ))
+    })
+
   })
 
-  # Spatial anomaly time series data download (.csv)
+  ## display linear trend  ---------------
+   output$lnr_trn_plt <- renderPlotly({
+    time_series_trnd_rct()[[1]]})
+
+  ## Download linear trend plot and time series data --------
+  # Download plot
+
+    output$download_lnr_trn_plt <- downloadHandler(
+      filename = function(file) {
+        paste0(time_series_trnd_rct()[[2]], "_trend_plot.png")
+      },
+      content = function(file) {
+        ggsave(
+          file,
+          plot = time_series_trnd_rct()[[3]],
+          width = 13,
+          height = 6,
+          units = "in",
+          dpi = 300,
+          scale = 0.9,
+          limitsize = F,
+          device = "png"
+        )
+      }
+    )
+
+  # Download time series (.csv)
   output$download_ano_ts_data <- downloadHandler(
     filename = function(file) {
-      paste0(file_nam_info_sp_av(),
+      paste0(time_series_trnd_rct()[[2]],
              "_data.csv")
     },
     content = function(file) {
-      write_csv(reactive_ano_dt_fl_sp(),
+      write_csv(time_series_trnd_rct()[[4]],
                 file, append = FALSE)
     }
   )
 
-  #Spatially averaged trend plot save
-  output$download_avtrn_plt <- downloadHandler(
-    filename = function(file) {
-      paste0(file_nam_info_sp_av(), "_trend_plot.png")
-    },
-    content = function(file) {
-      ggsave(
-        file,
-        plot = spatial_av_trnd_plt_rct(),
-        width = 13,
-        height = 6,
-        units = "in",
-        dpi = 300,
-        scale = 0.9,
-        limitsize = F,
-        device = "png"
-      )
-    }
-  )
-  ## Climate normal data and plot download  ----
-  file_nam_info_clm_nor <- reactive({
-    req(input$par_picker)
-    req(input$month_picker)
-    req(input$year_range)
-
-    # other requirements
-    monn = input$month_picker
-    parr = input$par_picker
-
-
-    sel_area_shpfl <- get_shapefile()
-
-
-    fl_nam <-
-      paste0(get_region(),
-             "_",
-             get_par_full(),"_climate_normal_1981_2010",
-             "_",
-             get_mon_full())
-    fl_nam
-  })
-
-  dwnlnd_clm_plt <- reactive({
-    req(input$par_picker)
-    req(input$month_picker)
-    req(input$year_range)
-
-    # other requirements
-    monn = input$month_picker
-    parr = input$par_picker
-
-    sel_area_shpfl <- get_shapefile()
-
-      # Climate plot title ( use log for prcp)
-      if (parr == "prcp") {
-        par_title <-  paste0(get_region(), " mean ",
-                             get_par_full(),"","(", get_unit(),")" ," (log-scale)",
-                             " : ",
-                             monn)
-      } else{
-        par_title <-  paste0(get_region(), " ",
-                             get_par_full(), " ", "(", get_unit(),")" ,
-                             " : ",
-                             monn)
-      }
-
-    dwn_clm_plt <- reactive_clm_dt_plt() +
-    labs(tag = plt_wtrmrk,title = par_title) +
-    theme(
-      plot.tag.position = 'bottom',
-      plot.tag = element_text(
-        color = 'gray50',
-        hjust = 1,
-        size = 8
-      )
-    ) +
-    theme(
-      plot.title = element_text(size = 12, face = 'plain'),
-      plot.subtitle = element_text(size = 10)
-    )
-    dwn_clm_plt
-  })
-
-  # Climatological normal plot save
-  output$download_clm_nor_plt <- downloadHandler(
-    filename = function(file) {
-      paste0(file_nam_info_clm_nor(), "_plot.png")
-    },
-    content = function(file) {
-      ggsave(
-        file,
-        plot =  dwnlnd_clm_plt(),
-        width = 11,
-        height = 9,
-        units = "in",
-        dpi = 300,
-        scale = 0.9,
-        limitsize = F,
-        device = "png"
-      )
-    }
-  )
-
-  # Download climate normal data in tiff
-  output$download_clm_nor_data <- downloadHandler(
-    filename = function(file) {
-      paste0(file_nam_info_clm_nor(), "_data.tif")
-    },
-    content = function(file) {
-      writeRaster(reactive_clm_dt_fl(),
-                  file,
-                  filetype = "GTiff",
-                  overwrite = TRUE)
-    }
-  )
-
-
-
   # Reset  selection /filters -----
   observeEvent(input$reset_input, {
     shinyjs::reset("selection-panel")
-  })
+
+})
 
   # observeEvent(input$reset_input, {
   #   shinyjs::reset("sel_yrs")
@@ -2668,343 +3177,74 @@ server <- function(session, input, output) {
 
   # Feedback text -------
   output$feedback_text <- renderText({
-    HTML(
-      "<p>We used <a href='https://cds.climate.copernicus.eu/cdsapp#!/dataset/reanalysis-era5-land?tab=overview'>
-      ERA5-Land hourly data</a> to calculate the anomalies and climatology.
-      Anomalies are calculated as the measure of departure from the climatological averages spanning from 1981 to 2010.
-      Should you have any inquiries or wish to provide feedback, please do not hesitate to use
-      <a href=https://forms.office.com/r/wN0QYAvSTZ'> this feedback form </a> or write to Aseem Sharma @ <a href= 'mailto: Aseem.Sharma@gov.bc.ca'>Aseem.Sharma@gov.bc.ca</a> . </p>"
-    )
+    HTML("<p>We used <a href='https://cds.climate.copernicus.eu/cdsapp#!/dataset/reanalysis-era5-land?tab=overview' target='_blank'>
+ERA5-Land hourly data</a> to calculate the anomalies and climatology.
+Anomalies are calculated as the measure of departure from the climatological averages spanning from 1981 to 2010.
+Should you have any inquiries or wish to provide feedback, please do not hesitate to use
+<a href='https://forms.office.com/r/wN0QYAvSTZ' target='_blank'>this feedback form</a> or write to
+<a href='mailto:Aseem.Sharma@gov.bc.ca'><b>Aseem Sharma</b></a>.</p>")
+
 
   })
 
-  # Reports ----
-
-  # Annual summary of 2024
-  # HTML in the shiny www folder
-  output$doc_html_ann_summ_2024 <- renderUI({
-    a(
-      "BC climate summary 2024",
-      target = "_blank",
-      style = "font-size:20px;",
-      href = "2_bc_annual_climate_summary_report_html_2024.html",
-      img(
-        src = "html_logo.png",
-        height = "2%",
-        width = "2%",
-        align = "center"
+  # Reports --------------------------------------
+  # Helper to create a report link UI element
+  renderReportLink <- function(outputId, label, fileName) {
+    output[[outputId]] <- renderUI({
+      tags$div(
+        style = "margin: 2px; display: inline-block; vertical-align: top;",
+        tags$a(
+          href = fileName,
+          target = "_blank",
+          style = "font-size: 22px; font-weight: 500; text-decoration: none; color: #007ACC;",
+          paste(label),
+          tags$img(
+            src = "html_logo.png",
+            height = "20px",
+            width = "20px",
+            style = "margin-left: 6px; vertical-align: middle;"
+          )
+        )
       )
+    })
+  }
+  # Generate output objects for each suffix
+  lapply(report_suffixes, function(suffix) {
+    label <- switch(
+      suffix,
+      "ann2024" = "Annual 2024",
+      "longterm" = "Long-term 1980–2022",
+      {
+        # Parse suffix like "jan2024"
+        month_abbr <- toupper(substr(suffix, 1, 3))
+        year <- substr(suffix, 4, 7)
+        month_num <- match(month_abbr, toupper(month.abb))
+        if (!is.na(month_num)) {
+          format(as.Date(paste0(year, "-", month_num, "-01")), "%B %Y")
+        } else {
+          suffix
+        }
+      }
     )
-  })
 
-  # December 2024
-  # HTML in the shiny www folder
-  output$doc_html_mon_summ_dec2024 <- renderUI({
-    a(
-      "bc_monthly_climate_summary_December_2024",
-      target = "_blank",
-      style = "font-size:20px;",
-      href = "bc_monthly_climate_summary_December_2024.html",
-      img(
-        src = "html_logo.png",
-        height = "2%",
-        width = "2%",
-        align = "center"
-      )
+    file_name <- switch(
+      suffix,
+      "ann2024" = "bc_annual_climate_summary_2024.html",
+      "longterm" = "bc_longterm_temp_prcp_anomaly_report_1980_2022_html.html",
+      {
+        month_name <- format(as.Date(paste0(substr(suffix, 4, 7), "-", match(toupper(substr(suffix, 1, 3)), toupper(month.abb)), "-01")), "%B")
+        year <- substr(suffix, 4, 7)
+        paste0("bc_monthly_climate_summary_", month_name, "_", year, ".html")
+      }
     )
-  })
 
-  # November 2024
-  # HTML in the shiny www folder
-  output$doc_html_mon_summ_nov2024 <- renderUI({
-    a(
-      "bc_monthly_climate_summary_November_2024",
-      target = "_blank",
-      style = "font-size:20px;",
-      href = "bc_monthly_climate_summary_November_2024.html",
-      img(
-        src = "html_logo.png",
-        height = "2%",
-        width = "2%",
-        align = "center"
-      )
-    )
-  })
-
-  # October 2024
-  # HTML in the shiny www folder
-  output$doc_html_mon_summ_oct2024 <- renderUI({
-    a(
-      "bc_monthly_climate_summary_October_2024",
-      target = "_blank",
-      style = "font-size:20px;",
-      href = "bc_monthly_climate_summary_October_2024.html",
-      img(
-        src = "html_logo.png",
-        height = "2%",
-        width = "2%",
-        align = "center"
-      )
-    )
-  })
-
-  # September 2024
-  # HTML in the shiny www folder
-  output$doc_html_mon_summ_sep2024 <- renderUI({
-    a(
-      "bc_monthly_climate_summary_September_2024",
-      target = "_blank",
-      style = "font-size:20px;",
-      href = "bc_monthly_climate_summary_September_2024.html",
-      img(
-        src = "html_logo.png",
-        height = "2%",
-        width = "2%",
-        align = "center"
-      )
-    )
-  })
-
-  # August 2024
-  # HTML in the shiny www folder
-  output$doc_html_mon_summ_aug2024 <- renderUI({
-    a(
-      "bc_monthly_climate_summary_August_2024",
-      target = "_blank",
-      style = "font-size:20px;",
-      href = "bc_monthly_climate_summary_August_2024.html",
-      img(
-        src = "html_logo.png",
-        height = "2%",
-        width = "2%",
-        align = "center"
-      )
-    )
-  })
-
-  # July 2024
-  # HTML in the shiny www folder
-  output$doc_html_mon_summ_jul2024 <- renderUI({
-    a(
-      "bc_monthly_climate_summary_July_2024",
-      target = "_blank",
-      style = "font-size:20px;",
-      href = "bc_monthly_climate_summary_July_2024.html",
-      img(
-        src = "html_logo.png",
-        height = "2%",
-        width = "2%",
-        align = "center"
-      )
-    )
-  })
-
-  # June 2024
-  # HTML in the shiny www folder
-  output$doc_html_mon_summ_jun2024 <- renderUI({
-    a(
-      "bc_monthly_climate_summary_June_2024",
-      target = "_blank",
-      style = "font-size:20px;",
-      href = "bc_monthly_climate_summary_June_2024.html",
-      img(
-        src = "html_logo.png",
-        height = "2%",
-        width = "2%",
-        align = "center"
-      )
-    )
+    output_id <- paste0("doc_html_mon_summ_", suffix)
+    renderReportLink(output_id, label, file_name)
   })
 
 
-  # MAY 2024
-  # HTML in the shiny www folder
-  output$doc_html_mon_summ_may2024 <- renderUI({
-    a(
-      "bc_monthly_climate_summary_May_2024",
-      target = "_blank",
-      style = "font-size:20px;",
-      href = "bc_monthly_climate_summary_May_2024.html",
-      img(
-        src = "html_logo.png",
-        height = "2%",
-        width = "2%",
-        align = "center"
-      )
-    )
-  })
 
-  # April 2024
-  # HTML in the shiny www folder
-  output$doc_html_mon_summ_apr2024 <- renderUI({
-    a(
-      "bc_monthly_climate_summary_April_2024",
-      target = "_blank",
-      style = "font-size:20px;",
-      href = "bc_monthly_climate_summary_April_2024.html",
-      img(
-        src = "html_logo.png",
-        height = "2%",
-        width = "2%",
-        align = "center"
-      )
-    )
-  })
-
-  # March 2024
-  # HTML in the shiny www folder
-  output$doc_html_mon_summ_mar2024 <- renderUI({
-    a(
-      "bc_monthly_climate_summary_March_2024",
-      target = "_blank",
-      style = "font-size:20px;",
-      href = "bc_monthly_climate_summary_March_2024.html",
-      img(
-        src = "html_logo.png",
-        height = "2%",
-        width = "2%",
-        align = "center"
-      )
-    )
-  })
-
-  # February 2024
-  # HTML in the shiny www folder
-  output$doc_html_mon_summ_feb2024 <- renderUI({
-    a(
-      "bc_monthly_climate_summary_February_2024",
-      target = "_blank",
-      style = "font-size:20px;",
-      href = "bc_monthly_climate_summary_February_2024.html",
-      img(
-        src = "html_logo.png",
-        height = "2%",
-        width = "2%",
-        align = "center"
-      )
-    )
-  })
-
-
-  # January 2024
-  # HTML in the shiny www folder
-  output$doc_html_mon_summ_jan2024 <- renderUI({
-    a(
-      "bc_monthly_climate_summary_January_2024",
-      target = "_blank",
-      style = "font-size:20px;",
-      href = "bc_monthly_climate_summary_January_2024.html",
-      img(
-        src = "html_logo.png",
-        height = "2%",
-        width = "2%",
-        align = "center"
-      )
-    )
-  })
-
-  # December
-  # HTML in the shiny www folder
-  output$doc_html_mon_summ_dec2023 <- renderUI({
-    a(
-      "bc_monthly_climate_summary_December_2023",
-      target = "_blank",
-      style = "font-size:20px;",
-      href = "bc_monthly_climate_summary_December_2023.html",
-      img(
-        src = "html_logo.png",
-        height = "2%",
-        width = "2%",
-        align = "center"
-      )
-    )
-  })
-
-  # November
-  # HTML in the shiny www folder
-  output$doc_html_mon_summ_nov2023 <- renderUI({
-    a(
-      "bc_monthly_climate_summary_November_2023",
-      target = "_blank",
-      style = "font-size:20px;",
-      href = "bc_monthly_climate_summary_November_2023.html",
-      img(
-        src = "html_logo.png",
-        height = "2%",
-        width = "2%",
-        align = "center"
-      )
-    )
-  })
-
-  # October
-  # HTML in the shiny www folder
-  output$doc_html_mon_summ_oct2023 <- renderUI({
-    a(
-      "bc_monthly_climate_summary_October_2023",
-      target = "_blank",
-      style = "font-size:20px;",
-      href = "bc_monthly_climate_summary_October_2023.html",
-      img(
-        src = "html_logo.png",
-        height = "2%",
-        width = "2%",
-        align = "center"
-      )
-    )
-  })
-
-  # September
-  # HTML in the shiny www folder
-  output$doc_html_mon_summ_sep2023 <- renderUI({
-    a(
-      "bc_monthly_climate_summary_September_2023",
-      target = "_blank",
-      style = "font-size:20px;",
-      href = "bc_monthly_climate_summary_September_2023.html",
-      img(
-        src = "html_logo.png",
-        height = "2%",
-        width = "2%",
-        align = "center"
-      )
-    )
-  })
-
-  # Annual all summary
-  # HTML in the shiny www folder
-  output$doc_html_longterm_rep <- renderUI({
-    a("bc_temperature_precipitation_anomaly_1980_2022",
-      target = "_blank",
-      style = "font-size:20px;",
-      href = "bc_longterm_temp_prcp_anomaly_report_1980_2022_html.html",
-      img(
-        src = "html_logo.png",
-        height = "2%",
-        width = "2%",
-        align = "center"
-      )
-    )
-  })
-
-  # # pdf in the shiny www folder
-  #   output$doc_pdf <- renderUI({
-  #     a(
-  #       "BC climate anomaly report:",
-  #       pdf_file_name,
-  #       target = "_blank",
-  #       style = "font-size:20px;",
-  #       href = pdf_file_name,
-  #       img(
-  #         src = "pdf_logo.png",
-  #         height = "3%",
-  #         width = "3%",
-  #         align = "center"
-  #       )
-  #     )
-  #   })
-
-  # Climate stripes plots -------
+  ## Climate stripes plots ------------------------------------
 
   output$bc_clm_strp_withtitle <- renderImage({
     # Render the image
@@ -3046,7 +3286,7 @@ server <- function(session, input, output) {
     },
     content = function(file) {
       # Copy the file from the www folder to the user's download location
-      file.copy("www/bc_annual_tmean_ano_stripe.png", file)
+      file.copy("www/bc_annual_tmean_anomaly_stripe.png", file)
     })
 
   # App deployment date ----
