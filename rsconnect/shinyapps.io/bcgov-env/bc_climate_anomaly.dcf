@@ -5,7 +5,7 @@ account: bcgov-env
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
 appId: 9795863
-bundleId: 10094650
+bundleId: 10493605
 url: https://bcgov-env.shinyapps.io/bc_climate_anomaly/
 version: 1
 asMultiple: FALSE

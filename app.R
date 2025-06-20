@@ -15,33 +15,37 @@
 # limitations under the License.
 
 # Required -------------------
-# List of required packages
-required_packages <- c(
-  'shiny', 'shinydashboard', 'shinyWidgets', 'shinythemes', 'shinyjs', 'shinyalert',
-  'markdown', 'rmarkdown',
-  'terra', 'tidyterra','leaflet',
-  'tidyverse', 'magrittr', 'lubridate',
-  'zoo', 'zyp',
-  'cptcity', 'colorspace', 'plotly', 'shinycssloaders'
-)
+library('shiny')
+library('shinydashboard')
+library('shinyWidgets')
+library("shinythemes")
+library("shinyjs")
+library('shinyalert')
+library('shinycssloaders')
+library('plotly')
 
-# Install missing packages silently
-# install_if_missing <- function(pkg) {
-#   if (!requireNamespace(pkg, quietly = TRUE)) {
-#     install.packages(pkg, repos = "https://cloud.r-project.org", quiet = TRUE)
-#   }
-# }
-#
-# invisible(lapply(required_packages, install_if_missing))
+library('markdown')
+library('rmarkdown')
 
-# Load all packages
-lapply(required_packages, library, character.only = TRUE)
+library('terra')
+library('tidyterra')
+library('leaflet')
+
+library('tidyverse')
+library('magrittr')
+library('lubridate')
+
+library('zoo')
+library('zyp')
+library('colorspace')
+library('cptcity')
+
 
 # Load and process input data -------
 ## Paths --
 # setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
 shp_fls_pth <- './shapefiles/'
-ano_dt_pth <-  './ano_clm_data/'
+ano_dt_pth <-  './ano_clm_trn_data/'
 
 # Credit  -----
 plt_wtrmrk <-
@@ -135,34 +139,33 @@ update_year <- "2025"
 years <- seq(min_year, max_year, 1)
 yr_choices <- sort(years, decreasing = T)
 
-## Anomalies Data files -----
+## Anomalies climatology and trend Data files -----
 list.files(path = ano_dt_pth,
-           pattern = ".*_ano_.*\\.nc",
-           full.names = T) -> ano_dt_fls
-head(ano_dt_fls)
+           pattern = ".nc",
+           full.names = T) -> ano_clm_trn_dt_fls
+ano_clm_trn_dt_fls
 
-ano_dt_fl <- tibble(dt_pth = ano_dt_fls)
-ano_dt_fl %<>%
-  mutate(mon = str_extract(ano_dt_fls,
-                           paste(months_nam, collapse = "|")),
-         par = str_extract(ano_dt_fls,
-                           paste(parameters, collapse = "|")))
-
-## Climatology Data files -----------------------------
-list.files(path = ano_dt_pth,
-           pattern = ".*_clm_.*\\.nc",
-           full.names = T) -> clm_dt_fls
-head(clm_dt_fls)
-
-clm_dt_fl <- tibble(dt_pth = clm_dt_fls)
-clm_dt_fl %<>%
-  mutate(par = str_extract(clm_dt_fls,
-                           paste(parameters, collapse = "|")))
-
+ano_clm_trn_dt_fl <- tibble(dt_pth = ano_clm_trn_dt_fls) %>%
+  mutate(fl_nam = basename(dt_pth)) %>%
+  mutate(
+    par = str_extract(fl_nam, paste(parameters, collapse = "|")),                # prcp
+    dt_type = str_extract(fl_nam, "(ano|clm|spatial_trend)"),     # ano, clm, spatial_trend
+    mon = str_extract(fl_nam, "(annual|fall|summer|winter|spring|Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)"),
+    start_year = str_extract(fl_nam, "(19|20)\\d{2}")              # 1950 or 1980
+  ) %>%
+  # Optional cleanup
+  mutate(
+    dt_type = case_when(
+      dt_type == "spatial_trend" ~ "trend",
+      TRUE ~ dt_type
+    )
+  ) %>%
+  dplyr::select(-fl_nam)
+ano_clm_trn_dt_fl
 
 # for reports
 report_suffixes <- c(
-  "apr2025", "mar2025", "feb2025", "jan2025",
+  "may2025","apr2025", "mar2025", "feb2025", "jan2025",
   "ann2024",
   "dec2024", "nov2024", "oct2024", "sep2024",
   "aug2024", "jul2024", "jun2024", "may2024", "apr2024", "mar2024",
@@ -177,6 +180,7 @@ ui <- fluidPage(
     id = "bc_clm",
     title = "BC Climate Anomaly",
     theme = "bcgov.css",
+    selected = "ano_app",
 
     ## Intro page --------------------------
     tabPanel(
@@ -276,7 +280,8 @@ ui <- fluidPage(
 
     ## About page ---------------------
     tabPanel(
-      "About",
+      title = "About",
+      value = "about",
       withMathJax(includeMarkdown("about_bc_climate_anomaly_app.Rmd")),
       ###### footer ---------------------------
       column(
@@ -322,18 +327,48 @@ ui <- fluidPage(
       )
     ),
 
-    ## App page ----------------------------
+    ## Ano App page ----------------------------
     tabPanel(
-      title = "Anomaly App",
+      title = "Anomaly app",
+      value = "ano_app",
       sidebarLayout(
         sidebarPanel(
           shinyjs::useShinyjs(),
           id = "selection-panel",
           # style = "position:fixed; width:24%; max-height: 100vh;",
           width = 3,
-          ##### Filters ------------------
+
+          ##### Filters/selectors ------------------
+          # Custom CSS
+          tags$head(tags$style(HTML("
+    select.form-control {
+      transition: background-color 0.3s ease;
+    }
+    select.form-control:focus {
+      background-color: #d4edda !important;
+    }
+    .selectize-dropdown .option {
+      border-bottom: 1px solid #ccc;
+      padding: 6px 10px;
+    }
+  "))),
           helpText(HTML("<h4><b> Filter/Selections</b> </h4>",)),
-          helpText(HTML("<p> After selection click <i> <b> Run Analysis</i></b> to get outputs. </p>",)),
+          helpText(HTML('
+  <style>
+    .flash-text {
+      color: red;
+      animation: flash 1s infinite;
+    }
+    @keyframes flash {
+      0%   { opacity: 1; }
+      50%  { opacity: 0; }
+      100% { opacity: 1; }
+    }
+  </style>
+  <p>After selection, click <b><i class="flash-text">Run Analysis</i></b> to get outputs.</p>
+')),
+            # helpText(HTML("<h4><b> Filter/Selections</b> </h4>",)),
+          # helpText(HTML("<p> After selection click <i> <b> Run Analysis</i></b> to get outputs. </p>",)),
           fluidRow(
             useShinyjs(),
             pickerInput(
@@ -438,10 +473,12 @@ ui <- fluidPage(
                         selected = max_year)),
 
             # Run analysis and Reset selection
+           # Run analysis and Reset selection
            br(),
-           actionButton("run_ana_button", "Run analysis"), actionButton("reset_input", "Reset"),
-            br(),
-           ),
+           actionButton("run_ana_button", tags$b(tags$span(style = "color: red;", "Run analysis"))),
+           actionButton("reset_input", "Reset"),
+           br()
+          ),
           fluidRow(column(
             HTML("<h4><b>Location Map</b> </h4>"),
             title = "Map Location",
@@ -1132,6 +1169,12 @@ server <- function(session, input, output) {
     mon_full
   })
 
+  # Reset  selection /filters -----
+  observeEvent(input$reset_input, {
+    shinyjs::reset("selection-panel")
+
+  })
+
   # Location map plot -------------------------------------------
   output$loc_map <- renderLeaflet({
     req(
@@ -1148,7 +1191,7 @@ server <- function(session, input, output) {
 
     # Select appropriate shapefile based on inputs
     if (input$major_area == "Major watersheds" &&
-        input$wtrshd_area == "Major_watersheds (select one)") {
+        input$wtrshd_area == "Major watersheds (select one)") {
       sel_area_shpfl <- bc_wtrshd_shp['MJR_WTRSHM']
       lyr_id <- "MJR_WTRSHM"
 
@@ -1207,6 +1250,632 @@ server <- function(session, input, output) {
     )
   })
 
+  #  Selected data for calculations and plotting -----------------
+ ano_clm_trn_sel_dt_rct <- eventReactive(input$run_ana_button, {
+   req(input$month_picker)
+   req(input$par_picker)
+   req(input$major_area)
+
+   ### For sample run ----
+   # monn = "Feb"
+   # parr = "tmean"
+   # sel_yrs <- seq(1951,2025,1)
+   # sel_yrs
+   # sel_area_shpfl <- wna_shp
+   # sel_area_shpfl
+   # region = "WNA"
+   # ano_clm_trn_dt_fl %>%
+   #   filter(mon == monn &
+   #            par == parr) -> ano_clm_trn_dt_fl_mon
+   # ano_clm_trn_dt_fl_mon
+   # ano_dt_sel_rast <- rast(ano_clm_trn_dt_fl_mon$dt_pth)
+   # ano_dt_sel_rast
+   # terra::plot(ano_dt_sel_rast,70:nlyr(ano_dt_sel_rast))
+
+   ano_clm_trn_dt_fl %>%
+     filter(mon == input$month_picker &
+              par == input$par_picker) -> ano_clm_trn_dt_fl_mon
+
+   # Clip by shapefile of the selected area
+   sel_area_shpfl <- get_shapefile()
+
+   # other requirements
+   monn = unique(ano_clm_trn_dt_fl_mon$mon)
+   parr = unique(ano_clm_trn_dt_fl_mon$par)
+
+
+   # Anomaly
+   ano_clm_trn_dt_fl_mon %>%
+     filter(dt_type =='ano') -> ano_dt_fl_mon
+
+   ano_dt_sel_rast <- rast(ano_dt_fl_mon$dt_pth)
+   ano_dt_sel_rast
+   # plot(ano_dt_sel_rast)
+   yr_df <- tibble(paryr = names(ano_dt_sel_rast))
+   yr_df %<>%
+     mutate(yr = as.numeric(str_extract(paryr, "[0-9]+")))
+   names(ano_dt_sel_rast) <- yr_df$yr
+   terra::time(ano_dt_sel_rast) <- yr_df$yr
+
+   #crop for selected area
+   ano_dt_shp_rast <-
+     terra::crop(ano_dt_sel_rast, sel_area_shpfl, snap="out",mask = T)
+   ano_dt_shp_rast
+
+   # Climatology
+   ano_clm_trn_dt_fl_mon %>%
+     filter(dt_type =='clm') -> clm_dt_fl_mon
+
+   clm_dt_sel_rast <- rast(clm_dt_fl_mon$dt_pth)
+   clm_dt_sel_rast
+
+   #crop for selected area
+   clm_dt_shp_rast <-
+     terra::crop(clm_dt_sel_rast, sel_area_shpfl, snap="out",mask = T)
+   clm_dt_shp_rast
+
+   #calculate percentage for prcp and soil-moisture
+   if (parr == 'prcp' | parr == 'soil_moisture' ) {
+     ano_dt_shp_rast1 <- (ano_dt_shp_rast / clm_dt_shp_rast) * 100
+     #If prcp anomalies are very high ( > 200 %) then convert and limit to 200.
+     ano_dt_shp_rast2 <-
+       ifel(ano_dt_shp_rast1 > 201, 200, ano_dt_shp_rast1)
+     ano_dt_shp_rast3 <-
+       ifel(ano_dt_shp_rast2 < -201, -200, ano_dt_shp_rast2)
+     ano_dt_shp_rast <- ano_dt_shp_rast3
+   } else{
+     ano_dt_shp_rast <- ano_dt_shp_rast
+   }
+   # plot(aano_dt_shp_rast,40:44)
+   ano_dt_shp_rast
+
+
+   # Spatial trends
+   # trends50
+   ano_clm_trn_dt_fl_mon %>%
+     filter(dt_type =='trend' & start_year == '1950') -> trend_dt_fl_mon50
+
+   trn_dt_sel_rast50 <- rast(trend_dt_fl_mon50$dt_pth)
+   trn_dt_sel_rast50
+   # plot(trn_dt_sel_rast50)
+
+   #crop for selected area
+   trn_dt_shp_rast50 <-
+     terra::crop(trn_dt_sel_rast50, sel_area_shpfl, snap="out",mask = T)
+   trn_dt_shp_rast50
+
+   # trends80
+   ano_clm_trn_dt_fl_mon %>%
+     filter(dt_type =='trend' & start_year == '1980') -> trend_dt_fl_mon80
+
+   trn_dt_sel_rast80 <- rast(trend_dt_fl_mon80$dt_pth)
+   trn_dt_sel_rast80
+   # plot(trn_dt_sel_rast80)
+
+   #crop for selected area
+   trn_dt_shp_rast80 <-
+     terra::crop(trn_dt_sel_rast80, sel_area_shpfl, snap="out",mask = T)
+   trn_dt_shp_rast80
+
+
+   # Final return list
+   result_lst <-  return(list(
+     fltr_ano_dt = ano_dt_shp_rast,
+     fltr_clm_dt =  clm_dt_shp_rast,
+     fltr_trn50_dt =  trn_dt_shp_rast50,
+     fltr_trn80_dt =  trn_dt_shp_rast80,
+     fltr_mtdt_fl = ano_clm_trn_dt_fl_mon
+   ))
+
+   return(result_lst)
+
+ })
+
+  # Time-series and linear trend -------------------------
+  time_series_trnd_rct <- eventReactive(input$run_ana_button,{
+
+    withProgress(message = 'Calculating linear trends', value = 0, {
+      incProgress(0.02, detail = "Filtering data...")
+      ## time series data generate -----------
+      # Filtered reactive data
+      ano_clm_trn_sel_dt_rct()[[1]] -> ano_dt_shp_rast
+
+      ano_clm_trn_sel_dt_rct()[[5]] -> sel_dt_mtdt
+
+      # sel_dt_mtdt <- ano_clm_trn_dt_fl_mon
+
+      # Shapefile spatial average anomalies by year
+      ano_shp_av_dt <-
+        tibble(rownames_to_column(global(
+          ano_dt_shp_rast, fun = "mean", na.rm = T
+        ), "yr")) %>%
+        dplyr::select(yr, ano = mean)
+
+      ano_shp_av_dt$ano <- round(ano_shp_av_dt$ano, digits=4)
+
+      ano_shp_av_dt %<>%
+        drop_na()
+      ano_shp_av_dt$yr <-
+        as.numeric(str_extract(ano_shp_av_dt$yr, "[0-9]+"))
+      ano_shp_av_dt$par <- unique(sel_dt_mtdt$par)
+      ano_shp_av_dt$mon <- unique(sel_dt_mtdt$mon)
+      ano_shp_av_dt$region <- get_region()
+      ano_shp_av_dt
+
+      # To download time series
+      ano_shp_av_dt %>%
+        dplyr::select(yr,ano,par,mon,region) -> av_ano_ts
+
+      ## Trend calculation and plot ------------
+
+      # Background requirements for plots
+      parr <- unique(ano_shp_av_dt$par)
+      monn <- unique(ano_shp_av_dt$mon)
+      region <- unique(ano_shp_av_dt$region)
+
+      # Trend on average anomaly 1950 - now
+      ano_shp_av_dt %<>%
+        filter(yr > 1950) %<>%
+        mutate(# trnd =zyp.trend.vector(ano)[["trend"]],
+          # incpt =zyp.trend.vector(ano)[["intercept"]],
+          #sig = zyp.trend.vector(ano)[["sig"]])
+          sig = round(MannKendall(ano)[[2]], digits = 4))
+      ano_shp_av_dt
+
+      ano_mk_trnd <-
+        zyp.sen(ano ~ yr, ano_shp_av_dt)##Give the trend###
+      ano_mk_trnd$coefficients
+      ano_shp_av_dt$trn <-  ano_mk_trnd$coeff[[2]]
+      ano_shp_av_dt$incpt <-  ano_mk_trnd$coeff[[1]]
+
+      xs = c(min(ano_shp_av_dt$yr), max(ano_shp_av_dt$yr))
+      trn_slp = c(unique(ano_shp_av_dt$incpt), unique(ano_shp_av_dt$trn))
+      ys = cbind(1, xs) %*% trn_slp
+      ano_shp_av_dt$trn_lab = paste(
+        "italic(1950-~trend)==",
+        round(ano_shp_av_dt$trn, 2),"~yr^{-1}~','~italic(p)==",
+        round(ano_shp_av_dt$sig, 2)
+      )
+
+      #     mag_trnd_lab=paste("italic(t)==",round(ano_shp_av_dt$trn,2),get_unit(),
+      #                        "~mm~yr^{-1}~','~italic(p)==",round(ano_shp_av_dt$sig,2))
+
+      # Trend on average anomaly 1980 - now
+      ano_shp_av_dt %>%
+        filter(yr > 1979) %>%
+        mutate(# trnd =zyp.trend.vector(ano)[["trend"]],
+          # incpt =zyp.trend.vector(ano)[["intercept"]],
+          #sig = zyp.trend.vector(ano)[["sig"]])
+          sig = round(MannKendall(ano)[[2]], digits = 2)) -> ano_shp_av_dt80
+      ano_shp_av_dt80
+
+      ano_mk_trnd80 <-
+        zyp.sen(ano ~ yr, ano_shp_av_dt80)##Give the trend###
+      ano_mk_trnd80$coefficients
+      ano_shp_av_dt80$trn <-  ano_mk_trnd80$coeff[[2]]
+      ano_shp_av_dt80$incpt <-  ano_mk_trnd80$coeff[[1]]
+
+      xs80 = c(min(ano_shp_av_dt80$yr), max(ano_shp_av_dt80$yr))
+      trn_slp80 = c(unique(ano_shp_av_dt80$incpt), unique(ano_shp_av_dt80$trn))
+      ys80 = cbind(1, xs80) %*% trn_slp80
+      ano_shp_av_dt80$trn_lab = paste(
+        "italic(1980-~trend)==",
+        round(ano_shp_av_dt80$trn, 2),"~yr^{-1}~','~italic(p)==",
+        round(ano_shp_av_dt80$sig, 2)
+      )
+
+      incProgress(0.02, detail = "Plotting linear trend ...")
+
+      # anomaly plot
+      ymin <- (-1) * (max(abs(ano_shp_av_dt$ano)))
+      ymax <- (1) * (max(abs(ano_shp_av_dt$ano)))
+      minyr <- min(ano_shp_av_dt$yr)
+      maxyr <- max(ano_shp_av_dt$yr)
+
+      if(ymax < 1){
+        ybrk_neg <-
+          round(c(seq((-1) * (max(
+            abs(ano_shp_av_dt$ano)
+          )), 0, length.out = 2)), digits=2)
+        ybrk_neg
+        ybrk_pos <-
+          round(c(seq(0, (1) * (max(
+            abs(ano_shp_av_dt$ano)
+          )), length.out = 2))[-1], digits=2)
+        ybrk_pos
+      } else {
+        ybrk_neg <-
+          ceiling(c(seq((-1) * (max(
+            abs(ano_shp_av_dt$ano)
+          )), 0, length.out = 4)))
+        ybrk_neg
+        ybrk_pos <-
+          floor(c(seq(0, (1) * (max(
+            abs(ano_shp_av_dt$ano)
+          )), length.out = 4)))[-1]
+        ybrk_pos
+      }
+      #create breaks with "00"
+
+      if (nchar(abs(ybrk_neg[[1]])) == 4) {
+        ybrk_negn <- plyr::round_any(ybrk_neg, 100, f = ceiling)
+      } else if (nchar(abs(ybrk_neg[[1]])) == 3) {
+        ybrk_negn <- plyr::round_any(ybrk_neg, 10, f = ceiling)
+      } else if (nchar(abs(ybrk_neg[[1]])) == 2) {
+        ybrk_negn <- plyr::round_any(ybrk_neg, 1, f = ceiling)
+      } else if (nchar(abs(ybrk_neg[[1]])) == 1) {
+        ybrk_negn <- plyr::round_any(ybrk_neg, 1, f = ceiling)
+      }
+      ybrk_negn
+
+      if (nchar(abs(ybrk_neg[[1]])) == 4) {
+        ybrk_posp <- plyr::round_any(ybrk_pos, 100, f = floor)
+      } else if (nchar(abs(ybrk_neg[[1]])) == 3) {
+        ybrk_posp <- plyr::round_any(ybrk_pos, 10, f = floor)
+      } else if (nchar(abs(ybrk_pos[[1]])) == 2) {
+        ybrk_posp <- plyr::round_any(ybrk_pos, 1, f = floor)
+      } else if (nchar(abs(ybrk_pos[[1]])) == 1) {
+        ybrk_posp <- plyr::round_any(ybrk_pos, 1, f = floor)
+      }
+      ybrk_posp
+
+      if(ymax < 1){
+        ybrks_seq <- c(ybrk_neg, ybrk_pos)
+      }else {
+        ybrks_seq <- c(ybrk_negn, ybrk_posp)
+      }
+      ybrks_seq
+      # Positive and negative anomalies and 3 years moving average to create bar plot
+      ano_shp_av_dt %<>%
+        mutate(pos_neg = if_else(ano <= 0, "neg", "pos")) %>%
+        mutate(ano_mv = rollmean(ano, 3, fill = list(NA, NULL, NA)))
+      ano_shp_av_dt
+      tail(ano_shp_av_dt)
+
+      if (parr == "prcp" |parr == "soil_moisture") {
+        par_title <-  paste0(get_region(), " ",
+                             get_par_full(), " ", "anomaly", " (% of normal)",
+                             " : ",
+                             get_mon_full())
+      } else{
+        par_title <-  paste0(get_region(), " ",
+                             get_par_full(), " ", "anomaly"," (", get_unit(),")",
+                             " : ",
+                             get_mon_full())
+      }
+
+      if (parr == "prcp" |parr == "soil_moisture") {
+        y_axis_lab <- paste0(parr, " average anomaly (% of normal)")
+      } else{
+        y_axis_lab <- paste0(parr, " average anomaly ", "(", get_unit(), ")")
+      }
+
+      ano_shp_trn_plt <-
+        ggplot(data = ano_shp_av_dt, aes(x = yr, y = ano)) +
+        annotate(
+          geom = 'text',
+          label = plt_wtrmrk,
+          x = Inf,
+          y = -Inf,
+          hjust = 1,
+          vjust = -0.5,
+          color = 'gray80',
+          size = 3.0
+        ) +
+        geom_bar(
+          stat = "identity",
+          aes(fill = ano),
+          width = 0.7,
+          show.legend = FALSE
+        ) +
+        geom_hline(
+          yintercept = 0,
+          color = "gray10",
+          linewidth = 0.5
+        ) +
+        scale_fill_gradientn(
+          name = paste0(parr, " anomaly ", get_unit()),
+          colours = cpt(pal = "ncl_BlWhRe",
+                        n = 100,
+                        rev = F),
+          limits = c(ymin, ymax),
+          breaks = ybrks_seq
+        ) +
+        geom_line(
+          aes(y = ano_mv, color = "3-yrs moving mean"),
+          linewidth = 1.1,
+          alpha = 0.7,
+          na.rm = T
+        ) +
+        # geom_point(color = "blue", size = 2) +
+        geom_segment(
+          aes(
+            x = xs[[1]],
+            xend = xs[[2]],
+            y = ys[[1]],
+            yend = ys[[2]],
+            color = "1950-trend"
+          ),
+          linetype = "dashed",
+          linewidth = 0.9
+        ) +
+        geom_label(
+          aes(x = xs[[1]] + 20),
+          color = 'black',
+          y = ymax - 0.05,
+          fill = NA,
+          label = ano_shp_av_dt$trn_lab[[1]],
+          size = 4.0, parse=T
+        ) +
+        # add 80s trend
+        geom_segment(
+          aes(
+            x = xs80[[1]],
+            xend = xs80[[2]],
+            y = ys80[[1]],
+            yend = ys80[[2]],
+            color = "1980-trend"
+          ),
+          linetype = "solid",
+          linewidth = 0.9
+        ) +
+        geom_label(
+          aes(x = xs[[1]] + 38),
+          y = ymax - 0.05,
+          fill = NA,
+          color = 'deepskyblue2',
+          label = ano_shp_av_dt80$trn_lab[[1]],
+          size = 4.0,
+          parse = TRUE
+        ) +
+        scale_x_continuous(
+          name = " ",
+          breaks = seq(1950, maxyr, 5),
+          expand = c(0.02, 0.02)
+        ) +
+        scale_y_continuous(name = y_axis_lab,
+                           limits = c(ymin, ymax),
+                           breaks = ybrks_seq) +
+        labs(title = par_title, subtitle = "Baseline: 1981-2010") +
+        scale_color_manual(
+          " ",
+          values = c(
+            "3-yrs moving mean" = "green",
+            "1950-trend" = "black",
+            "1980-trend" = "deepskyblue2"
+          ),
+          labels =  c(
+            "3-yrs moving mean" = "3-yrs moving mean",
+            "1950-trend" = "1950-trend",
+            "1980-trend" = "1980-trend"
+          )
+        ) +
+        theme_bw() +
+        theme(
+          # panel.spacing=unit(0.1,"lines"),
+          panel.grid.minor = element_blank(),
+          panel.grid.major = element_line(
+            color = "gray75",
+            linewidth = 0.05,
+            linetype = "dashed"
+          ),
+          axis.line = element_line(colour = "black", linewidth = 1),
+          axis.ticks.length = unit(-0.20, "cm"),
+          element_line(colour = "black", linewidth =  1),
+          axis.title.y = element_text(
+            angle = 90,
+            face = "plain",
+            size = 13,
+            colour = "Black",
+            margin = unit(c(1, 1, 1, 1), "mm")
+          ),
+          axis.title.x = element_text(
+            angle = 0,
+            face = "plain",
+            size = 13,
+            colour = "Black",
+            margin = unit(c(1, 1, 1, 1), "mm")
+          ),
+          axis.text.x = element_text(
+            angle = 0,
+            hjust = 0.5,
+            vjust = 0.5,
+            colour = "black",
+            size = 12,
+            margin = margin(
+              t = 2,
+              r = 2,
+              b = 2,
+              l = 2
+            )
+          ),
+          axis.text.y = element_text(
+            angle = 90,
+            hjust = 0.5,
+            vjust = 0.5,
+            colour = "black",
+            size = 12,
+            margin = margin(
+              t = 2,
+              r = 2,
+              b = 2,
+              l = 2
+            )
+          ),
+          plot.title = element_text(
+            angle = 0,
+            face = "bold",
+            size = 13,
+            colour = "Black"
+          ),
+          legend.position = c(0.90, 0.94),
+          legend.direction = "vertical",
+          legend.background = element_rect(fill = NA, color = NA),
+          legend.margin = margin(0, 0, 0, 0),
+          legend.box.margin = margin(0, 0, 0, 0),
+          legend.title = element_text(size = 13),
+          legend.text = element_text(margin = margin(t = -5), size = 12),
+          strip.text.x = element_text(size = 12, angle = 0),
+          strip.text.y = element_text(size = 12, face = "bold"),
+          axis.text = element_text(margin = -5),
+          strip.background = element_rect(fill = "black"),
+          strip.text = element_text(colour = 'Black')
+        )
+      ano_shp_trn_plt
+
+      if (parr == "prcp" | parr == "soil_moisture" |parr == "rh") {
+        ano_shp_trn_plt <- ano_shp_trn_plt +
+          scale_fill_gradientn(
+            name = paste0(parr, "  anomaly ", get_unit()),
+            colours = cpt(pal = "cmocean_curl",
+                          n = 100,
+                          rev = T),
+            limits = c(ymin, ymax),
+            breaks = ybrks_seq
+          )
+      }
+      ano_shp_trn_plt<- ano_shp_trn_plt +
+        theme(axis.title.y = element_blank())
+      ano_shp_trn_plt
+
+      # plotly display
+
+      trn1980_lab <-
+        paste0('1980-trend = ',
+               round(ano_shp_av_dt80$trn[[1]], 2),'yr<sup>-1</sup>','<span>&#44;</span> ',
+               ' <i>p<i>=',
+               round(ano_shp_av_dt80$sig[[1]], 2) )
+      trn1980_lab
+      trn1950_lab <-
+        paste0('1950-trend = ',
+               round(ano_shp_av_dt$trn[[1]], 2),'yr<sup>-1</sup>','<span>&#44;</span> ',
+               ' <i>p<i>=',
+               round(ano_shp_av_dt$sig[[1]], 2) )
+      trn1950_lab
+
+      #Convert to plotly
+      ano_shp_trn_plty<-  ggplotly(ano_shp_trn_plt) %>%
+        layout(legend = list(orientation = "h",
+                             xanchor = "center",
+                             x = 0.6,
+                             y = 1.0))%>%
+        layout(margin = list(l = 0, r = 0, b = 10, t = 80),
+               title = list( x = 0.001 ,
+                             y = 0.92,
+                             text = paste0(par_title,
+                                           '<br>',
+                                           '<sup>',
+                                           'Baseline: 1981-2010', '</sup>')))%>%
+        layout(
+          annotations = list(
+            list(
+              x = 1 ,
+              y = 0.0,
+              text = plt_wtrmrk,
+              showarrow = F,
+              xref = 'paper',
+              yref = 'paper',
+              xanchor='right', yanchor='auto', xshift=0, yshift=0,
+              font=list(size=9, color='#e5e5e5')
+            )
+          ))%>%
+        layout(
+          annotations = list(
+            list(
+              x = 0.30 ,
+              y = 0.97,
+              text = trn1950_lab,
+              showarrow = F,
+              xref = 'paper',
+              yref = 'paper',
+              xanchor='right', yanchor='auto', xshift=0, yshift=0,
+              font=list(size=15, color="black")
+            )
+          ))%>%
+        layout(
+          annotations = list(
+            list(
+              x = 0.30 ,
+              y = 0.93,
+              text = trn1980_lab,
+              showarrow = F,
+              xref = 'paper',
+              yref = 'paper',
+              xanchor='right', yanchor='auto', xshift=0, yshift=0,
+              font=list(size=15, color='#00bfff')
+            )
+          ))%>%
+        layout(xaxis = list(showgrid = FALSE),
+               yaxis = list(showgrid = FALSE))
+      ano_shp_trn_plty
+
+      ### File name for download -----
+      # Year range
+      if (monn != "annual") {
+        mx_yr = max_year
+      } else {
+        mx_yr = max_year - 1
+      }
+
+      fl_nam <-
+        paste0(get_region(),
+               "_",
+               parr,"_anomaly_timeseries",
+               "_",
+               monn,
+               "_",
+               min_year,
+               "_",
+               mx_yr)
+      fl_nam
+      incProgress(0.05, detail = "Finalizing linear trend ...")
+      # Final return list
+      return(list(lnr_trn_ptly_plt =  ano_shp_trn_plty,
+                  fl_nam_dwnld = fl_nam,
+                  lnr_trn_plt_dwnld =  ano_shp_trn_plt,
+                  ts_data_csv = av_ano_ts
+      ))
+    })
+
+  })
+
+  ## display linear trend  ---------------
+  output$lnr_trn_plt <- renderPlotly({
+    time_series_trnd_rct()[[1]]})
+
+  ## Download linear trend plot and time series data --------
+  # Download plot
+
+  output$download_lnr_trn_plt <- downloadHandler(
+    filename = function(file) {
+      paste0(time_series_trnd_rct()[[2]], "_trend_plot.png")
+    },
+    content = function(file) {
+      ggsave(
+        file,
+        plot = time_series_trnd_rct()[[3]],
+        width = 13,
+        height = 6,
+        units = "in",
+        dpi = 300,
+        scale = 0.9,
+        limitsize = F,
+        device = "png"
+      )
+    }
+  )
+
+  # Download time series (.csv)
+  output$download_ano_ts_data <- downloadHandler(
+    filename = function(file) {
+      paste0(time_series_trnd_rct()[[2]],
+             "_data.csv")
+    },
+    content = function(file) {
+      write_csv(time_series_trnd_rct()[[4]],
+                file, append = FALSE)
+    }
+  )
 
   # Spatial anomaly data and plot:  Reactive ----------------------------------------------------------------
 
@@ -1215,46 +1884,15 @@ server <- function(session, input, output) {
     req(input$month_picker)
     req(input$year_range)
 
-    ## Filtered spatial anomaly data  ----------
+    ano_clm_trn_sel_dt_rct()[[1]] -> ano_dt_shp_rast
 
-    ano_dt_fl %>%
-      filter(mon == input$month_picker &
-               par == input$par_picker) -> ano_dt_fl_mon
+   ano_clm_trn_sel_dt_rct()[[5]] -> sel_dt_mtdt
+   parr <- unique(sel_dt_mtdt$par)
+   monn <- unique(sel_dt_mtdt$mon)
 
-    monn = input$month_picker
-    parr = input$par_picker
+   sel_area_shpfl <- get_shapefile()
 
-    ano_dt_sel_rast <- rast(ano_dt_fl_mon$dt_pth)
-    ano_dt_sel_rast
-    # plot(ano_dt_sel_rast)
-
-    # Clip by shapefile of the selected area
-    #browser()
-    sel_area_shpfl <- get_shapefile()
-    #browser()
-
-    ### For sample run ----
-    # monn = "annual"
-    # parr = "tmean"
-    # sel_yrs <- seq(1951,2025,1)
-    # sel_yrs
-    # sel_area_shpfl <- wna_shp
-    # sel_area_shpfl
-    # region = "WNA"
-    # ano_dt_fl %>%
-    #   filter(mon == monn &
-    #            par == parr) -> ano_dt_fl_mon
-    # ano_dt_sel_rast <- rast(ano_dt_fl_mon$dt_pth)
-    # ano_dt_sel_rast
-    # terra::plot(ano_dt_sel_rast,70:nlyr(ano_dt_sel_rast))
-
-    ano_dt_sel_rast <-
-      terra::crop(ano_dt_sel_rast,
-                  sel_area_shpfl,
-                  snap = "out",
-                  mask = T)
-    ano_dt_sel_rast
-    # plot(ano_dt_sel_rast)
+    ano_dt_sel_rast <- ano_dt_shp_rast
     names(ano_dt_sel_rast)
 
     # Filter for selected year (s)
@@ -1276,41 +1914,7 @@ server <- function(session, input, output) {
 
     ano_dt_rast  <-  subset(ano_dt_sel_rast, which(names(ano_dt_sel_rast) %in% sel_yrs))
     ano_dt_rast
-
-    # Import climatology and calculate % anomaly for precipitation
-    # names(ano_dt_rast)
-
-    clm_dt_fl %>%
-      filter(par == parr) -> clm_dt_fl_par
-    clm_dt_sel_rast <- rast(clm_dt_fl_par$dt_pth)
-    # plot(clm_dt_sel_rast)
-    names(clm_dt_sel_rast) <- months_nam
-
-    # Select for input month
-    clm_dt_sel_rast_mon <-
-      subset(clm_dt_sel_rast, which(names(clm_dt_sel_rast) %in% monn))
-    clm_dt_sel_rast <- clm_dt_sel_rast_mon
-    rm(clm_dt_sel_rast_mon)
-
-    # Crop to shpfile
-    clm_dt_rast <-
-      terra::crop(clm_dt_sel_rast, sel_area_shpfl,snap="out", mask = T)
-    # plot(clm_dt_rast)
-    # plot(ano_dt_rast)
-
-    if (parr == 'prcp' | parr == 'soil_moisture' ) {
-      ano_dt_rast_per1 <- (ano_dt_rast / clm_dt_rast) * 100
-      #If prcp anomalies are very high ( > 200 %) then convert and limit to 200.
-      ano_dt_rast_per2 <-
-        ifel(ano_dt_rast_per1 > 201, 200, ano_dt_rast_per1)
-      ano_dt_rast_per3 <-
-        ifel(ano_dt_rast_per2 < -201, -200, ano_dt_rast_per2)
-      ano_dt_rast <- ano_dt_rast_per3
-    } else{
-      ano_dt_rast <- ano_dt_rast
-    }
-    # plot(ano_dt_rast,40:44)
-    ano_dt_rast
+    names(ano_dt_sel_rast)
 
     ## Spatial anomaly overview summary  --------
 
@@ -1664,11 +2268,12 @@ server <- function(session, input, output) {
 
  # Climate normal plot ----------------------------------------------------------------------------
   clm_nor_plt_rct <- eventReactive(input$run_ana_button,{
-    req(input$par_picker)
-    req(input$month_picker)
-    # other requirements
-    monn = input$month_picker
-    parr = input$par_picker
+
+    ano_clm_trn_sel_dt_rct()[[2]] -> clm_dt_shp_rast
+
+    ano_clm_trn_sel_dt_rct()[[5]] -> sel_dt_mtdt
+    parr <- unique(sel_dt_mtdt$par)
+    monn <- unique(sel_dt_mtdt$mon)
 
     sel_area_shpfl <- get_shapefile()
 
@@ -1691,48 +2296,24 @@ server <- function(session, input, output) {
 
  ## Climate normal plot for display -------
 
-    clm_dt_fl %>%
-      filter(par == input$par_picker) -> clm_dt_fl_par
-    clm_dt_sel_rast <- rast(clm_dt_fl_par$dt_pth)
-    # plot(clm_dt_sel_rast)
-
-    # clm_dt_fl %>%
-    #   filter(par == "tmean") -> clm_dt_fl_par
-    # clm_dt_sel_rast <- rast(clm_dt_fl_par$dt_pth)
-    # clm_dt_sel_rast
-    # sel_area_shpfl <- bc_shp
-
-    names(clm_dt_sel_rast) <- months_nam
-
-    # Select for input month
-    clm_dt_sel_rast_mon <-
-      subset(clm_dt_sel_rast, which(names(clm_dt_sel_rast) %in% monn))
-    clm_dt_sel_rast <- clm_dt_sel_rast_mon
-
-    # Clip by shape file of the selected area
-
-    clm_dt_sel_rast <-
-      terra::crop(clm_dt_sel_rast, sel_area_shpfl, snap="out",mask = T)
-    # plot(clm_dt_sel_rast)
-
-    # Calculate mean and range of normal values
+        # Calculate mean and range of normal values
     mn_clm_val <-
-      round(global(clm_dt_sel_rast, 'mean', na.rm = T), digits = 2)
+      round(global(clm_dt_shp_rast, 'mean', na.rm = T), digits = 2)
     mi_clm_val <-
-      round(global(clm_dt_sel_rast, 'min', na.rm = T), digits = 2)
+      round(global(clm_dt_shp_rast, 'min', na.rm = T), digits = 2)
     mx_clm_val <-
-      round(global(clm_dt_sel_rast, 'max', na.rm = T), digits = 2)
+      round(global(clm_dt_shp_rast, 'max', na.rm = T), digits = 2)
 
     # Plot using terra rast
 
     if (parr == "prcp") {
-      clm_dt_sel_rast1 <- log(clm_dt_sel_rast)
+      clm_dt_shp_rast1 <- log(clm_dt_shp_rast)
     } else{
-      clm_dt_sel_rast1 <- clm_dt_sel_rast
+      clm_dt_shp_rast1 <- clm_dt_shp_rast
     }
 
     spatial_clm_plt <-  ggplot() +
-      geom_spatraster(data = clm_dt_sel_rast1) +
+      geom_spatraster(data = clm_dt_shp_rast1) +
       scale_fill_continuous(
         type = "viridis",
         name = " ",
@@ -1936,7 +2517,7 @@ server <- function(session, input, output) {
         clm_nor_title_txt = clm_nor_title_txt,
         clm_nor_plt = spatial_clm_plt,
         clm_nor_plt_dnwld = spatial_clm_plt_dnwld,
-        clm_nor_data =  clm_dt_sel_rast1,
+        clm_nor_data =  clm_dt_shp_rast1,
         download_fl_nam = fl_nam
       ))
 
@@ -1990,59 +2571,21 @@ server <- function(session, input, output) {
     # Spatial anomaly trends for 1950s and 1980s ---------------------------------------------------------
 
     spatial_ano_trnd_rct <- eventReactive(input$run_ana_button,{
-      req(input$month_picker)
-      req(input$par_picker)
-      req(input$major_area)
 
       withProgress(message = 'Calculating spatial trends', value = 0, {
         incProgress(0.1, detail = "Extracting data ...")
-      # other requirements
-      monn = input$month_picker
-      parr = input$par_picker
 
-      # Load anomaly raster for selected month & parameter
-      ano_dt_fl %>%
-        filter(mon == input$month_picker & par == input$par_picker) -> ano_dt_fl_mon
-      ano_dt_sel_rast <- rast(ano_dt_fl_mon$dt_pth)
+        ano_clm_trn_sel_dt_rct()[[5]] -> sel_dt_mtdt
+        parr <- unique(sel_dt_mtdt$par)
+        monn <- unique(sel_dt_mtdt$mon)
 
-      # Clip to shapefile
-      sel_area_shpfl <- get_shapefile()
-      ano_dt_shp_rast <- terra::crop(ano_dt_sel_rast, sel_area_shpfl, snap="out", mask=TRUE)
+        sel_area_shpfl <- get_shapefile()
 
-      # Extract year info
-      yr_df <- tibble(paryr = names(ano_dt_shp_rast)) %>%
-        mutate(yr = as.numeric(str_extract(paryr, "[0-9]+")))
-      names(ano_dt_shp_rast) <- yr_df$yr
-      mx_yr_trn <- max(yr_df$yr)
+        # 1950s spatial trend ----------
+        ano_clm_trn_sel_dt_rct()[[3]] -> ano_trn_mag_sig50
+        # ano_trn_mag_sig50 <- trn_dt_shp_rast50
 
-      # Load and prepare climatology
-      clm_dt_fl %>%
-        filter(par == input$par_picker) -> clm_dt_fl_par
-      clm_dt_sel_rast <- rast(clm_dt_fl_par$dt_pth)
-      names(clm_dt_sel_rast) <- months_nam
-      clm_dt_sel_rast <- subset(clm_dt_sel_rast, which(names(clm_dt_sel_rast) %in% input$month_picker))
-
-      # Crop climatology raster
-      clm_dt_rast <- terra::crop(clm_dt_sel_rast, sel_area_shpfl, snap="out", mask=TRUE)
-
-      # Normalize anomalies
-      if (input$par_picker %in% c("prcp", "soil_moisture")) {
-        ano_dt_shp_rast1 <- (ano_dt_shp_rast / clm_dt_rast) * 100
-        ano_dt_shp_rast2 <- ifel(ano_dt_shp_rast1 > 201, 200, ano_dt_shp_rast1)
-        ano_dt_shp_rast3 <- ifel(ano_dt_shp_rast2 < -201, -200, ano_dt_shp_rast2)
-        ano_dt_shp_rast <- ano_dt_shp_rast3
-      }
-
-      ## Calculate trend: 1950-now  -----------------
-      incProgress(0.15, detail = "Calculating trend (1950-now)...")
-
-      mk_trn_mag_sig_fun <- function(y) {
-        se = zyp.trend.vector(y, x = 1:length(y), conf.intervals = FALSE)
-        c(se[['trend']], se[['sig']])
-      }
-
-      ano_trn_mag_sig50 <- app(ano_dt_shp_rast, mk_trn_mag_sig_fun)
-      names(ano_trn_mag_sig50) <- c("trnmag", "pval")
+       names(ano_trn_mag_sig50) <- c("trnmag", "pval")
       # plot(ano_trn_mag_sig50
       mn_trn_val50 <-
         round(global(ano_trn_mag_sig50[[1]], 'mean', na.rm = T), digits = 3)
@@ -2061,7 +2604,7 @@ server <- function(session, input, output) {
         trn_unt = get_unit()
       }
 
-      #### Plot trend map (1950-now)  ----------
+      #### Plot trend map (1950-now)
       incProgress(0.1, detail = "Plotting spatial trend (1950-now)...")
 
       ano_dt_sig_trn50 <- ano_sp_mk_trn_sig_dt50 %>%
@@ -2241,11 +2784,12 @@ server <- function(session, input, output) {
         )
       ano_dt_sp_trn_sig_plt50
 
-      ## Calculate trend: 1980-now -------------
+      ## Spatial trends 1980-now -------------
       incProgress(0.15, detail = "Calculating trend (1980-now)...")
 
-      ano_dt_shp_rast80 <- subset(ano_dt_shp_rast, 31:nlyr(ano_dt_shp_rast))
-      ano_trn_mag_sig80 <- app(ano_dt_shp_rast80, mk_trn_mag_sig_fun)
+      ano_clm_trn_sel_dt_rct()[[4]] -> ano_trn_mag_sig80
+      # ano_trn_mag_sig80 <- trn_dt_shp_rast80
+
       names(ano_trn_mag_sig80) <- c("trnmag", "pval")
 
       # plot(ano_trn_mag_sig80
@@ -2260,7 +2804,7 @@ server <- function(session, input, output) {
       ano_sp_mk_trn_sig_dt80 <- as_tibble(ano_trn_mag_sig80, xy = TRUE, na.rm = TRUE) %>%
         mutate(trnmag = round(trnmag, 3))
 
-      #### Plot trend maps (1980-now) ------
+      #### Plot trend maps (1980-now)
       incProgress(0.1, detail = "Plotting spatial trend (1980-now)...")
 
       ano_dt_sig_trn80 <- ano_sp_mk_trn_sig_dt80 %>%
@@ -2597,583 +3141,6 @@ server <- function(session, input, output) {
       }
     )
 
- # Time-series and linear trend -------------------------
-   time_series_trnd_rct <- eventReactive(input$run_ana_button,{
-    req(input$month_picker)
-    req(input$par_picker)
-    req(input$major_area)
-
-    withProgress(message = 'Calculating linear trends', value = 0, {
-      incProgress(0.02, detail = "Filtering data...")
- ## time series data generate -----------
-    ano_dt_fl %>%
-      filter(mon == input$month_picker &
-               par == input$par_picker) -> ano_dt_fl_mon
-
-    ano_dt_sel_rast <- rast(ano_dt_fl_mon$dt_pth)
-    ano_dt_sel_rast
-    # plot(ano_dt_sel_rast)
-
-    # other requirements
-    monn = input$month_picker
-    parr = input$par_picker
-
-    sel_area_shpfl <- get_shapefile()
-
-    # ano_dt_sel_rast <- ano_dt_fil_rast
-    # plot(ano_dt_sel_rast)
-
-    # Clip by shapefile of the selected area
-    sel_area_shpfl <- get_shapefile()
-
-      # other requirements
-    monn = input$month_picker
-    parr = input$par_picker
-
-   ano_dt_shp_rast <-
-      terra::crop(ano_dt_sel_rast, sel_area_shpfl, snap="out",mask = T)
-    ano_dt_shp_rast
-   # plot(ano_dt_shp_rast,72)
-    yr_df <- tibble(paryr = names(ano_dt_shp_rast))
-    yr_df %<>%
-      mutate(yr = as.numeric(str_extract(paryr, "[0-9]+")))
-    names(ano_dt_shp_rast) <- yr_df$yr
-
-    #get climatology and calculate percentage for prcp and soil-moisture
-    clm_dt_fl %>%
-      filter(par == parr) -> clm_dt_fl_par
-    clm_dt_sel_rast <- rast(clm_dt_fl_par$dt_pth)
-    # plot(clm_dt_sel_rast)
-    names(clm_dt_sel_rast) <- months_nam
-
-    # Select for input month
-    clm_dt_sel_rast_mon <-
-      subset(clm_dt_sel_rast, which(names(clm_dt_sel_rast) %in% monn))
-    clm_dt_sel_rast <- clm_dt_sel_rast_mon
-    rm(clm_dt_sel_rast_mon)
-
-    # Crop to shpfile
-    clm_dt_rast <-
-      terra::crop(clm_dt_sel_rast, sel_area_shpfl,snap="out", mask = T)
-    # plot(clm_dt_rast)
-    # plot(ano_dt_shp_rast)
-
-    if (parr == 'prcp' | parr == 'soil_moisture' ) {
-      ano_dt_shp_rast1 <- (ano_dt_shp_rast / clm_dt_rast) * 100
-      #If prcp anomalies are very high ( > 200 %) then convert and limit to 200.
-      ano_dt_shp_rast2 <-
-        ifel(ano_dt_shp_rast1 > 201, 200, ano_dt_shp_rast1)
-      ano_dt_shp_rast3 <-
-        ifel(ano_dt_shp_rast2 < -201, -200, ano_dt_shp_rast2)
-      ano_dt_shp_rast <- ano_dt_shp_rast3
-    } else{
-      ano_dt_shp_rast <- ano_dt_shp_rast
-    }
-    # plot(aano_dt_shp_rast,40:44)
-    ano_dt_shp_rast
-
-    # Shapefile spatial average anomalies by year
-    ano_shp_av_dt <-
-      tibble(rownames_to_column(global(
-        ano_dt_shp_rast, fun = "mean", na.rm = T
-      ), "yr")) %>%
-      dplyr::select(yr, ano = mean)
-
-    ano_shp_av_dt$ano <- round(ano_shp_av_dt$ano, digits=4)
-
-    ano_shp_av_dt %<>%
-      drop_na()
-    ano_shp_av_dt$yr <-
-      as.numeric(str_extract(ano_shp_av_dt$yr, "[0-9]+"))
-    ano_shp_av_dt$par <- unique(ano_dt_fl_mon$par)
-    ano_shp_av_dt$mon <- unique(ano_dt_fl_mon$mon)
-    ano_shp_av_dt$region <- get_region()
-    ano_shp_av_dt
-
-    # To download time series
-    ano_shp_av_dt %>%
-      dplyr::select(yr,ano,par,mon,region) -> av_ano_ts
-
-  ## Trend calculation and plot ------------
-
-    # Background requirements for plots
-    parr <- unique(ano_shp_av_dt$par)
-    monn <- unique(ano_shp_av_dt$mon)
-    region <- unique(ano_shp_av_dt$region)
-
-    # Trend on average anomaly 1950 - now
-    ano_shp_av_dt %<>%
-      filter(yr > 1950) %<>%
-      mutate(# trnd =zyp.trend.vector(ano)[["trend"]],
-        # incpt =zyp.trend.vector(ano)[["intercept"]],
-        #sig = zyp.trend.vector(ano)[["sig"]])
-        sig = round(MannKendall(ano)[[2]], digits = 4))
-    ano_shp_av_dt
-
-    ano_mk_trnd <-
-      zyp.sen(ano ~ yr, ano_shp_av_dt)##Give the trend###
-    ano_mk_trnd$coefficients
-    ano_shp_av_dt$trn <-  ano_mk_trnd$coeff[[2]]
-    ano_shp_av_dt$incpt <-  ano_mk_trnd$coeff[[1]]
-
-    xs = c(min(ano_shp_av_dt$yr), max(ano_shp_av_dt$yr))
-    trn_slp = c(unique(ano_shp_av_dt$incpt), unique(ano_shp_av_dt$trn))
-    ys = cbind(1, xs) %*% trn_slp
-    ano_shp_av_dt$trn_lab = paste(
-      "italic(1950-~trend)==",
-      round(ano_shp_av_dt$trn, 2),"~yr^{-1}~','~italic(p)==",
-      round(ano_shp_av_dt$sig, 2)
-    )
-
-    #     mag_trnd_lab=paste("italic(t)==",round(ano_shp_av_dt$trn,2),get_unit(),
-    #                        "~mm~yr^{-1}~','~italic(p)==",round(ano_shp_av_dt$sig,2))
-
-    # Trend on average anomaly 1980 - now
-    ano_shp_av_dt %>%
-      filter(yr > 1979) %>%
-      mutate(# trnd =zyp.trend.vector(ano)[["trend"]],
-        # incpt =zyp.trend.vector(ano)[["intercept"]],
-        #sig = zyp.trend.vector(ano)[["sig"]])
-        sig = round(MannKendall(ano)[[2]], digits = 2)) -> ano_shp_av_dt80
-    ano_shp_av_dt80
-
-    ano_mk_trnd80 <-
-      zyp.sen(ano ~ yr, ano_shp_av_dt80)##Give the trend###
-    ano_mk_trnd80$coefficients
-    ano_shp_av_dt80$trn <-  ano_mk_trnd80$coeff[[2]]
-    ano_shp_av_dt80$incpt <-  ano_mk_trnd80$coeff[[1]]
-
-    xs80 = c(min(ano_shp_av_dt80$yr), max(ano_shp_av_dt80$yr))
-    trn_slp80 = c(unique(ano_shp_av_dt80$incpt), unique(ano_shp_av_dt80$trn))
-    ys80 = cbind(1, xs80) %*% trn_slp80
-    ano_shp_av_dt80$trn_lab = paste(
-      "italic(1980-~trend)==",
-      round(ano_shp_av_dt80$trn, 2),"~yr^{-1}~','~italic(p)==",
-      round(ano_shp_av_dt80$sig, 2)
-    )
-
-    incProgress(0.02, detail = "Plotting linear trend ...")
-
-     # anomaly plot
-    ymin <- (-1) * (max(abs(ano_shp_av_dt$ano)))
-    ymax <- (1) * (max(abs(ano_shp_av_dt$ano)))
-    minyr <- min(ano_shp_av_dt$yr)
-    maxyr <- max(ano_shp_av_dt$yr)
-
-    if(ymax < 1){
-      ybrk_neg <-
-        round(c(seq((-1) * (max(
-          abs(ano_shp_av_dt$ano)
-        )), 0, length.out = 2)), digits=2)
-      ybrk_neg
-      ybrk_pos <-
-        round(c(seq(0, (1) * (max(
-          abs(ano_shp_av_dt$ano)
-        )), length.out = 2))[-1], digits=2)
-      ybrk_pos
-    } else {
-      ybrk_neg <-
-        ceiling(c(seq((-1) * (max(
-          abs(ano_shp_av_dt$ano)
-        )), 0, length.out = 4)))
-      ybrk_neg
-      ybrk_pos <-
-        floor(c(seq(0, (1) * (max(
-          abs(ano_shp_av_dt$ano)
-        )), length.out = 4)))[-1]
-      ybrk_pos
-    }
-    #create breaks with "00"
-
-    if (nchar(abs(ybrk_neg[[1]])) == 4) {
-      ybrk_negn <- plyr::round_any(ybrk_neg, 100, f = ceiling)
-    } else if (nchar(abs(ybrk_neg[[1]])) == 3) {
-      ybrk_negn <- plyr::round_any(ybrk_neg, 10, f = ceiling)
-    } else if (nchar(abs(ybrk_neg[[1]])) == 2) {
-      ybrk_negn <- plyr::round_any(ybrk_neg, 1, f = ceiling)
-    } else if (nchar(abs(ybrk_neg[[1]])) == 1) {
-      ybrk_negn <- plyr::round_any(ybrk_neg, 1, f = ceiling)
-    }
-    ybrk_negn
-
-    if (nchar(abs(ybrk_neg[[1]])) == 4) {
-      ybrk_posp <- plyr::round_any(ybrk_pos, 100, f = floor)
-    } else if (nchar(abs(ybrk_neg[[1]])) == 3) {
-      ybrk_posp <- plyr::round_any(ybrk_pos, 10, f = floor)
-    } else if (nchar(abs(ybrk_pos[[1]])) == 2) {
-      ybrk_posp <- plyr::round_any(ybrk_pos, 1, f = floor)
-    } else if (nchar(abs(ybrk_pos[[1]])) == 1) {
-      ybrk_posp <- plyr::round_any(ybrk_pos, 1, f = floor)
-    }
-    ybrk_posp
-
-    if(ymax < 1){
-      ybrks_seq <- c(ybrk_neg, ybrk_pos)
-    }else {
-      ybrks_seq <- c(ybrk_negn, ybrk_posp)
-    }
-    ybrks_seq
-    # Positive and negative anomalies and 3 years moving average to create bar plot
-    ano_shp_av_dt %<>%
-      mutate(pos_neg = if_else(ano <= 0, "neg", "pos")) %>%
-      mutate(ano_mv = rollmean(ano, 3, fill = list(NA, NULL, NA)))
-    ano_shp_av_dt
-    tail(ano_shp_av_dt)
-
-    if (parr == "prcp" |parr == "soil_moisture") {
-      par_title <-  paste0(get_region(), " ",
-                           get_par_full(), " ", "anomaly", " (% of normal)",
-                           " : ",
-                           get_mon_full())
-    } else{
-      par_title <-  paste0(get_region(), " ",
-                           get_par_full(), " ", "anomaly"," (", get_unit(),")",
-                           " : ",
-                           get_mon_full())
-    }
-
-    if (parr == "prcp" |parr == "soil_moisture") {
-      y_axis_lab <- paste0(parr, " average anomaly (% of normal)")
-    } else{
-      y_axis_lab <- paste0(parr, " average anomaly ", "(", get_unit(), ")")
-    }
-
-    ano_shp_trn_plt <-
-      ggplot(data = ano_shp_av_dt, aes(x = yr, y = ano)) +
-      annotate(
-        geom = 'text',
-        label = plt_wtrmrk,
-        x = Inf,
-        y = -Inf,
-        hjust = 1,
-        vjust = -0.5,
-        color = 'gray80',
-        size = 3.0
-      ) +
-      geom_bar(
-        stat = "identity",
-        aes(fill = ano),
-        width = 0.7,
-        show.legend = FALSE
-      ) +
-      geom_hline(
-        yintercept = 0,
-        color = "gray10",
-        linewidth = 0.5
-      ) +
-      scale_fill_gradientn(
-        name = paste0(parr, " anomaly ", get_unit()),
-        colours = cpt(pal = "ncl_BlWhRe",
-                      n = 100,
-                      rev = F),
-        limits = c(ymin, ymax),
-        breaks = ybrks_seq
-      ) +
-      geom_line(
-        aes(y = ano_mv, color = "3-yrs moving mean"),
-        linewidth = 1.1,
-        alpha = 0.7,
-        na.rm = T
-      ) +
-      # geom_point(color = "blue", size = 2) +
-      geom_segment(
-        aes(
-          x = xs[[1]],
-          xend = xs[[2]],
-          y = ys[[1]],
-          yend = ys[[2]],
-          color = "1950-trend"
-        ),
-        linetype = "dashed",
-        linewidth = 0.9
-      ) +
-      geom_label(
-        aes(x = xs[[1]] + 20),
-        color = 'black',
-        y = ymax - 0.05,
-        fill = NA,
-        label = ano_shp_av_dt$trn_lab[[1]],
-        size = 4.0, parse=T
-      ) +
-      # add 80s trend
-      geom_segment(
-        aes(
-          x = xs80[[1]],
-          xend = xs80[[2]],
-          y = ys80[[1]],
-          yend = ys80[[2]],
-          color = "1980-trend"
-        ),
-        linetype = "solid",
-        linewidth = 0.9
-      ) +
-      geom_label(
-        aes(x = xs[[1]] + 38),
-        y = ymax - 0.05,
-        fill = NA,
-        color = 'deepskyblue2',
-        label = ano_shp_av_dt80$trn_lab[[1]],
-        size = 4.0,
-        parse = TRUE
-      ) +
-      scale_x_continuous(
-        name = " ",
-        breaks = seq(1950, maxyr, 5),
-        expand = c(0.02, 0.02)
-      ) +
-      scale_y_continuous(name = y_axis_lab,
-                         limits = c(ymin, ymax),
-                         breaks = ybrks_seq) +
-      labs(title = par_title, subtitle = "Baseline: 1981-2010") +
-      scale_color_manual(
-        " ",
-        values = c(
-          "3-yrs moving mean" = "green",
-          "1950-trend" = "black",
-          "1980-trend" = "deepskyblue2"
-        ),
-        labels =  c(
-          "3-yrs moving mean" = "3-yrs moving mean",
-          "1950-trend" = "1950-trend",
-          "1980-trend" = "1980-trend"
-        )
-      ) +
-      theme_bw() +
-      theme(
-        # panel.spacing=unit(0.1,"lines"),
-        panel.grid.minor = element_blank(),
-        panel.grid.major = element_line(
-          color = "gray75",
-          linewidth = 0.05,
-          linetype = "dashed"
-        ),
-        axis.line = element_line(colour = "black", linewidth = 1),
-        axis.ticks.length = unit(-0.20, "cm"),
-        element_line(colour = "black", linewidth =  1),
-        axis.title.y = element_text(
-          angle = 90,
-          face = "plain",
-          size = 13,
-          colour = "Black",
-          margin = unit(c(1, 1, 1, 1), "mm")
-        ),
-        axis.title.x = element_text(
-          angle = 0,
-          face = "plain",
-          size = 13,
-          colour = "Black",
-          margin = unit(c(1, 1, 1, 1), "mm")
-        ),
-        axis.text.x = element_text(
-          angle = 0,
-          hjust = 0.5,
-          vjust = 0.5,
-          colour = "black",
-          size = 12,
-          margin = margin(
-            t = 2,
-            r = 2,
-            b = 2,
-            l = 2
-          )
-        ),
-        axis.text.y = element_text(
-          angle = 90,
-          hjust = 0.5,
-          vjust = 0.5,
-          colour = "black",
-          size = 12,
-          margin = margin(
-            t = 2,
-            r = 2,
-            b = 2,
-            l = 2
-          )
-        ),
-        plot.title = element_text(
-          angle = 0,
-          face = "bold",
-          size = 13,
-          colour = "Black"
-        ),
-        legend.position = c(0.90, 0.94),
-        legend.direction = "vertical",
-        legend.background = element_rect(fill = NA, color = NA),
-        legend.margin = margin(0, 0, 0, 0),
-        legend.box.margin = margin(0, 0, 0, 0),
-        legend.title = element_text(size = 13),
-        legend.text = element_text(margin = margin(t = -5), size = 12),
-        strip.text.x = element_text(size = 12, angle = 0),
-        strip.text.y = element_text(size = 12, face = "bold"),
-        axis.text = element_text(margin = -5),
-        strip.background = element_rect(fill = "black"),
-        strip.text = element_text(colour = 'Black')
-      )
-    ano_shp_trn_plt
-
-    if (parr == "prcp" | parr == "soil_moisture" |parr == "rh") {
-      ano_shp_trn_plt <- ano_shp_trn_plt +
-        scale_fill_gradientn(
-          name = paste0(parr, "  anomaly ", get_unit()),
-          colours = cpt(pal = "cmocean_curl",
-                        n = 100,
-                        rev = T),
-          limits = c(ymin, ymax),
-          breaks = ybrks_seq
-        )
-    }
-    ano_shp_trn_plt<- ano_shp_trn_plt +
-      theme(axis.title.y = element_blank())
-    ano_shp_trn_plt
-
-    # plotly display
-
-    trn1980_lab <-
-      paste0('1980-trend = ',
-             round(ano_shp_av_dt80$trn[[1]], 2),'yr<sup>-1</sup>','<span>&#44;</span> ',
-             ' <i>p<i>=',
-             round(ano_shp_av_dt80$sig[[1]], 2) )
-    trn1980_lab
-    trn1950_lab <-
-      paste0('1950-trend = ',
-             round(ano_shp_av_dt$trn[[1]], 2),'yr<sup>-1</sup>','<span>&#44;</span> ',
-             ' <i>p<i>=',
-             round(ano_shp_av_dt$sig[[1]], 2) )
-    trn1950_lab
-
-    #Convert to plotly
-    ano_shp_trn_plty<-  ggplotly(ano_shp_trn_plt) %>%
-      layout(legend = list(orientation = "h",
-                           xanchor = "center",
-                           x = 0.6,
-                           y = 1.0))%>%
-      layout(margin = list(l = 0, r = 0, b = 10, t = 80),
-             title = list( x = 0.001 ,
-                           y = 0.92,
-                           text = paste0(par_title,
-                                         '<br>',
-                                         '<sup>',
-                                         'Baseline: 1981-2010', '</sup>')))%>%
-      layout(
-        annotations = list(
-          list(
-            x = 1 ,
-            y = 0.0,
-            text = plt_wtrmrk,
-            showarrow = F,
-            xref = 'paper',
-            yref = 'paper',
-            xanchor='right', yanchor='auto', xshift=0, yshift=0,
-            font=list(size=9, color='#e5e5e5')
-          )
-        ))%>%
-      layout(
-        annotations = list(
-          list(
-            x = 0.30 ,
-            y = 0.97,
-            text = trn1950_lab,
-            showarrow = F,
-            xref = 'paper',
-            yref = 'paper',
-            xanchor='right', yanchor='auto', xshift=0, yshift=0,
-            font=list(size=15, color="black")
-          )
-        ))%>%
-      layout(
-        annotations = list(
-          list(
-            x = 0.30 ,
-            y = 0.93,
-            text = trn1980_lab,
-            showarrow = F,
-            xref = 'paper',
-            yref = 'paper',
-            xanchor='right', yanchor='auto', xshift=0, yshift=0,
-            font=list(size=15, color='#00bfff')
-          )
-        ))%>%
-      layout(xaxis = list(showgrid = FALSE),
-             yaxis = list(showgrid = FALSE))
-    ano_shp_trn_plty
-
-    ### File name for download -----
-    # Year range
-    if (monn != "annual") {
-      mx_yr = max_year
-    } else {
-      mx_yr = max_year - 1
-    }
-
-    fl_nam <-
-      paste0(get_region(),
-             "_",
-             parr,"_anomaly_timeseries",
-             "_",
-             monn,
-             "_",
-             min_year,
-             "_",
-             mx_yr)
-    fl_nam
-    incProgress(0.05, detail = "Finalizing linear trend ...")
-  # Final return list
-    return(list(lnr_trn_ptly_plt =  ano_shp_trn_plty,
-                fl_nam_dwnld = fl_nam,
-                lnr_trn_plt_dwnld =  ano_shp_trn_plt,
-                ts_data_csv = av_ano_ts
-                ))
-    })
-
-  })
-
-  ## display linear trend  ---------------
-   output$lnr_trn_plt <- renderPlotly({
-    time_series_trnd_rct()[[1]]})
-
-  ## Download linear trend plot and time series data --------
-  # Download plot
-
-    output$download_lnr_trn_plt <- downloadHandler(
-      filename = function(file) {
-        paste0(time_series_trnd_rct()[[2]], "_trend_plot.png")
-      },
-      content = function(file) {
-        ggsave(
-          file,
-          plot = time_series_trnd_rct()[[3]],
-          width = 13,
-          height = 6,
-          units = "in",
-          dpi = 300,
-          scale = 0.9,
-          limitsize = F,
-          device = "png"
-        )
-      }
-    )
-
-  # Download time series (.csv)
-  output$download_ano_ts_data <- downloadHandler(
-    filename = function(file) {
-      paste0(time_series_trnd_rct()[[2]],
-             "_data.csv")
-    },
-    content = function(file) {
-      write_csv(time_series_trnd_rct()[[4]],
-                file, append = FALSE)
-    }
-  )
-
-  # Reset  selection /filters -----
-  observeEvent(input$reset_input, {
-    shinyjs::reset("selection-panel")
-
-})
-
-  # observeEvent(input$reset_input, {
-  #   shinyjs::reset("sel_yrs")
-  # })
 
   # Feedback text -------
   output$feedback_text <- renderText({

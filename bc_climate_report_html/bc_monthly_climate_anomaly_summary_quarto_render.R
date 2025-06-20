@@ -10,7 +10,7 @@ tic()
 min_year <- 1951
 max_year <- 2025
 
-update_month <- "April"
+update_month <- "May"
 update_year <- "2025"
 
 # pdf_file_name = paste0("BC_climate_anomaly_",update_month,"_",update_year,".pdf")
