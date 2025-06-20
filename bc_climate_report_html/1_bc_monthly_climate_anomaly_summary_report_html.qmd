@@ -84,7 +84,7 @@ lapply(rqr_pkgs , require, character.only = TRUE)
 # Paths ------------------------
 # setwd(getwd())
 shp_fls_pth <- '../shapefiles/'
-ano_dt_pth <-  '../ano_clm_data/'
+ano_dt_pth <-  '../ano_clm_trn_data/'
 ```
 
 ```{r datafiles requirements }
@@ -110,7 +110,7 @@ ylim <- c(47.5, 60)
 min_year <- 1951
 max_year <- 2025
 
-update_month <- "April"
+update_month <- "May"
 update_year <- "2025"
 
 # List of shape files
@@ -199,12 +199,14 @@ ano_dt_fl %<>%
 list.files(path = ano_dt_pth,
            pattern = ".*_clm_.*\\.nc",
            full.names = T) -> clm_dt_fls
-head(clm_dt_fls)
+clm_dt_fls
 
 clm_dt_fl <- tibble(dt_pth = clm_dt_fls)
 clm_dt_fl %<>%
   mutate(par = str_extract(clm_dt_fls,
-                           paste(parameters, collapse = "|")))
+                           paste(parameters, collapse = "|")),
+         mon = str_extract(ano_dt_fls,
+                           paste(months_nam, collapse = "|")))
 
 # Spatial average analysis for BC
 sel_area_shpfl <- bc_shp
@@ -319,15 +321,10 @@ ano_dt_fl_mn_par <- ano_dt_fl_mn%>%
   # Current month anomaly -----
   # Climatology
   clm_dt_fl %>%
-    filter(par == parr) -> clm_dt_fl_i
+    filter(par == parr & mon == monn) -> clm_dt_fl_i
   
   clm_dt_rast <- rast(clm_dt_fl_i$dt_pth)
   clm_dt_rast
-  names(clm_dt_rast) <- months_nam
-  clm_dt_rast_mon <-
-    subset(clm_dt_rast, which(names(clm_dt_rast) %in% monn))
-  clm_dt_rast <- clm_dt_rast_mon
-  rm(clm_dt_rast_mon)
   # plot(clm_dt_rast)
   # plot(ano_dt_rast)
   
@@ -600,6 +597,7 @@ ano_dt_fl_mn_par <- ano_dt_fl_mn%>%
         breaks = brks_seq
       )
   }
+  
   spatial_ano_mon_plt <-   spatial_ano_mon_plt +
     labs(
       # tag = plt_wtrmrk,
