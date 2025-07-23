@@ -52,6 +52,10 @@ plt_wtrmrk <-
   "@Aseem R. Sharma, BC Ministry of Forests. Data credit: ERA5land/C3S/ECMWF."
 plt_wtrmrk
 
+# Date of deployment -----------------------
+app_deployment_date <- format(Sys.Date(), "%d %B, %Y")
+app_deployment_date
+
 # Shape files --------------
 # Domain
 xmi = -140
@@ -165,7 +169,7 @@ ano_clm_trn_dt_fl
 
 # for reports
 report_suffixes <- c(
-  "may2025","apr2025", "mar2025", "feb2025", "jan2025",
+  "jun2025", "may2025","apr2025", "mar2025", "feb2025", "jan2025",
   "ann2024",
   "dec2024", "nov2024", "oct2024", "sep2024",
   "aug2024", "jul2024", "jun2024", "may2024", "apr2024", "mar2024",
@@ -3155,59 +3159,91 @@ Should you have any inquiries or wish to provide feedback, please do not hesitat
   })
 
   # Reports --------------------------------------
-  # Helper to create a report link UI element
-  renderReportLink <- function(outputId, label, fileName) {
-    output[[outputId]] <- renderUI({
-      tags$div(
-        style = "margin: 2px; display: inline-block; vertical-align: top;",
-        tags$a(
-          href = fileName,
-          target = "_blank",
-          style = "font-size: 22px; font-weight: 500; text-decoration: none; color: #007ACC;",
-          paste(label),
-          tags$img(
-            src = "html_logo.png",
-            height = "20px",
-            width = "20px",
-            style = "margin-left: 6px; vertical-align: middle;"
+    # Helper to create a report link UI element
+    renderReportLink <- function(outputId, label, fileName) {
+      output[[outputId]] <- renderUI({
+        tags$div(
+          style = "margin: 2px; display: inline-block; vertical-align: top;",
+          tags$a(
+            href = fileName,
+            target = "_blank",
+            style = "font-size: 22px; font-weight: 500; text-decoration: none; color: #007ACC;",
+            paste(label),
+            tags$img(
+              src = "html_logo.png",
+              height = "20px",
+              width = "20px",
+              style = "margin-left: 6px; vertical-align: middle;"
+            )
           )
         )
-      )
-    })
-  }
-  # Generate output objects for each suffix
-  lapply(report_suffixes, function(suffix) {
-    label <- switch(
-      suffix,
-      "ann2024" = "Annual 2024",
-      "longterm" = "Long-term 1980–2022",
-      {
-        # Parse suffix like "jan2024"
-        month_abbr <- toupper(substr(suffix, 1, 3))
-        year <- substr(suffix, 4, 7)
-        month_num <- match(month_abbr, toupper(month.abb))
-        if (!is.na(month_num)) {
-          format(as.Date(paste0(year, "-", month_num, "-01")), "%B %Y")
-        } else {
-          suffix
+      })
+    }
+
+    # Generate output objects for each suffix
+    lapply(report_suffixes, function(suffix) {
+      label <- switch(
+        suffix,
+        "ann2024" = "Annual 2024",
+        "longterm" = "Long-term 1980–2022",
+        {
+          month_abbr <- toupper(substr(suffix, 1, 3))
+          year <- substr(suffix, 4, 7)
+          month_num <- match(month_abbr, toupper(month.abb))
+          if (!is.na(month_num)) {
+            format(as.Date(paste0(year, "-", month_num, "-01")), "%B %Y")
+          } else {
+            suffix
+          }
         }
-      }
-    )
+      )
 
-    file_name <- switch(
-      suffix,
-      "ann2024" = "bc_annual_climate_summary_2024.html",
-      "longterm" = "bc_longterm_temp_prcp_anomaly_report_1980_2022_html.html",
-      {
-        month_name <- format(as.Date(paste0(substr(suffix, 4, 7), "-", match(toupper(substr(suffix, 1, 3)), toupper(month.abb)), "-01")), "%B")
-        year <- substr(suffix, 4, 7)
-        paste0("bc_monthly_climate_summary_", month_name, "_", year, ".html")
-      }
-    )
+      # File name logic for both formats
+      # Remove file.exists(), just try both formats
+      file_name <- switch(
+        suffix,
+        "ann2024" = "bc_annual_climate_summary_2024.html",
+        "longterm" = "bc_longterm_temp_prcp_anomaly_report_1980_2022_html.html",
+        {
+          month_abbr <- toupper(substr(suffix, 1, 3))
+          year <- substr(suffix, 4, 7)
+          month_num <- match(month_abbr, toupper(month.abb))
 
-    output_id <- paste0("doc_html_mon_summ_", suffix)
-    renderReportLink(output_id, label, file_name)
-  })
+          if (!is.na(month_num)) {
+            month_full <- format(as.Date(paste0(year, "-", month_num, "-01")), "%B")
+
+            # Try file1 first; if you want to test both, use www-path based checking logic
+            file1 <- paste0("bc_monthly_climate_summary_", month_full, "_", year, ".html")
+            file2 <- paste0(month_full, "_", year, "_bc_mon_sea_ann_climate_summary.html")
+
+            # Just return both if you want both linked
+            # Here we prefer file1 but allow fallback
+            possible_files <- c(file1, file2)
+
+            # Pick the first file that exists in www
+            selected_file <- NULL
+            for (f in possible_files) {
+              if (file.exists(file.path("www", f))) {
+                selected_file <- f
+                break
+              }
+            }
+
+            # Fallback if none exists
+            if (is.null(selected_file)) {
+              selected_file <- file1  # default to one
+            }
+
+            selected_file
+          } else {
+            paste0("unknown_suffix_", suffix, ".html")
+          }
+        }
+      )
+
+      output_id <- paste0("doc_html_mon_summ_", suffix)
+      renderReportLink(output_id, label, file_name)
+    })
 
 
 
@@ -3260,9 +3296,8 @@ Should you have any inquiries or wish to provide feedback, please do not hesitat
   output$deploymentDate <- renderText({
     paste0("This app was last updated on ",
            readLines("deployment_history.txt"), '.'
-           )
+    )
   })
-
 }
 
 # Run the application
