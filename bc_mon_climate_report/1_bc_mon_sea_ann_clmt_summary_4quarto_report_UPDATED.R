@@ -33,9 +33,9 @@ lapply(rqr_pkgs , require, character.only = TRUE)
 
 # Paths ------------------------
 # setwd(getwd())
-shp_fls_pth <- '../shapefiles/'
-ano_dt_pth <-  '../ano_clm_trn_data/'
-results_pth <- './result_plots/'
+shp_fls_pth <- './shapefiles/'
+ano_dt_pth <-  './ano_clm_trn_data/'
+results_pth <- './bc_mon_climate_report/mon_2mon_results_plots/'
 
 # Data files -----------------------------------------------------
 # Update month
@@ -45,7 +45,7 @@ results_pth <- './result_plots/'
 min_year <- 1951
 max_year <- 2025
 
-update_month <- "June"
+update_month <- "July"
 update_year <- "2025"
 
 # List of shape files

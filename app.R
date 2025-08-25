@@ -169,7 +169,7 @@ ano_clm_trn_dt_fl
 
 # for reports
 report_suffixes <- c(
-  "jun2025", "may2025","apr2025", "mar2025", "feb2025", "jan2025",
+  "jul2025","jun2025", "may2025","apr2025", "mar2025", "feb2025", "jan2025",
   "ann2024",
   "dec2024", "nov2024", "oct2024", "sep2024",
   "aug2024", "jul2024", "jun2024", "may2024", "apr2024", "mar2024",

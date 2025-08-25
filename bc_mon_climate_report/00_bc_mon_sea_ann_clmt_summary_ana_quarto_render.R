@@ -4,14 +4,14 @@ library(quarto)
 library(tictoc)
 
 #--- User Inputs ----
-update_month <- "June"
+update_month <- "July"
 update_year <- "2025"
 min_year <- 1951
 max_year <- 2025
 
 #--- Step 1: Modify and run the R script ----
-r_script_path <- "1_bc_mon_sea_ann_clmt_summary_4quarto_report.R"
-r_script_updated_path <- "1_bc_mon_sea_ann_clmt_summary_4quarto_report_UPDATED.R"
+r_script_path <- './bc_mon_climate_report/1_bc_mon_sea_ann_clmt_summary_4quarto_report.R'
+r_script_updated_path <- "./bc_mon_climate_report/1_bc_mon_sea_ann_clmt_summary_4quarto_report_UPDATED.R"
 
 # Read and modify R script
 r_lines <- readLines(r_script_path)
@@ -29,8 +29,8 @@ source(r_script_updated_path, echo = TRUE, max.deparse.length = Inf)
 toc()
 
 #--- Step 2: Modify and render the Quarto report ----
-qmd_file_path <- "2_bc_mon_sea_ann_clmt_summary_quarto_report.qmd"
-updated_qmd_file <- "2_bc_mon_sea_ann_clmt_summary_quarto_report_UPDATED.qmd"
+qmd_file_path <- "./bc_mon_climate_report/2_bc_mon_sea_ann_clmt_summary_quarto_report.qmd"
+updated_qmd_file <- "./bc_mon_climate_report/2_bc_mon_sea_ann_clmt_summary_quarto_report_UPDATED.qmd"
 
 # Read and modify QMD
 qmd_lines <- readLines(qmd_file_path)
@@ -55,7 +55,10 @@ toc()
 # Copy to shiny www folder if needed
 html_output_file_name <- basename(html_file_name)
 
-file.copy(from = html_output_file_name, to = "../www/", overwrite = T)
+html_output_file_name <- paste0('./bc_mon_climate_report/', html_output_file_name)
+html_output_file_name
+
+file.copy(from = html_output_file_name, to = "./www/", overwrite = T)
 
 #Remove files and folders from original
 file.remove(html_output_file_name)
