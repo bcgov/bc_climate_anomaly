@@ -4,7 +4,7 @@ library(quarto)
 library(tictoc)
 
 #--- User Inputs ----
-update_month <- "November"
+update_month <- "December"
 update_year <- "2025"
 min_year <- 1951
 max_year <- 2025
