@@ -14,6 +14,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# Run this after running trend calculation, bc monthly report quarto and upload history scripts.
+
 # Required -------------------
 library('shiny')
 library('shinydashboard')
@@ -135,9 +137,9 @@ parameters <- c("tmean", "tmax", "tmin", "prcp","vpd","rh","soil_moisture")
 parameters
 
 min_year <- 1951
-max_year <- 2025
+max_year <- 2026 # current year of preparation
 
-update_month <- "April"
+update_month <- "November"
 update_year <- "2025"
 
 years <- seq(min_year, max_year, 1)
@@ -167,9 +169,10 @@ ano_clm_trn_dt_fl <- tibble(dt_pth = ano_clm_trn_dt_fls) %>%
   dplyr::select(-fl_nam)
 ano_clm_trn_dt_fl
 
-# for reports
+# For summary reports ---------------
 report_suffixes <- c(
-  "jun2025", "may2025","apr2025", "mar2025", "feb2025", "jan2025",
+  "ann2025",
+  "dec2025", "nov2025","oct2025","sep2025","aug2025","jul2025","jun2025", "may2025","apr2025", "mar2025", "feb2025", "jan2025",
   "ann2024",
   "dec2024", "nov2024", "oct2024", "sep2024",
   "aug2024", "jul2024", "jun2024", "may2024", "apr2024", "mar2024",
@@ -216,7 +219,7 @@ ui <- fluidPage(
              <br>
              <b>Aseem R. Sharma, PhD</b><br>
               Research Climatologist<br>
-              FFEC, FCCSB, OCF, BC Ministry of Forests<br>
+              FFEC, FEA, OCF, BC Ministry of Forests<br>
               <a href= 'mailto: Aseem.Sharma@gov.bc.ca'>Aseem.Sharma@gov.bc.ca</a> <br>
               <br>
               <h4><b>Code</b></h4>
@@ -1261,7 +1264,7 @@ server <- function(session, input, output) {
    req(input$major_area)
 
    ### For sample run ----
-   # monn = "Feb"
+   # monn = "Aug"
    # parr = "tmean"
    # sel_yrs <- seq(1951,2025,1)
    # sel_yrs
@@ -1332,7 +1335,6 @@ server <- function(session, input, output) {
    }
    # plot(aano_dt_shp_rast,40:44)
    ano_dt_shp_rast
-
 
    # Spatial trends
    # trends50
@@ -1578,7 +1580,7 @@ server <- function(session, input, output) {
           linewidth = 0.5
         ) +
         scale_fill_gradientn(
-          name = paste0(parr, " anomaly ", get_unit()),
+          name = paste0(parr, " anomaly ", "get_unit()"),
           colours = cpt(pal = "ncl_BlWhRe",
                         n = 100,
                         rev = F),
@@ -1671,14 +1673,14 @@ server <- function(session, input, output) {
             face = "plain",
             size = 13,
             colour = "Black",
-            margin = unit(c(1, 1, 1, 1), "mm")
+            margin = margin(t = 1, r = 1, b = 1, l = 1, unit = "mm")
           ),
           axis.title.x = element_text(
             angle = 0,
             face = "plain",
             size = 13,
             colour = "Black",
-            margin = unit(c(1, 1, 1, 1), "mm")
+            margin = margin(t = 1, r = 1, b = 1, l = 1, unit = "mm")
           ),
           axis.text.x = element_text(
             angle = 0,
@@ -1715,13 +1717,13 @@ server <- function(session, input, output) {
           legend.position = c(0.90, 0.94),
           legend.direction = "vertical",
           legend.background = element_rect(fill = NA, color = NA),
-          legend.margin = margin(0, 0, 0, 0),
-          legend.box.margin = margin(0, 0, 0, 0),
+          legend.margin = margin(t = 0, r = 0, b = 0, l = 0),
+          legend.box.margin = margin(t = 0, r = 0, b = 0, l = 0),
           legend.title = element_text(size = 13),
           legend.text = element_text(margin = margin(t = -5), size = 12),
           strip.text.x = element_text(size = 12, angle = 0),
           strip.text.y = element_text(size = 12, face = "bold"),
-          axis.text = element_text(margin = -5),
+          axis.text = element_text(margin = margin(t = -5, r = -5, b = -5, l = -5)),
           strip.background = element_rect(fill = "black"),
           strip.text = element_text(colour = 'Black')
         )
@@ -2063,20 +2065,20 @@ server <- function(session, input, output) {
         ),
         axis.line = element_line(colour = "gray70", linewidth = 0.08),
         axis.ticks.length = unit(-0.20, "cm"),
-        element_line(colour = "black", linewidth =  1),
+        element_line(colour = "black", linewidth = 1),
         axis.title.y = element_text(
           angle = 90,
           face = "plain",
           size = 15,
           colour = "Black",
-          margin = unit(c(-1, -1, -1, -1), "mm")
+          margin = margin(t = -1, r = -1, b = -1, l = -1, unit = "mm")
         ),
         axis.title.x = element_text(
           angle = 0,
           face = "plain",
           size = 15,
           colour = "Black",
-          margin = unit(c(-1, -1, -1, -1), "mm")
+          margin = margin(t = -1, r = -1, b = -1, l = -1, unit = "mm")
         ),
         axis.text.x = element_text(
           angle = 0,
@@ -2084,12 +2086,7 @@ server <- function(session, input, output) {
           vjust = 0.5,
           colour = "black",
           size = 14,
-          margin = margin(
-            t = 2,
-            r = 2,
-            b = 2,
-            l = 2
-          )
+          margin = margin(t = 2, r = 2, b = 2, l = 2)
         ),
         axis.text.y = element_text(
           angle = 90,
@@ -2097,12 +2094,7 @@ server <- function(session, input, output) {
           vjust = 0.5,
           colour = "black",
           size = 14,
-          margin = margin(
-            t = 2,
-            r = 2,
-            b = 2,
-            l = 2
-          )
+          margin = margin(t = 2, r = 2, b = 2, l = 2)
         ),
         plot.title = element_text(
           angle = 0,
@@ -2112,13 +2104,13 @@ server <- function(session, input, output) {
         ),
         legend.position = 'right',
         legend.direction = "vertical",
-        legend.margin = margin(0, 0, 0, 0),
-        legend.box.margin = margin(-5, -5, -5, -5),
+        legend.margin = margin(t = 0, r = 0, b = 0, l = 0),
+        legend.box.margin = margin(t = -5, r = -5, b = -5, l = -5),
         legend.title = element_text(size = 15),
         legend.text = element_text(margin = margin(t = -5), size = 16),
         strip.text.x = element_text(size = 12, angle = 0),
         strip.text.y = element_text(size = 12, face = "bold"),
-        axis.text = element_text(margin = -5),
+        axis.text = element_text(margin = margin(t = -5, r = -5, b = -5, l = -5)),
         strip.background = element_rect(color = "black", fill = "gray90"),
         strip.text = element_text(
           face = "bold",
@@ -2354,20 +2346,20 @@ server <- function(session, input, output) {
         ),
         axis.line = element_line(colour = "gray70", linewidth = 0.08),
         axis.ticks.length = unit(-0.20, "cm"),
-        element_line(colour = "black", linewidth =  1),
+        element_line(colour = "black", linewidth = 1),
         axis.title.y = element_text(
           angle = 90,
           face = "plain",
           size = 15,
           colour = "Black",
-          margin = unit(c(-1, -1, -1, -1), "mm")
+          margin = margin(t = -1, r = -1, b = -1, l = -1, unit = "mm")
         ),
         axis.title.x = element_text(
           angle = 0,
           face = "plain",
           size = 15,
           colour = "Black",
-          margin = unit(c(-1, -1, -1, -1), "mm")
+          margin = margin(t = -1, r = -1, b = -1, l = -1, unit = "mm")
         ),
         axis.text.x = element_text(
           angle = 0,
@@ -2375,12 +2367,7 @@ server <- function(session, input, output) {
           vjust = 0.5,
           colour = "black",
           size = 14,
-          margin = margin(
-            t = 2,
-            r = 2,
-            b = 2,
-            l = 2
-          )
+          margin = margin(t = 2, r = 2, b = 2, l = 2)
         ),
         axis.text.y = element_text(
           angle = 90,
@@ -2388,12 +2375,7 @@ server <- function(session, input, output) {
           vjust = 0.5,
           colour = "black",
           size = 14,
-          margin = margin(
-            t = 2,
-            r = 2,
-            b = 2,
-            l = 2
-          )
+          margin = margin(t = 2, r = 2, b = 2, l = 2)
         ),
         plot.title = element_text(
           angle = 0,
@@ -2403,13 +2385,13 @@ server <- function(session, input, output) {
         ),
         legend.position = 'right',
         legend.direction = "vertical",
-        legend.margin = margin(0, 0, 0, 0),
-        legend.box.margin = margin(-5, -5, -5, -5),
+        legend.margin = margin(t = 0, r = 0, b = 0, l = 0),
+        legend.box.margin = margin(t = -5, r = -5, b = -5, l = -5),
         legend.title = element_text(size = 15),
         legend.text = element_text(margin = margin(t = -5), size = 16),
         strip.text.x = element_text(size = 12, angle = 0),
         strip.text.y = element_text(size = 12, face = "bold"),
-        axis.text = element_text(margin = -5),
+        axis.text = element_text(margin = margin(t = -5, r = -5, b = -5, l = -5)),
         strip.background = element_rect(color = "black", fill = "gray90"),
         strip.text = element_text(
           face = "bold",
@@ -2656,20 +2638,20 @@ server <- function(session, input, output) {
           ),
           axis.line = element_line(colour = "gray70", linewidth = 0.08),
           axis.ticks.length = unit(-0.20, "cm"),
-          element_line(colour = "black", linewidth =  1),
+          element_line(colour = "black", linewidth = 1),
           axis.title.y = element_text(
             angle = 90,
             face = "plain",
             size = 15,
             colour = "Black",
-            margin = unit(c(-1, -1, -1, -1), "mm")
+            margin = margin(t = -1, r = -1, b = -1, l = -1, unit = "mm")
           ),
           axis.title.x = element_text(
             angle = 0,
             face = "plain",
             size = 15,
             colour = "Black",
-            margin = unit(c(-1, -1, -1, -1), "mm")
+            margin = margin(t = -1, r = -1, b = -1, l = -1, unit = "mm")
           ),
           axis.text.x = element_text(
             angle = 0,
@@ -2677,12 +2659,7 @@ server <- function(session, input, output) {
             vjust = 0.5,
             colour = "black",
             size = 14,
-            margin = margin(
-              t = 2,
-              r = 2,
-              b = 2,
-              l = 2
-            )
+            margin = margin(t = 2, r = 2, b = 2, l = 2)
           ),
           axis.text.y = element_text(
             angle = 90,
@@ -2690,12 +2667,7 @@ server <- function(session, input, output) {
             vjust = 0.5,
             colour = "black",
             size = 14,
-            margin = margin(
-              t = 2,
-              r = 2,
-              b = 2,
-              l = 2
-            )
+            margin = margin(t = 2, r = 2, b = 2, l = 2)
           ),
           plot.title = element_text(
             angle = 0,
@@ -2705,20 +2677,20 @@ server <- function(session, input, output) {
           ),
           legend.position = 'right',
           legend.direction = "vertical",
-          legend.margin = margin(0, 0, 0, 0),
-          legend.box.margin = margin(-5, -5, -5, -5),
+          legend.margin = margin(t = 0, r = 0, b = 0, l = 0),
+          legend.box.margin = margin(t = -5, r = -5, b = -5, l = -5),
           legend.title = element_text(size = 15),
           legend.text = element_text(margin = margin(t = -5), size = 16),
           strip.text.x = element_text(size = 12, angle = 0),
           strip.text.y = element_text(size = 12, face = "bold"),
-          axis.text = element_text(margin = -5),
+          axis.text = element_text(margin = margin(t = -5, r = -5, b = -5, l = -5)),
           strip.background = element_rect(color = "black", fill = "gray90"),
           strip.text = element_text(
             face = "bold",
             size = 18,
             colour = 'black'
           )
-        ) +
+        )+
         guides(
           fill = guide_colorbar(
             barwidth = 1.0,
@@ -2856,20 +2828,20 @@ server <- function(session, input, output) {
           ),
           axis.line = element_line(colour = "gray70", linewidth = 0.08),
           axis.ticks.length = unit(-0.20, "cm"),
-          element_line(colour = "black", linewidth =  1),
+          element_line(colour = "black", linewidth = 1),
           axis.title.y = element_text(
             angle = 90,
             face = "plain",
             size = 15,
             colour = "Black",
-            margin = unit(c(-1, -1, -1, -1), "mm")
+            margin = margin(t = -1, r = -1, b = -1, l = -1, unit = "mm")
           ),
           axis.title.x = element_text(
             angle = 0,
             face = "plain",
             size = 15,
             colour = "Black",
-            margin = unit(c(-1, -1, -1, -1), "mm")
+            margin = margin(t = -1, r = -1, b = -1, l = -1, unit = "mm")
           ),
           axis.text.x = element_text(
             angle = 0,
@@ -2877,12 +2849,7 @@ server <- function(session, input, output) {
             vjust = 0.5,
             colour = "black",
             size = 14,
-            margin = margin(
-              t = 2,
-              r = 2,
-              b = 2,
-              l = 2
-            )
+            margin = margin(t = 2, r = 2, b = 2, l = 2)
           ),
           axis.text.y = element_text(
             angle = 90,
@@ -2890,12 +2857,7 @@ server <- function(session, input, output) {
             vjust = 0.5,
             colour = "black",
             size = 14,
-            margin = margin(
-              t = 2,
-              r = 2,
-              b = 2,
-              l = 2
-            )
+            margin = margin(t = 2, r = 2, b = 2, l = 2)
           ),
           plot.title = element_text(
             angle = 0,
@@ -2905,13 +2867,13 @@ server <- function(session, input, output) {
           ),
           legend.position = 'right',
           legend.direction = "vertical",
-          legend.margin = margin(0, 0, 0, 0),
-          legend.box.margin = margin(-5, -5, -5, -5),
+          legend.margin = margin(t = 0, r = 0, b = 0, l = 0),
+          legend.box.margin = margin(t = -5, r = -5, b = -5, l = -5),
           legend.title = element_text(size = 15),
           legend.text = element_text(margin = margin(t = -5), size = 16),
           strip.text.x = element_text(size = 12, angle = 0),
           strip.text.y = element_text(size = 12, face = "bold"),
-          axis.text = element_text(margin = -5),
+          axis.text = element_text(margin = margin(t = -5, r = -5, b = -5, l = -5)),
           strip.background = element_rect(color = "black", fill = "gray90"),
           strip.text = element_text(
             face = "bold",
@@ -3184,6 +3146,7 @@ Should you have any inquiries or wish to provide feedback, please do not hesitat
     lapply(report_suffixes, function(suffix) {
       label <- switch(
         suffix,
+        "ann2025" = "Annual 2025",
         "ann2024" = "Annual 2024",
         "longterm" = "Long-term 1980–2022",
         {
@@ -3202,6 +3165,7 @@ Should you have any inquiries or wish to provide feedback, please do not hesitat
       # Remove file.exists(), just try both formats
       file_name <- switch(
         suffix,
+        "ann2025" = "bc_annual_climate_summary_2025.html",
         "ann2024" = "bc_annual_climate_summary_2024.html",
         "longterm" = "bc_longterm_temp_prcp_anomaly_report_1980_2022_html.html",
         {

@@ -15,25 +15,11 @@ if (any(installed_rqr_pkgs == FALSE)) {
 # Load:
 lapply(rqr_pkgs , require, character.only = TRUE)
 
-
-# Data and path -----------------------------------------------------------
-
-dt_pth <-
-  "../ecoprovince_average_anomaly/"
-
 # Stripe plots ------------------------------------------------------------
 # Annual----------------
+cur_yr <- as.character(as.integer(format(Sys.Date(), "%Y")) - 1)
 
-# <<< download anomaly data from the BC shiny app >>
-bc_eco_ano_dt_fls <- list.files(path = dt_pth,
-                                pattern = '.csv',
-                                full.names = T)
-bc_eco_ano_dt_fls
-
-bc_tmn_ann_ano_dt <- read_csv(bc_eco_ano_dt_fls)
-bc_tmn_ann_ano_dt%<>%
-  filter(par == 'tmean' & mon == 'annual',  subregion =='BC')
-tail(bc_tmn_ann_ano_dt)
+bc_tmn_ann_ano_dt <- read_csv('BC_tmean_anomaly_timeseries_annual_1951_2025_data.csv')
 
 # stripe plot of BC's annual temperature --- with title
 bc_tmn_ann_ano_dt %>%
@@ -48,7 +34,7 @@ bc_tmn_ann_ano_dt %>%
   ) +
   coord_cartesian(expand = FALSE) +
   theme_void() +
-  scale_x_continuous(breaks = seq(1950, 2024, 10)) +
+  scale_x_continuous(breaks = seq(1950, cur_yr, 10)) +
   labs(
     title = glue(
       'BC mean annual temperature change ({min(bc_tmn_ann_ano_dt$yr)}-{max(bc_tmn_ann_ano_dt$yr)})'
@@ -105,10 +91,23 @@ ggsave(
 )
 
 # Copy stripes plots to www folder for anomaly app
+from_files <- c(
+  "bc_annual_tmean_ano_stripe.png",
+  "bc_annual_tmean_ano_stripe_withtitle.png"
+)
+from_files
+file.exists(from_files)
 
-stripes_plts <- c("bc_annual_tmean_ano_stripe.png",
-                  "bc_annual_tmean_ano_stripe_withtitle.png")
-stripes_plts_www <- c("../www/bc_annual_tmean_ano_stripe.png",
-                      "../www/bc_annual_tmean_ano_stripe_withtitle.png")
+# destination relative to getwd()
+to_dir <- "../www"
 
-file.copy(stripes_plts , stripes_plts_www)
+dir.exists(to_dir)
+
+# copy files
+file.copy(
+  from = from_files,
+  to   = to_dir,
+  overwrite = TRUE
+)
+
+

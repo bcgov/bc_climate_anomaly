@@ -1,0 +1,10 @@
+Measures,Mean Temperature,Precipitation,Vapour pressure deficiet (VPD),Relative Humidity,Soil moisture
+Spatial average anomaly,0.72,-5.35,-0,0.82,-2.58
+Spatial minimum anomaly,-0.43,-90.01,-1.48,-8.57,-35.79
+Spatial maximum anomaly,2.64,150.37,3.23,9.13,21.87
+Average anomaly ranking,19,30,36,29,49
+Spatial average trend,0.04,0.12,0.01,-0.02,-0.08
+Spatial minimum trend,-0.01,-0.69,-0.02,-0.17,-0.46
+Spatial maximum trend,-0.01,-0.69,-0.02,-0.17,-0.46
+Linear trend,0.04,0.13,0.02,-0.03,-0.09
+Linear trend p-val,0,0.34,0,0.15,0.01

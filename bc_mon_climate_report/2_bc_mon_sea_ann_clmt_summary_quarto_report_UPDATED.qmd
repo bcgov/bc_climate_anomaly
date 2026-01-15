@@ -195,7 +195,7 @@ lapply(rqr_pkgs , require, character.only = TRUE)
 #| cache: false
 # Paths and results files  ------------------------
 # setwd(getwd())
-result_plts_pth <- './result_plots/'
+result_plts_pth <- './mon_2mon_results_plots/'
 
 # Result files
 
@@ -243,7 +243,7 @@ knitr::kable(plot_paths_df)
 min_year <- 1951
 max_year <- 2025
 
-update_month <- "June"
+update_month <- "July"
 update_year <- "2025"
 
 years <- seq(min_year, max_year, 1)
@@ -388,7 +388,6 @@ knitr::include_graphics(tmean_vpd_tstrn_path)
 ```
 
 ## Precipitation, Relative Humidity (RH) and soil moisture
-
 
 ### Anomaly: `r format(as.Date(curr_mon_yr), "%B-%Y")`
 
@@ -571,7 +570,6 @@ win_tmean_vpd_tstrn_path <- plot_paths_df %>%
 knitr::include_graphics(win_tmean_vpd_tstrn_path)
 ```
 
-
 #### Precipitation, relative humidity and soil moisture
 
 ##### Spatial trends
@@ -609,7 +607,6 @@ win_prcp_rh_sm_tstrn_path <- plot_paths_df %>%
 
 knitr::include_graphics(win_prcp_rh_sm_tstrn_path)
 ```
-
 
 ### Spring
 
@@ -704,7 +701,6 @@ spr_tmean_vpd_tstrn_path <- plot_paths_df %>%
 knitr::include_graphics(spr_tmean_vpd_tstrn_path)
 ```
 
-
 #### Precipitation, relative humidity and soil moisture
 
 ##### Spatial trends
@@ -742,7 +738,6 @@ spr_prcp_rh_sm_tstrn_path <- plot_paths_df %>%
 
 knitr::include_graphics(spr_prcp_rh_sm_tstrn_path)
 ```
-
 
 ### Summer
 
@@ -837,7 +832,6 @@ sum_tmean_vpd_tstrn_path <- plot_paths_df %>%
 knitr::include_graphics(sum_tmean_vpd_tstrn_path)
 ```
 
-
 #### Precipitation, relative humidity and soil moisture
 
 ##### Spatial trends
@@ -875,9 +869,6 @@ sum_prcp_rh_sm_tstrn_path <- plot_paths_df %>%
 
 knitr::include_graphics(sum_prcp_rh_sm_tstrn_path)
 ```
-
-
-
 
 ### Fall
 
@@ -972,7 +963,6 @@ fal_tmean_vpd_tstrn_path <- plot_paths_df %>%
 knitr::include_graphics(fal_tmean_vpd_tstrn_path)
 ```
 
-
 #### Precipitation, relative humidity and soil moisture
 
 ##### Spatial trends
@@ -1010,7 +1000,6 @@ fal_prcp_rh_sm_tstrn_path <- plot_paths_df %>%
 
 knitr::include_graphics(fal_prcp_rh_sm_tstrn_path)
 ```
-
 
 ### Annual
 
@@ -1105,7 +1094,6 @@ ann_tmean_vpd_tstrn_path <- plot_paths_df %>%
 knitr::include_graphics(ann_tmean_vpd_tstrn_path)
 ```
 
-
 #### Precipitation, relative humidity and soil moisture
 
 ##### Spatial trends
@@ -1143,7 +1131,6 @@ ann_prcp_rh_sm_tstrn_path <- plot_paths_df %>%
 
 knitr::include_graphics(ann_prcp_rh_sm_tstrn_path)
 ```
-
 
 This report compliment the <a href='https://bcgov-env.shinyapps.io/bc_climate_anomaly/'> BC climate anomaly app </a>. Should you have any questions, please contact <a href= 'mailto: Aseem.Sharma@gov.bc.ca'>Aseem Sharma </a>.
 
