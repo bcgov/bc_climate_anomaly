@@ -1,4 +1,11 @@
-.Rproj.user
-.Rhistory
-.RData
-.Ruserdata
+# Ignore everything
+*
+
+# Allow directories
+!*/
+
+# Allow R files
+!*.R
+
+# Allow git files
+!.gitignore
