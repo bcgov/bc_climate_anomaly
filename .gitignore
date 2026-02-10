@@ -9,3 +9,4 @@
 
 # Allow git files
 !.gitignore
+.Rproj.user

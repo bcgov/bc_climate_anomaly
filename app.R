@@ -139,11 +139,13 @@ parameters
 min_year <- 1951
 max_year <- 2026 # current year of preparation
 
-update_month <- "November"
+update_month <- "December"
 update_year <- "2025"
 
 years <- seq(min_year, max_year, 1)
 yr_choices <- sort(years, decreasing = T)
+
+report_years <- c(2023,2024,2025)
 
 ## Anomalies climatology and trend Data files -----
 list.files(path = ano_dt_pth,
