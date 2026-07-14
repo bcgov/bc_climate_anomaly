@@ -42,12 +42,11 @@ library('zyp')
 library('colorspace')
 library('cptcity')
 
-
 # Load and process input data -------
 ## Paths --
 # setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
 shp_fls_pth <- './shapefiles/'
-ano_dt_pth <-  './ano_clm_trn_data/'
+ano_dt_pth <- './ano_clm_trn_data/'
 
 # Credit  -----
 plt_wtrmrk <-
@@ -66,24 +65,28 @@ ymi = 39
 ymx = 60
 
 # List of shape files
-list.files(path = shp_fls_pth,
-           pattern = "\\.(shp|gpkg)$",
-           full.names = TRUE,
-           ignore.case = TRUE) -> shp_fls_lst
+list.files(
+  path = shp_fls_pth,
+  pattern = "\\.(shp|gpkg)$",
+  full.names = TRUE,
+  ignore.case = TRUE
+) -> shp_fls_lst
 shp_fls_lst
 
 # Western North America
-na_shp <-   vect(shp_fls_lst[str_detect(shp_fls_lst, "north_america") == T])
+na_shp <- vect(shp_fls_lst[str_detect(shp_fls_lst, "north_america") == T])
 # plot(na_shp)
-wna_shp <- crop(na_shp, ext(xmi,xmx,ymi,ymx))
+wna_shp <- crop(na_shp, ext(xmi, xmx, ymi, ymx))
 # plot(wna_shp)
 
 # BC
-bc_shp <-vect(shp_fls_lst[str_detect(shp_fls_lst, "bc_shapefile") == T])
+bc_shp <- vect(shp_fls_lst[str_detect(shp_fls_lst, "bc_shapefile") == T])
 # plot(bc_shp)
 
 # BC eco-province
-bc_ecoprv_shp <- vect(shp_fls_lst[str_detect(shp_fls_lst, "bc_ecoprovince") == T])
+bc_ecoprv_shp <- vect(shp_fls_lst[
+  str_detect(shp_fls_lst, "bc_ecoprovince") == T
+])
 # plot(bc_ecoprv_shp)
 # text(bc_ecoprv_shp, "code", cex = 0.8, col = "black")
 
@@ -94,11 +97,15 @@ bc_ecoprv_shp %<>%
 # text(bc_ecoprv_shp, "code", cex = 0.8, col = "black")
 
 # BC eco-regions
-bc_ecorgn_shp <-vect(shp_fls_lst[str_detect(shp_fls_lst, "bc_ecoregions") == T])
+bc_ecorgn_shp <- vect(shp_fls_lst[
+  str_detect(shp_fls_lst, "bc_ecoregions") == T
+])
 # plot(bc_ecorgns_shp)
 
 # BC eco-sections
-bc_ecosec_shp <- vect(shp_fls_lst[str_detect(shp_fls_lst, "bc_ecosections") == T])
+bc_ecosec_shp <- vect(shp_fls_lst[
+  str_detect(shp_fls_lst, "bc_ecosections") == T
+])
 # plot(bc_ecosec_shp)
 # bc_ecosec_shp$ECOSEC_NM
 bc_ecosec_shp <- project(bc_ecosec_shp, "EPSG:4326")
@@ -111,7 +118,9 @@ bc_flp_shp %<>%
   mutate(flp_unit_nam = paste0('FLP- ', ORG_UNIT))
 
 # BC watersheds
-bc_wtrshd_shp <- vect(shp_fls_lst[str_detect(shp_fls_lst, "bc_watersheds") == T])
+bc_wtrshd_shp <- vect(shp_fls_lst[
+  str_detect(shp_fls_lst, "bc_watersheds") == T
+])
 # plot(bc_wtrshd_shp)
 
 # BC FWA watersheds ( Freshwater atlas watersheds)
@@ -120,46 +129,67 @@ bc_fwa_shp <- vect(shp_fls_lst[str_detect(shp_fls_lst, "fwa_watersheds") == T])
 bc_fwa_shp <- project(bc_fwa_shp, "EPSG:4326")
 
 # BC municipalities
-bc_muni_shp <-  vect(shp_fls_lst[str_detect(shp_fls_lst, "bc_municipalities") == T])
+bc_muni_shp <- vect(shp_fls_lst[
+  str_detect(shp_fls_lst, "bc_municipalities") == T
+])
 # plot(bc_muni_shp)
 bc_muni_shp <- project(bc_muni_shp, "EPSG:4326")
 
 ## Months, parameters ----
 months_nam <-
   c(
-    "annual","winter","spring","summer","fall",
-    "Jan","Feb","Mar","Apr","May","Jun","Jul",
-    "Aug","Sep","Oct","Nov","Dec"
+    "annual",
+    "winter",
+    "spring",
+    "summer",
+    "fall",
+    "Jan",
+    "Feb",
+    "Mar",
+    "Apr",
+    "May",
+    "Jun",
+    "Jul",
+    "Aug",
+    "Sep",
+    "Oct",
+    "Nov",
+    "Dec"
   )
 months_nam
 
-parameters <- c("tmean", "tmax", "tmin", "prcp","vpd","rh","soil_moisture")
+parameters <- c("tmean", "tmax", "tmin", "prcp", "vpd", "rh", "soil_moisture")
 parameters
 
 min_year <- 1951
 max_year <- 2026 # current year of preparation
 
-update_month <- "December"
-update_year <- "2025"
+update_month <- "June"
+update_year <- "2026"
 
 years <- seq(min_year, max_year, 1)
 yr_choices <- sort(years, decreasing = T)
 
-report_years <- c(2023,2024,2025)
+report_years <- seq(2023, max_year, 1)
 
 ## Anomalies climatology and trend Data files -----
-list.files(path = ano_dt_pth,
-           pattern = ".nc",
-           full.names = T) -> ano_clm_trn_dt_fls
+list.files(
+  path = ano_dt_pth,
+  pattern = ".nc",
+  full.names = T
+) -> ano_clm_trn_dt_fls
 ano_clm_trn_dt_fls
 
 ano_clm_trn_dt_fl <- tibble(dt_pth = ano_clm_trn_dt_fls) %>%
   mutate(fl_nam = basename(dt_pth)) %>%
   mutate(
-    par = str_extract(fl_nam, paste(parameters, collapse = "|")),                # prcp
-    dt_type = str_extract(fl_nam, "(ano|clm|spatial_trend)"),     # ano, clm, spatial_trend
-    mon = str_extract(fl_nam, "(annual|fall|summer|winter|spring|Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)"),
-    start_year = str_extract(fl_nam, "(19|20)\\d{2}")              # 1950 or 1980
+    par = str_extract(fl_nam, paste(parameters, collapse = "|")), # prcp
+    dt_type = str_extract(fl_nam, "(ano|clm|spatial_trend)"), # ano, clm, spatial_trend
+    mon = str_extract(
+      fl_nam,
+      "(annual|fall|summer|winter|spring|Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)"
+    ),
+    start_year = str_extract(fl_nam, "(19|20)\\d{2}") # 1950 or 1980
   ) %>%
   # Optional cleanup
   mutate(
@@ -171,16 +201,71 @@ ano_clm_trn_dt_fl <- tibble(dt_pth = ano_clm_trn_dt_fls) %>%
   dplyr::select(-fl_nam)
 ano_clm_trn_dt_fl
 
-# For summary reports ---------------
+# Report suffixes ----------------------
+month_labs <- c(
+  "January" = "jan",
+  "February" = "feb",
+  "March" = "mar",
+  "April" = "apr",
+  "May" = "may",
+  "June" = "jun",
+  "July" = "jul",
+  "August" = "aug",
+  "September" = "sep",
+  "October" = "oct",
+  "November" = "nov",
+  "December" = "dec"
+)
+
+upd_mon_lab <- month_labs[[update_month]]
+upd_year <- as.integer(update_year)
+
+# Build rolling monthly suffixes
+
+build_monthly_suffixes <- function(start_year, end_year, start_month) {
+  months_order <- names(month_labs)
+
+  suffixes <- c()
+
+  for (yr in seq(end_year, start_year, by = -1)) {
+    if (yr == end_year) {
+      mons <- months_order[1:match(start_month, months_order)]
+    } else {
+      mons <- rev(months_order)
+    }
+
+    for (m in rev(mons)) {
+      suffixes <- c(
+        suffixes,
+        paste0(month_labs[[m]], yr)
+      )
+    }
+  }
+
+  suffixes
+}
+
+monthly_suffixes <- build_monthly_suffixes(
+  start_year = 2023,
+  end_year = upd_year,
+  start_month = update_month
+)
+
+# Annual suffixes
+annual_suffixes <- paste0(
+  "ann",
+  seq(upd_year - 1, 2024, by = -1)
+)
+
+
+# Final vector
 report_suffixes <- c(
-  "ann2025",
-  "dec2025", "nov2025","oct2025","sep2025","aug2025","jul2025","jun2025", "may2025","apr2025", "mar2025", "feb2025", "jan2025",
-  "ann2024",
-  "dec2024", "nov2024", "oct2024", "sep2024",
-  "aug2024", "jul2024", "jun2024", "may2024", "apr2024", "mar2024",
-  "feb2024", "jan2024", "dec2023", "nov2023", "oct2023", "sep2023",
+  monthly_suffixes,
+  annual_suffixes,
   "longterm"
 )
+
+report_suffixes
 
 
 #  UI --------------------------------------
@@ -200,8 +285,9 @@ ui <- fluidPage(
         wellPanel(
           HTML(
             "<h3><b>BC climate anomaly app</b>: Visualizing Climate Anomalies in British Columbia (BC) </h2>"
-          )),
-          includeMarkdown("intro_bc_climate_anomaly_app.Rmd"),
+          )
+        ),
+        includeMarkdown("intro_bc_climate_anomaly_app.Rmd"),
         column(
           width = 12,
           HTML(
@@ -239,10 +325,9 @@ ui <- fluidPage(
               Any modifications to the original data may result in adjustments to the findings presented in this report.</h8>"
           )
         ),
-        column(width = 12,
-               textOutput("deploymentDate"),),
+        column(width = 12, textOutput("deploymentDate"), ),
 
-    ###### footer ----------------------------
+        ###### footer ----------------------------
         column(
           width = 12,
           style = "background-color:#003366; border-top:2px solid #fcba19;",
@@ -257,27 +342,46 @@ ui <- fluidPage(
                 tags$ul(
                   style = "display:flex; flex-direction:row; flex-wrap:wrap; margin:0; list-style:none; align-items:center; height:100%;",
                   tags$li(
-                    a(href = "https://www2.gov.bc.ca/gov/content/home", "Home", style = "font-size:1em; font-weight:normal; color:white; padding-left:5px; padding-right:5px; border-right:1px solid #4b5e7e;")
+                    a(
+                      href = "https://www2.gov.bc.ca/gov/content/home",
+                      "Home",
+                      style = "font-size:1em; font-weight:normal; color:white; padding-left:5px; padding-right:5px; border-right:1px solid #4b5e7e;"
+                    )
                   ),
                   tags$li(
-                    a(href = "https://www2.gov.bc.ca/gov/content/home/disclaimer", "Disclaimer", style =
-                        "font-size:1em; font-weight:normal; color:white; padding-left:5px; padding-right:5px; border-right:1px solid #4b5e7e;")
+                    a(
+                      href = "https://www2.gov.bc.ca/gov/content/home/disclaimer",
+                      "Disclaimer",
+                      style = "font-size:1em; font-weight:normal; color:white; padding-left:5px; padding-right:5px; border-right:1px solid #4b5e7e;"
+                    )
                   ),
                   tags$li(
-                    a(href = "https://www2.gov.bc.ca/gov/content/home/privacy", "Privacy", style =
-                        "font-size:1em; font-weight:normal; color:white; padding-left:5px; padding-right:5px; border-right:1px solid #4b5e7e;")
+                    a(
+                      href = "https://www2.gov.bc.ca/gov/content/home/privacy",
+                      "Privacy",
+                      style = "font-size:1em; font-weight:normal; color:white; padding-left:5px; padding-right:5px; border-right:1px solid #4b5e7e;"
+                    )
                   ),
                   tags$li(
-                    a(href = "https://www2.gov.bc.ca/gov/content/home/accessibility", "Accessibility", style =
-                        "font-size:1em; font-weight:normal; color:white; padding-left:5px; padding-right:5px; border-right:1px solid #4b5e7e;")
+                    a(
+                      href = "https://www2.gov.bc.ca/gov/content/home/accessibility",
+                      "Accessibility",
+                      style = "font-size:1em; font-weight:normal; color:white; padding-left:5px; padding-right:5px; border-right:1px solid #4b5e7e;"
+                    )
                   ),
                   tags$li(
-                    a(href = "https://www2.gov.bc.ca/gov/content/home/copyright", "Copyright", style =
-                        "font-size:1em; font-weight:normal; color:white; padding-left:5px; padding-right:5px; border-right:1px solid #4b5e7e;")
+                    a(
+                      href = "https://www2.gov.bc.ca/gov/content/home/copyright",
+                      "Copyright",
+                      style = "font-size:1em; font-weight:normal; color:white; padding-left:5px; padding-right:5px; border-right:1px solid #4b5e7e;"
+                    )
                   ),
                   tags$li(
-                    a(href = "https://www2.gov.bc.ca/StaticWebResources/static/gov3/html/contact-us.html", "Contact", style =
-                        "font-size:1em; font-weight:normal; color:white; padding-left:5px; padding-right:5px; border-right:1px solid #4b5e7e;")
+                    a(
+                      href = "https://www2.gov.bc.ca/StaticWebResources/static/gov3/html/contact-us.html",
+                      "Contact",
+                      style = "font-size:1em; font-weight:normal; color:white; padding-left:5px; padding-right:5px; border-right:1px solid #4b5e7e;"
+                    )
                   )
                 )
               )
@@ -307,27 +411,46 @@ ui <- fluidPage(
               tags$ul(
                 style = "display:flex; flex-direction:row; flex-wrap:wrap; margin:0; list-style:none; align-items:center; height:100%;",
                 tags$li(
-                  a(href = "https://www2.gov.bc.ca/gov/content/home", "Home", style = "font-size:1em; font-weight:normal; color:white; padding-left:5px; padding-right:5px; border-right:1px solid #4b5e7e;")
+                  a(
+                    href = "https://www2.gov.bc.ca/gov/content/home",
+                    "Home",
+                    style = "font-size:1em; font-weight:normal; color:white; padding-left:5px; padding-right:5px; border-right:1px solid #4b5e7e;"
+                  )
                 ),
                 tags$li(
-                  a(href = "https://www2.gov.bc.ca/gov/content/home/disclaimer", "Disclaimer", style =
-                      "font-size:1em; font-weight:normal; color:white; padding-left:5px; padding-right:5px; border-right:1px solid #4b5e7e;")
+                  a(
+                    href = "https://www2.gov.bc.ca/gov/content/home/disclaimer",
+                    "Disclaimer",
+                    style = "font-size:1em; font-weight:normal; color:white; padding-left:5px; padding-right:5px; border-right:1px solid #4b5e7e;"
+                  )
                 ),
                 tags$li(
-                  a(href = "https://www2.gov.bc.ca/gov/content/home/privacy", "Privacy", style =
-                      "font-size:1em; font-weight:normal; color:white; padding-left:5px; padding-right:5px; border-right:1px solid #4b5e7e;")
+                  a(
+                    href = "https://www2.gov.bc.ca/gov/content/home/privacy",
+                    "Privacy",
+                    style = "font-size:1em; font-weight:normal; color:white; padding-left:5px; padding-right:5px; border-right:1px solid #4b5e7e;"
+                  )
                 ),
                 tags$li(
-                  a(href = "https://www2.gov.bc.ca/gov/content/home/accessibility", "Accessibility", style =
-                      "font-size:1em; font-weight:normal; color:white; padding-left:5px; padding-right:5px; border-right:1px solid #4b5e7e;")
+                  a(
+                    href = "https://www2.gov.bc.ca/gov/content/home/accessibility",
+                    "Accessibility",
+                    style = "font-size:1em; font-weight:normal; color:white; padding-left:5px; padding-right:5px; border-right:1px solid #4b5e7e;"
+                  )
                 ),
                 tags$li(
-                  a(href = "https://www2.gov.bc.ca/gov/content/home/copyright", "Copyright", style =
-                      "font-size:1em; font-weight:normal; color:white; padding-left:5px; padding-right:5px; border-right:1px solid #4b5e7e;")
+                  a(
+                    href = "https://www2.gov.bc.ca/gov/content/home/copyright",
+                    "Copyright",
+                    style = "font-size:1em; font-weight:normal; color:white; padding-left:5px; padding-right:5px; border-right:1px solid #4b5e7e;"
+                  )
                 ),
                 tags$li(
-                  a(href = "https://www2.gov.bc.ca/StaticWebResources/static/gov3/html/contact-us.html", "Contact", style =
-                      "font-size:1em; font-weight:normal; color:white; padding-left:5px; padding-right:5px; border-right:1px solid #4b5e7e;")
+                  a(
+                    href = "https://www2.gov.bc.ca/StaticWebResources/static/gov3/html/contact-us.html",
+                    "Contact",
+                    style = "font-size:1em; font-weight:normal; color:white; padding-left:5px; padding-right:5px; border-right:1px solid #4b5e7e;"
+                  )
                 )
               )
             )
@@ -349,7 +472,8 @@ ui <- fluidPage(
 
           ##### Filters/selectors ------------------
           # Custom CSS
-          tags$head(tags$style(HTML("
+          tags$head(tags$style(HTML(
+            "
     select.form-control {
       transition: background-color 0.3s ease;
     }
@@ -360,9 +484,11 @@ ui <- fluidPage(
       border-bottom: 1px solid #ccc;
       padding: 6px 10px;
     }
-  "))),
-          helpText(HTML("<h4><b> Filter/Selections</b> </h4>",)),
-          helpText(HTML('
+  "
+          ))),
+          helpText(HTML("<h4><b> Filter/Selections</b> </h4>", )),
+          helpText(HTML(
+            '
   <style>
     .flash-text {
       color: red;
@@ -375,17 +501,26 @@ ui <- fluidPage(
     }
   </style>
   <p>After selection, click <b><i class="flash-text">Run Analysis</i></b> to get outputs.</p>
-')),
-            # helpText(HTML("<h4><b> Filter/Selections</b> </h4>",)),
+'
+          )),
+          # helpText(HTML("<h4><b> Filter/Selections</b> </h4>",)),
           # helpText(HTML("<p> After selection click <i> <b> Run Analysis</i></b> to get outputs. </p>",)),
           fluidRow(
             useShinyjs(),
             pickerInput(
               "major_area",
               "Select region ",
-              choices = c("Western North America",
-                          "BC", "Ecoprovinces", "Ecoregions", 'Ecosections', "Major watersheds",
-                          'FWA watersheds', 'FLP boundaries', 'Municipalities'),
+              choices = c(
+                "Western North America",
+                "BC",
+                "Ecoprovinces",
+                "Ecoregions",
+                'Ecosections',
+                "Major watersheds",
+                'FWA watersheds',
+                'FLP boundaries',
+                'Municipalities'
+              ),
               selected = 'BC'
             ),
             hidden(
@@ -408,7 +543,10 @@ ui <- fluidPage(
               pickerInput(
                 "ecosec_area",
                 "Ecosections",
-                choices = c("Ecosections (select one)", c(bc_ecosec_shp$ECOSEC_NM)),
+                choices = c(
+                  "Ecosections (select one)",
+                  c(bc_ecosec_shp$ECOSEC_NM)
+                ),
                 multiple = F
               )
             ),
@@ -416,7 +554,10 @@ ui <- fluidPage(
               selectInput(
                 "wtrshd_area",
                 "Watershed",
-                choices = c("Major watersheds (select one)", c(bc_wtrshd_shp$MJR_WTRSHM)),
+                choices = c(
+                  "Major watersheds (select one)",
+                  c(bc_wtrshd_shp$MJR_WTRSHM)
+                ),
                 multiple = F
               )
             ),
@@ -424,7 +565,10 @@ ui <- fluidPage(
               selectInput(
                 "fwa_area",
                 "FWA watersheds",
-                choices = c("FWA watersheds (select one)", c(bc_fwa_shp$WATERSHE_2)),
+                choices = c(
+                  "FWA watersheds (select one)",
+                  c(bc_fwa_shp$WATERSHE_2)
+                ),
                 multiple = F
               )
             ),
@@ -432,7 +576,10 @@ ui <- fluidPage(
               selectInput(
                 "flp_area",
                 "FLP boundaries",
-                choices = c("FLP boundaries (select one)", c(bc_flp_shp$flp_unit_nam)),
+                choices = c(
+                  "FLP boundaries (select one)",
+                  c(bc_flp_shp$flp_unit_nam)
+                ),
                 multiple = F
               )
             ),
@@ -440,32 +587,39 @@ ui <- fluidPage(
               pickerInput(
                 "muni_area",
                 "Municipalities",
-                choices = c("Municipalities (select one)", c(bc_muni_shp$ABRVN)),
+                choices = c(
+                  "Municipalities (select one)",
+                  c(bc_muni_shp$ABRVN)
+                ),
                 multiple = F
               )
             ),
-            HTML("(Western North America, BC, Eco-provinces/regions/sections,
-                 Major Watersheds, FWA watersheds, FLP boundaries, Municipalities)"),
+            HTML(
+              "(Western North America, BC, Eco-provinces/regions/sections,
+                 Major Watersheds, FWA watersheds, FLP boundaries, Municipalities)"
+            ),
           ),
           br(),
-          fluidRow(offset = 3,
-                   # div(style = "height:70px;width:100%;background-color: #999999;border-style: dashed;border-color: #000000",)
-                   uiOutput("par_picker"),
-                   HTML("(Temperature, VPD, Precipitaiton, RH, Soil moisture)"),),
+          fluidRow(
+            offset = 3,
+            # div(style = "height:70px;width:100%;background-color: #999999;border-style: dashed;border-color: #000000",)
+            uiOutput("par_picker"),
+            HTML("(Temperature, VPD, Precipitaiton, RH, Soil moisture)"),
+          ),
           br(),
-          fluidRow(title = "Month",
-                   uiOutput("month_picker")),
+          fluidRow(title = "Month", uiOutput("month_picker")),
           br(),
           fluidRow(
-            helpText(HTML("<h5><b> Choose range of years or specific year(s)</b> </h5>",)),
+            helpText(HTML(
+              "<h5><b> Choose range of years or specific year(s)</b> </h5>",
+            )),
             actionButton("rng_years_choose", "Range of years"),
             actionButton("ab_years_choose", "Specific year(s)"),
-           sliderInput(
+            sliderInput(
               "year_range",
               "year range",
               min_year,
-              max_year
-              ,
+              max_year,
               value = c((max_year - 5), (max_year)),
               sep = ""
             ),
@@ -475,46 +629,56 @@ ui <- fluidPage(
                 ".js-irs-0 .irs-single, .js-irs-0 .irs-bar-edge, .js-irs-0 .irs-bar {background: purple}"
               )
             ),
-            hidden(selectInput("year_specific",
-                        "year(s)",
-                        choices = yr_choices,
-                        multiple = T,
-                        selected = max_year)),
+            hidden(selectInput(
+              "year_specific",
+              "year(s)",
+              choices = yr_choices,
+              multiple = T,
+              selected = max_year
+            )),
 
             # Run analysis and Reset selection
-           # Run analysis and Reset selection
-           br(),
-           actionButton("run_ana_button", tags$b(tags$span(style = "color: red;", "Run analysis"))),
-           actionButton("reset_input", "Reset"),
-           br()
+            # Run analysis and Reset selection
+            br(),
+            actionButton(
+              "run_ana_button",
+              tags$b(tags$span(style = "color: red;", "Run analysis"))
+            ),
+            actionButton("reset_input", "Reset"),
+            br()
           ),
           fluidRow(column(
             HTML("<h4><b>Location Map</b> </h4>"),
             title = "Map Location",
             width = 12,
-            withSpinner(leafletOutput("loc_map", height = "22vh"),type = 6)
+            withSpinner(leafletOutput("loc_map", height = "22vh"), type = 6)
           )),
           br(),
           br(),
-          fluidRow(column(width = 12, wellPanel(
-            style = "background-color: white;",
-            HTML(
-              '<h4>For climate extreme indices (CEI) refer to <a href="https://bcgov-env.shinyapps.io/bc_climate_extremes_app/" target="_blank"><b>bc_climate_extremes_app</b></a></h4>'
+          fluidRow(column(
+            width = 12,
+            wellPanel(
+              style = "background-color: white;",
+              HTML(
+                '<h4>For climate extreme indices (CEI) refer to <a href="https://bcgov-env.shinyapps.io/bc_climate_extremes_app/" target="_blank"><b>bc_climate_extremes_app</b></a></h4>'
+              ),
             )
-            ,
-          ))),
-
-      ),
+          )),
+        ),
         mainPanel(
           tags$head(tags$style(HTML(
             '.box {margin: 25px;}'
           ))),
           width = 9,
-      ##### Linear trends and spatial anomaly map plots and summary ---------------------
-          column(width = 10,
-                 wellPanel(
-                   HTML("<h4><b> Time series, linear trends and spatial anomaly maps</b> </h4>")
-                 )),
+          ##### Linear trends and spatial anomaly map plots and summary ---------------------
+          column(
+            width = 10,
+            wellPanel(
+              HTML(
+                "<h4><b> Time series, linear trends and spatial anomaly maps</b> </h4>"
+              )
+            )
+          ),
           fluidRow(column(
             width = 12,
             offset = 0.1,
@@ -524,80 +688,117 @@ ui <- fluidPage(
                 width = 12,
                 status = 'primary',
                 title = "Time-series plot",
-                withSpinner(plotlyOutput("lnr_trn_plt", height = "60vh"),type =6),
-                downloadButton(outputId = "download_lnr_trn_plt",
-                               label = "Download plot"),
-                downloadButton(outputId = "download_ano_ts_data",
-                               label = "Download anomaly time series data"),
+                withSpinner(
+                  plotlyOutput("lnr_trn_plt", height = "60vh"),
+                  type = 6
+                ),
+                downloadButton(
+                  outputId = "download_lnr_trn_plt",
+                  label = "Download plot"
+                ),
+                downloadButton(
+                  outputId = "download_ano_ts_data",
+                  label = "Download anomaly time series data"
+                ),
               ),
               tabPanel(
                 width = 12,
                 status = 'primary',
                 title = "Spatial anomaly maps",
-                withSpinner(plotOutput("sptl_ano_map", height = "70vh"),type =6),
-                downloadButton(outputId = "download_sptl_ano_plt",
-                               label = "Download plot"),
-                downloadButton(outputId = "download_sptl_ano_data",
-                               label = "Download raster data"),
+                withSpinner(
+                  plotOutput("sptl_ano_map", height = "70vh"),
+                  type = 6
+                ),
+                downloadButton(
+                  outputId = "download_sptl_ano_plt",
+                  label = "Download plot"
+                ),
+                downloadButton(
+                  outputId = "download_sptl_ano_data",
+                  label = "Download raster data"
+                ),
               ),
             )
           )),
-  ###### climate normal map and  spatial trends maps (1950s 1980s) --------------------------
+          ###### climate normal map and  spatial trends maps (1950s 1980s) --------------------------
           fluidRow(
             box(
               width = 4,
-              align="left",
+              align = "left",
               wellPanel(HTML(
                 "<h5><b>Climate Normal (1981-2010)</b> </h5>"
               )),
               uiOutput("clm_nor_title", height = "30vh"),
-              withSpinner(plotOutput("clm_nor_map", width = "100%", height = "30vh"),type =6),
-              downloadButton(outputId = "download_clm_nor_plt",
-                             label = "Download plot"),
-              downloadButton(outputId = "download_clm_nor_data",
-                             label = "Download raster data"),
+              withSpinner(
+                plotOutput("clm_nor_map", width = "100%", height = "30vh"),
+                type = 6
+              ),
+              downloadButton(
+                outputId = "download_clm_nor_plt",
+                label = "Download plot"
+              ),
+              downloadButton(
+                outputId = "download_clm_nor_data",
+                label = "Download raster data"
+              ),
             ),
             box(
               width = 4,
-              align="left",
+              align = "left",
               wellPanel(HTML(
                 "<h5><b> Spatial trends since 1950 </b> </h5>"
               )),
               uiOutput("clm_trn50_title", height = "30vh"),
-              withSpinner(plotOutput("clm_trn50_map", width = "100%", height = "30vh"),type =6),
-              downloadButton(outputId = "download_clm_trn50_plt",
-                             label = "Download plot"),
-              downloadButton(outputId = "download_clm_trn50_data",
-                             label = "Download raster data"),
+              withSpinner(
+                plotOutput("clm_trn50_map", width = "100%", height = "30vh"),
+                type = 6
+              ),
+              downloadButton(
+                outputId = "download_clm_trn50_plt",
+                label = "Download plot"
+              ),
+              downloadButton(
+                outputId = "download_clm_trn50_data",
+                label = "Download raster data"
+              ),
             ),
             box(
               width = 4,
-              align="left",
+              align = "left",
               wellPanel(HTML(
                 "<h5><b> Spatial trends since 1980 </b> </h5>"
               )),
               uiOutput("clm_trn80_title", height = "30vh"),
-              withSpinner(plotOutput("clm_trn80_map", width = "100%", height = "30vh"),type =6),
-              downloadButton(outputId = "download_clm_trn80_plt",
-                             label = "Download plot"),
-              downloadButton(outputId = "download_clm_trn80_data",
-                             label = "Download raster data"),
+              withSpinner(
+                plotOutput("clm_trn80_map", width = "100%", height = "30vh"),
+                type = 6
+              ),
+              downloadButton(
+                outputId = "download_clm_trn80_plt",
+                label = "Download plot"
+              ),
+              downloadButton(
+                outputId = "download_clm_trn80_data",
+                label = "Download raster data"
+              ),
             )
           ),
 
-  ##### App disclaimer -----------------------
+          ##### App disclaimer -----------------------
 
-  column(width = 12,
-           HTML("<h5><b> Disclaimer:</b> </h5> <h6> This analysis utilizes ERA5-Land data.
+          column(
+            width = 12,
+            HTML(
+              "<h5><b> Disclaimer:</b> </h5> <h6> This analysis utilizes ERA5-Land data.
                 Any modifications to the dataset or discrepancies in the results due to data
-                changes should be carefully considered by users. </h6>")
-         ),
+                changes should be carefully considered by users. </h6>"
+            )
+          ),
         ),
       ),
 
       ##### footer ---------------------------
-      HTML("<br>",
-           "<br>"),
+      HTML("<br>", "<br>"),
       column(
         width = 12,
         style = "background-color:#003366; border-top:2px solid #fcba19;position:relative;",
@@ -609,27 +810,46 @@ ui <- fluidPage(
             tags$ul(
               style = "display:flex; flex-direction:row; flex-wrap:wrap; margin:0; list-style:none; align-items:center; height:100%;",
               tags$li(
-                a(href = "https://www2.gov.bc.ca/gov/content/home", "Home", style = "font-size:1em; font-weight:normal; color:white; padding-left:5px; padding-right:5px; border-right:1px solid #4b5e7e;")
+                a(
+                  href = "https://www2.gov.bc.ca/gov/content/home",
+                  "Home",
+                  style = "font-size:1em; font-weight:normal; color:white; padding-left:5px; padding-right:5px; border-right:1px solid #4b5e7e;"
+                )
               ),
               tags$li(
-                a(href = "https://www2.gov.bc.ca/gov/content/home/disclaimer", "Disclaimer", style =
-                    "font-size:1em; font-weight:normal; color:white; padding-left:5px; padding-right:5px; border-right:1px solid #4b5e7e;")
+                a(
+                  href = "https://www2.gov.bc.ca/gov/content/home/disclaimer",
+                  "Disclaimer",
+                  style = "font-size:1em; font-weight:normal; color:white; padding-left:5px; padding-right:5px; border-right:1px solid #4b5e7e;"
+                )
               ),
               tags$li(
-                a(href = "https://www2.gov.bc.ca/gov/content/home/privacy", "Privacy", style =
-                    "font-size:1em; font-weight:normal; color:white; padding-left:5px; padding-right:5px; border-right:1px solid #4b5e7e;")
+                a(
+                  href = "https://www2.gov.bc.ca/gov/content/home/privacy",
+                  "Privacy",
+                  style = "font-size:1em; font-weight:normal; color:white; padding-left:5px; padding-right:5px; border-right:1px solid #4b5e7e;"
+                )
               ),
               tags$li(
-                a(href = "https://www2.gov.bc.ca/gov/content/home/accessibility", "Accessibility", style =
-                    "font-size:1em; font-weight:normal; color:white; padding-left:5px; padding-right:5px; border-right:1px solid #4b5e7e;")
+                a(
+                  href = "https://www2.gov.bc.ca/gov/content/home/accessibility",
+                  "Accessibility",
+                  style = "font-size:1em; font-weight:normal; color:white; padding-left:5px; padding-right:5px; border-right:1px solid #4b5e7e;"
+                )
               ),
               tags$li(
-                a(href = "https://www2.gov.bc.ca/gov/content/home/copyright", "Copyright", style =
-                    "font-size:1em; font-weight:normal; color:white; padding-left:5px; padding-right:5px; border-right:1px solid #4b5e7e;")
+                a(
+                  href = "https://www2.gov.bc.ca/gov/content/home/copyright",
+                  "Copyright",
+                  style = "font-size:1em; font-weight:normal; color:white; padding-left:5px; padding-right:5px; border-right:1px solid #4b5e7e;"
+                )
               ),
               tags$li(
-                a(href = "https://www2.gov.bc.ca/StaticWebResources/static/gov3/html/contact-us.html", "Contact", style =
-                    "font-size:1em; font-weight:normal; color:white; padding-left:5px; padding-right:5px; border-right:1px solid #4b5e7e;")
+                a(
+                  href = "https://www2.gov.bc.ca/StaticWebResources/static/gov3/html/contact-us.html",
+                  "Contact",
+                  style = "font-size:1em; font-weight:normal; color:white; padding-left:5px; padding-right:5px; border-right:1px solid #4b5e7e;"
+                )
               )
             )
           )
@@ -646,7 +866,9 @@ ui <- fluidPage(
 
         wellPanel(
           HTML("<h3><b>BC climate summary and anomaly reports</b></h3>"),
-          HTML("<h4>Monthly summaries, annual reports, and long-term trends (HTML)</h4>")
+          HTML(
+            "<h4>Monthly summaries, annual reports, and long-term trends (HTML)</h4>"
+          )
         ),
 
         fluidRow(
@@ -695,27 +917,46 @@ ui <- fluidPage(
             tags$ul(
               style = "display:flex; flex-direction:row; flex-wrap:wrap; margin:0; list-style:none; align-items:center; height:100%;",
               tags$li(
-                a(href = "https://www2.gov.bc.ca/gov/content/home", "Home", style = "font-size:1em; font-weight:normal; color:white; padding-left:5px; padding-right:5px; border-right:1px solid #4b5e7e;")
+                a(
+                  href = "https://www2.gov.bc.ca/gov/content/home",
+                  "Home",
+                  style = "font-size:1em; font-weight:normal; color:white; padding-left:5px; padding-right:5px; border-right:1px solid #4b5e7e;"
+                )
               ),
               tags$li(
-                a(href = "https://www2.gov.bc.ca/gov/content/home/disclaimer", "Disclaimer", style =
-                    "font-size:1em; font-weight:normal; color:white; padding-left:5px; padding-right:5px; border-right:1px solid #4b5e7e;")
+                a(
+                  href = "https://www2.gov.bc.ca/gov/content/home/disclaimer",
+                  "Disclaimer",
+                  style = "font-size:1em; font-weight:normal; color:white; padding-left:5px; padding-right:5px; border-right:1px solid #4b5e7e;"
+                )
               ),
               tags$li(
-                a(href = "https://www2.gov.bc.ca/gov/content/home/privacy", "Privacy", style =
-                    "font-size:1em; font-weight:normal; color:white; padding-left:5px; padding-right:5px; border-right:1px solid #4b5e7e;")
+                a(
+                  href = "https://www2.gov.bc.ca/gov/content/home/privacy",
+                  "Privacy",
+                  style = "font-size:1em; font-weight:normal; color:white; padding-left:5px; padding-right:5px; border-right:1px solid #4b5e7e;"
+                )
               ),
               tags$li(
-                a(href = "https://www2.gov.bc.ca/gov/content/home/accessibility", "Accessibility", style =
-                    "font-size:1em; font-weight:normal; color:white; padding-left:5px; padding-right:5px; border-right:1px solid #4b5e7e;")
+                a(
+                  href = "https://www2.gov.bc.ca/gov/content/home/accessibility",
+                  "Accessibility",
+                  style = "font-size:1em; font-weight:normal; color:white; padding-left:5px; padding-right:5px; border-right:1px solid #4b5e7e;"
+                )
               ),
               tags$li(
-                a(href = "https://www2.gov.bc.ca/gov/content/home/copyright", "Copyright", style =
-                    "font-size:1em; font-weight:normal; color:white; padding-left:5px; padding-right:5px; border-right:1px solid #4b5e7e;")
+                a(
+                  href = "https://www2.gov.bc.ca/gov/content/home/copyright",
+                  "Copyright",
+                  style = "font-size:1em; font-weight:normal; color:white; padding-left:5px; padding-right:5px; border-right:1px solid #4b5e7e;"
+                )
               ),
               tags$li(
-                a(href = "https://www2.gov.bc.ca/StaticWebResources/static/gov3/html/contact-us.html", "Contact", style =
-                    "font-size:1em; font-weight:normal; color:white; padding-left:5px; padding-right:5px; border-right:1px solid #4b5e7e;")
+                a(
+                  href = "https://www2.gov.bc.ca/StaticWebResources/static/gov3/html/contact-us.html",
+                  "Contact",
+                  style = "font-size:1em; font-weight:normal; color:white; padding-left:5px; padding-right:5px; border-right:1px solid #4b5e7e;"
+                )
               )
             )
           )
@@ -731,9 +972,11 @@ ui <- fluidPage(
         wellPanel(
           HTML(
             "<h3><b>BC climate stripes </b> </h2>"
-          ))),
-          HTML(
-            "<h5> Inspired by the work of British climate scientist <a href= 'https://showyourstripes.info/'> Prof. Ed Hawkins </a> ,
+          )
+        )
+      ),
+      HTML(
+        "<h5> Inspired by the work of British climate scientist <a href= 'https://showyourstripes.info/'> Prof. Ed Hawkins </a> ,
             the climate stripes (also known as warming stripes) visually represent
             changes in annual temperatures relative to the long-term average.
             Below are the 'climate stripes' plots for British Columbia (BC) since 1950.
@@ -744,19 +987,22 @@ ui <- fluidPage(
             Feel free to download and use these visuals!
             <br>
             <br> </h5>"
+      ),
+      fluidRow(
+        wellPanel(HTML(
+          "<h3><b>  BC climate stripes (mean temperature): with title </b> </h3>"
+        )),
+        box(
+          width = 12,
+          height = "100vh",
+          status = "primary",
+          downloadButton(
+            outputId = "clm_strp_plt_ttl_dnwld",
+            label = "Download climate stripe plot with title"
           ),
-          fluidRow(
-            wellPanel(HTML(
-              "<h3><b>  BC climate stripes (mean temperature): with title </b> </h3>"
-            )),
-            box(
-              width = 12,
-              height = "100vh",
-              status = "primary",
-              downloadButton(outputId = "clm_strp_plt_ttl_dnwld",
-                             label = "Download climate stripe plot with title"),
-              imageOutput("bc_clm_strp_withtitle"))
-          ),
+          imageOutput("bc_clm_strp_withtitle")
+        )
+      ),
       fluidRow(
         wellPanel(HTML(
           "<h3><b>  BC climate stripes (mean temperature): without title </b> </h3>"
@@ -765,69 +1011,94 @@ ui <- fluidPage(
           width = 12,
           height = "100vh",
           status = "primary",
-          downloadButton(outputId = "clm_strp_plt_wttl_dnwld",
-                         label = "Download climate stripe plot wihtout title"),
-          imageOutput("bc_clm_strp_withouttitle"))
+          downloadButton(
+            outputId = "clm_strp_plt_wttl_dnwld",
+            label = "Download climate stripe plot wihtout title"
+          ),
+          imageOutput("bc_clm_strp_withouttitle")
+        )
       ),
-        ###### footer ---------------------
+      ###### footer ---------------------
+      column(
+        width = 12,
+        style = "background-color:#003366; border-top:2px solid #fcba19;",
         column(
           width = 12,
           style = "background-color:#003366; border-top:2px solid #fcba19;",
-          column(
-            width = 12,
-            style = "background-color:#003366; border-top:2px solid #fcba19;",
-            tags$footer(
-              class = "footer",
-              tags$div(
-                class = "container",
-                style = "display:flex; justify-content:center; flex-direction:column; text-align:center; height:46px;",
-                tags$ul(
-                  style = "display:flex; flex-direction:row; flex-wrap:wrap; margin:0; list-style:none; align-items:center; height:100%;",
-                  tags$li(
-                    a(href = "https://www2.gov.bc.ca/gov/content/home", "Home", style = "font-size:1em; font-weight:normal; color:white; padding-left:5px; padding-right:5px; border-right:1px solid #4b5e7e;")
-                  ),
-                  tags$li(
-                    a(href = "https://www2.gov.bc.ca/gov/content/home/disclaimer", "Disclaimer", style =
-                        "font-size:1em; font-weight:normal; color:white; padding-left:5px; padding-right:5px; border-right:1px solid #4b5e7e;")
-                  ),
-                  tags$li(
-                    a(href = "https://www2.gov.bc.ca/gov/content/home/privacy", "Privacy", style =
-                        "font-size:1em; font-weight:normal; color:white; padding-left:5px; padding-right:5px; border-right:1px solid #4b5e7e;")
-                  ),
-                  tags$li(
-                    a(href = "https://www2.gov.bc.ca/gov/content/home/accessibility", "Accessibility", style =
-                        "font-size:1em; font-weight:normal; color:white; padding-left:5px; padding-right:5px; border-right:1px solid #4b5e7e;")
-                  ),
-                  tags$li(
-                    a(href = "https://www2.gov.bc.ca/gov/content/home/copyright", "Copyright", style =
-                        "font-size:1em; font-weight:normal; color:white; padding-left:5px; padding-right:5px; border-right:1px solid #4b5e7e;")
-                  ),
-                  tags$li(
-                    a(href = "https://www2.gov.bc.ca/StaticWebResources/static/gov3/html/contact-us.html", "Contact", style =
-                        "font-size:1em; font-weight:normal; color:white; padding-left:5px; padding-right:5px; border-right:1px solid #4b5e7e;")
+          tags$footer(
+            class = "footer",
+            tags$div(
+              class = "container",
+              style = "display:flex; justify-content:center; flex-direction:column; text-align:center; height:46px;",
+              tags$ul(
+                style = "display:flex; flex-direction:row; flex-wrap:wrap; margin:0; list-style:none; align-items:center; height:100%;",
+                tags$li(
+                  a(
+                    href = "https://www2.gov.bc.ca/gov/content/home",
+                    "Home",
+                    style = "font-size:1em; font-weight:normal; color:white; padding-left:5px; padding-right:5px; border-right:1px solid #4b5e7e;"
+                  )
+                ),
+                tags$li(
+                  a(
+                    href = "https://www2.gov.bc.ca/gov/content/home/disclaimer",
+                    "Disclaimer",
+                    style = "font-size:1em; font-weight:normal; color:white; padding-left:5px; padding-right:5px; border-right:1px solid #4b5e7e;"
+                  )
+                ),
+                tags$li(
+                  a(
+                    href = "https://www2.gov.bc.ca/gov/content/home/privacy",
+                    "Privacy",
+                    style = "font-size:1em; font-weight:normal; color:white; padding-left:5px; padding-right:5px; border-right:1px solid #4b5e7e;"
+                  )
+                ),
+                tags$li(
+                  a(
+                    href = "https://www2.gov.bc.ca/gov/content/home/accessibility",
+                    "Accessibility",
+                    style = "font-size:1em; font-weight:normal; color:white; padding-left:5px; padding-right:5px; border-right:1px solid #4b5e7e;"
+                  )
+                ),
+                tags$li(
+                  a(
+                    href = "https://www2.gov.bc.ca/gov/content/home/copyright",
+                    "Copyright",
+                    style = "font-size:1em; font-weight:normal; color:white; padding-left:5px; padding-right:5px; border-right:1px solid #4b5e7e;"
+                  )
+                ),
+                tags$li(
+                  a(
+                    href = "https://www2.gov.bc.ca/StaticWebResources/static/gov3/html/contact-us.html",
+                    "Contact",
+                    style = "font-size:1em; font-weight:normal; color:white; padding-left:5px; padding-right:5px; border-right:1px solid #4b5e7e;"
                   )
                 )
               )
             )
           )
         )
-      ),
+      )
+    ),
 
     ## Feedback and links --------------------------
     tabPanel(
       title = "Feedback & Links",
       value = "feed_link",
-      column(width = 12,
-             wellPanel(HTML(
-               "<h3><b>Feedback</h3>"
-             )), fluidRow(
-               box(
-                 width = 12,
-                 status = 'primary',
-                 # title = "Note",
-                 uiOutput("feedback_text"),
-               )
-             )),
+      column(
+        width = 12,
+        wellPanel(HTML(
+          "<h3><b>Feedback</h3>"
+        )),
+        fluidRow(
+          box(
+            width = 12,
+            status = 'primary',
+            # title = "Note",
+            uiOutput("feedback_text"),
+          )
+        )
+      ),
       column(
         width = 12,
         wellPanel(HTML("<h4><b>Links to other app </h4>")),
@@ -852,27 +1123,46 @@ ui <- fluidPage(
             tags$ul(
               style = "display:flex; flex-direction:row; flex-wrap:wrap; margin:0; list-style:none; align-items:center; height:100%;",
               tags$li(
-                a(href = "https://www2.gov.bc.ca/gov/content/home", "Home", style = "font-size:1em; font-weight:normal; color:white; padding-left:5px; padding-right:5px; border-right:1px solid #4b5e7e;")
+                a(
+                  href = "https://www2.gov.bc.ca/gov/content/home",
+                  "Home",
+                  style = "font-size:1em; font-weight:normal; color:white; padding-left:5px; padding-right:5px; border-right:1px solid #4b5e7e;"
+                )
               ),
               tags$li(
-                a(href = "https://www2.gov.bc.ca/gov/content/home/disclaimer", "Disclaimer", style =
-                    "font-size:1em; font-weight:normal; color:white; padding-left:5px; padding-right:5px; border-right:1px solid #4b5e7e;")
+                a(
+                  href = "https://www2.gov.bc.ca/gov/content/home/disclaimer",
+                  "Disclaimer",
+                  style = "font-size:1em; font-weight:normal; color:white; padding-left:5px; padding-right:5px; border-right:1px solid #4b5e7e;"
+                )
               ),
               tags$li(
-                a(href = "https://www2.gov.bc.ca/gov/content/home/privacy", "Privacy", style =
-                    "font-size:1em; font-weight:normal; color:white; padding-left:5px; padding-right:5px; border-right:1px solid #4b5e7e;")
+                a(
+                  href = "https://www2.gov.bc.ca/gov/content/home/privacy",
+                  "Privacy",
+                  style = "font-size:1em; font-weight:normal; color:white; padding-left:5px; padding-right:5px; border-right:1px solid #4b5e7e;"
+                )
               ),
               tags$li(
-                a(href = "https://www2.gov.bc.ca/gov/content/home/accessibility", "Accessibility", style =
-                    "font-size:1em; font-weight:normal; color:white; padding-left:5px; padding-right:5px; border-right:1px solid #4b5e7e;")
+                a(
+                  href = "https://www2.gov.bc.ca/gov/content/home/accessibility",
+                  "Accessibility",
+                  style = "font-size:1em; font-weight:normal; color:white; padding-left:5px; padding-right:5px; border-right:1px solid #4b5e7e;"
+                )
               ),
               tags$li(
-                a(href = "https://www2.gov.bc.ca/gov/content/home/copyright", "Copyright", style =
-                    "font-size:1em; font-weight:normal; color:white; padding-left:5px; padding-right:5px; border-right:1px solid #4b5e7e;")
+                a(
+                  href = "https://www2.gov.bc.ca/gov/content/home/copyright",
+                  "Copyright",
+                  style = "font-size:1em; font-weight:normal; color:white; padding-left:5px; padding-right:5px; border-right:1px solid #4b5e7e;"
+                )
               ),
               tags$li(
-                a(href = "https://www2.gov.bc.ca/StaticWebResources/static/gov3/html/contact-us.html", "Contact", style =
-                    "font-size:1em; font-weight:normal; color:white; padding-left:5px; padding-right:5px; border-right:1px solid #4b5e7e;")
+                a(
+                  href = "https://www2.gov.bc.ca/StaticWebResources/static/gov3/html/contact-us.html",
+                  "Contact",
+                  style = "font-size:1em; font-weight:normal; color:white; padding-left:5px; padding-right:5px; border-right:1px solid #4b5e7e;"
+                )
               )
             )
           )
@@ -889,171 +1179,164 @@ ui <- fluidPage(
 server <- function(session, input, output) {
   options(warn = -1)
 
-# Maps and plots tab ---------------------
+  # Maps and plots tab ---------------------
   # Filters, selections, namings  -----------------------
   ## Filter : Area ----------------------------
-    observeEvent(input$major_area, {
-      if (input$major_area == "Ecoprovinces") {
-        showElement("ecoprov_area")
-        hideElement("wtrshd_area")
-        hideElement("fwa_area")
-        hideElement("flp_area")
-        hideElement("ecorgn_area")
-        hideElement("ecosec_area")
-        hideElement("muni_area")
-      } else if (input$major_area == "Ecoregions"){
-        hideElement("ecoprov_area")
-        hideElement("wtrshd_area")
-        hideElement("fwa_area")
-        hideElement("flp_area")
-        showElement("ecorgn_area")
-        hideElement("ecosec_area")
-        hideElement("muni_area")
-      } else if (input$major_area == "Ecosections"){
-        hideElement("ecoprov_area")
-        hideElement("wtrshd_area")
-        hideElement("fwa_area")
-        hideElement("flp_area")
-        hideElement("ecorgn_area")
-        showElement("ecosec_area")
-        hideElement("muni_area")
-      } else if (input$major_area == "Major watersheds") {
-        hideElement("ecoprov_area")
-        showElement("wtrshd_area")
-        hideElement("fwa_area")
-        hideElement("flp_area")
-        hideElement("ecorgn_area")
-        hideElement("ecosec_area")
-        hideElement("muni_area")
-      } else if (input$major_area == "FWA watersheds") {
-        hideElement("ecoprov_area")
-        hideElement("wtrshd_area")
-        showElement("fwa_area")
-        hideElement("flp_area")
-        hideElement("ecorgn_area")
-        hideElement("ecosec_area")
-        hideElement("muni_area")
-      } else if (input$major_area == "Municipalities") {
-        hideElement("ecoprov_area")
-        hideElement("wtrshd_area")
-        hideElement("fwa_area")
-        hideElement("flp_area")
-        hideElement("ecorgn_area")
-        hideElement("ecosec_area")
-        showElement("muni_area")
-      }  else if (input$major_area == "FLP boundaries") {
-        hideElement("ecoprov_area")
-        hideElement("wtrshd_area")
-        hideElement("fwa_area")
-        showElement("flp_area")
-        hideElement("ecorgn_area")
-        hideElement("ecosec_area")
-        hideElement("muni_area")
-      } else {
-        hideElement("muni_area")
-        hideElement("ecosec_area")
-        hideElement("ecorgn_area")
-        hideElement("ecoprov_area")
-        hideElement("wtrshd_area")
-        hideElement("fwa_area")
-        hideElement("flp_area")
-      }
-    })
+  observeEvent(input$major_area, {
+    if (input$major_area == "Ecoprovinces") {
+      showElement("ecoprov_area")
+      hideElement("wtrshd_area")
+      hideElement("fwa_area")
+      hideElement("flp_area")
+      hideElement("ecorgn_area")
+      hideElement("ecosec_area")
+      hideElement("muni_area")
+    } else if (input$major_area == "Ecoregions") {
+      hideElement("ecoprov_area")
+      hideElement("wtrshd_area")
+      hideElement("fwa_area")
+      hideElement("flp_area")
+      showElement("ecorgn_area")
+      hideElement("ecosec_area")
+      hideElement("muni_area")
+    } else if (input$major_area == "Ecosections") {
+      hideElement("ecoprov_area")
+      hideElement("wtrshd_area")
+      hideElement("fwa_area")
+      hideElement("flp_area")
+      hideElement("ecorgn_area")
+      showElement("ecosec_area")
+      hideElement("muni_area")
+    } else if (input$major_area == "Major watersheds") {
+      hideElement("ecoprov_area")
+      showElement("wtrshd_area")
+      hideElement("fwa_area")
+      hideElement("flp_area")
+      hideElement("ecorgn_area")
+      hideElement("ecosec_area")
+      hideElement("muni_area")
+    } else if (input$major_area == "FWA watersheds") {
+      hideElement("ecoprov_area")
+      hideElement("wtrshd_area")
+      showElement("fwa_area")
+      hideElement("flp_area")
+      hideElement("ecorgn_area")
+      hideElement("ecosec_area")
+      hideElement("muni_area")
+    } else if (input$major_area == "Municipalities") {
+      hideElement("ecoprov_area")
+      hideElement("wtrshd_area")
+      hideElement("fwa_area")
+      hideElement("flp_area")
+      hideElement("ecorgn_area")
+      hideElement("ecosec_area")
+      showElement("muni_area")
+    } else if (input$major_area == "FLP boundaries") {
+      hideElement("ecoprov_area")
+      hideElement("wtrshd_area")
+      hideElement("fwa_area")
+      showElement("flp_area")
+      hideElement("ecorgn_area")
+      hideElement("ecosec_area")
+      hideElement("muni_area")
+    } else {
+      hideElement("muni_area")
+      hideElement("ecosec_area")
+      hideElement("ecorgn_area")
+      hideElement("ecoprov_area")
+      hideElement("wtrshd_area")
+      hideElement("fwa_area")
+      hideElement("flp_area")
+    }
+  })
 
-    ### Area (interactive shapefiles )
+  ### Area (interactive shapefiles )
 
-    get_shapefile <- reactive({
-      if (input$major_area == "Western North America") {
-        sel_area_shpfl <- wna_shp
-
-      } else if (input$major_area == "BC") {
+  get_shapefile <- reactive({
+    if (input$major_area == "Western North America") {
+      sel_area_shpfl <- wna_shp
+    } else if (input$major_area == "BC") {
+      sel_area_shpfl <- bc_shp
+    } else if (input$major_area == "Ecoprovinces") {
+      if (input$ecoprov_area == "Ecoprovinces (select one)") {
         sel_area_shpfl <- bc_shp
-
-      } else if (input$major_area == "Ecoprovinces") {
-        if (input$ecoprov_area == "Ecoprovinces (select one)") {
-          sel_area_shpfl <- bc_shp
-        } else {
-          sel_area_shpfl <- bc_ecoprv_shp %>%
-            filter(name == input$ecoprov_area)
-        }
-
-      } else if (input$major_area == "Ecoregions") {
-        if (input$ecorgn_area == "Ecoregions (select one)") {
-          sel_area_shpfl <- bc_shp
-        } else {
-          sel_area_shpfl <- bc_ecorgn_shp %>%
-            filter(CRGNNM == input$ecorgn_area)
-        }
-
-      } else if (input$major_area == "Ecosections") {
-        if (input$ecosec_area == "Ecosections (select one)") {
-          sel_area_shpfl <- bc_shp
-        } else {
-          sel_area_shpfl <- bc_ecosec_shp %>%
-            filter(ECOSEC_NM == input$ecosec_area)
-        }
-
-      } else if (input$major_area == "Major watersheds") {
-        if (input$wtrshd_area == "Major watersheds (select one)") {
-          sel_area_shpfl <- bc_shp
-        } else {
-          sel_area_shpfl <- bc_wtrshd_shp %>%
-            filter(MJR_WTRSHM == input$wtrshd_area)
-        }
-
-      } else if (input$major_area == "FWA watersheds") {
-        if (input$fwa_area == "FWA watersheds (select one)") {
-          sel_area_shpfl <- bc_shp
-        } else {
-          sel_area_shpfl <- bc_fwa_shp %>%
-            filter(WATERSHE_2 == input$fwa_area)
-        }
-
-      } else if (input$major_area == "FLP boundaries") {
-        if (input$flp_area == "FLP boundaries (select one)") {
-          sel_area_shpfl <- bc_shp
-        } else {
-          sel_area_shpfl <- bc_flp_shp %>%
-            filter(flp_unit_nam == input$flp_area)
-        }
-      } else if (input$major_area == "Municipalities") {
-        if (input$muni_area == "Municipalities (select one)") {
-          sel_area_shpfl <- bc_shp
-        } else {
-          sel_area_shpfl <- bc_muni_shp %>%
-            filter(ABRVN == input$muni_area)
-        }
+      } else {
+        sel_area_shpfl <- bc_ecoprv_shp %>%
+          filter(name == input$ecoprov_area)
       }
-
-      sel_area_shpfl
-    })
-
-    # Region name (interactive)
-    get_region <- reactive({
-      region <- NULL
-
-      if (input$major_area == "BC") {
-        region <- "BC"
-      } else if (input$major_area == "Western North America") {
-        region <- "Western North America"
-      } else if (input$major_area == "Ecoprovinces") {
-        region <- input$ecoprov_area
-      } else if (input$major_area == "Ecoregions") {
-        region <- input$ecorgn_area
-      } else if (input$major_area == "Ecosections") {
-        region <- input$ecosec_area
-      } else if (input$major_area == "Municipalities") {
-        region <- input$muni_area
-      } else if (input$major_area == "Major watersheds") {
-        region <- input$wtrshd_area
-      } else if (input$major_area == "FWA watersheds") {
-        region <- input$fwa_area
-      } else if (input$major_area == "FLP boundaries") {
-        region <- input$flp_area
+    } else if (input$major_area == "Ecoregions") {
+      if (input$ecorgn_area == "Ecoregions (select one)") {
+        sel_area_shpfl <- bc_shp
+      } else {
+        sel_area_shpfl <- bc_ecorgn_shp %>%
+          filter(CRGNNM == input$ecorgn_area)
       }
+    } else if (input$major_area == "Ecosections") {
+      if (input$ecosec_area == "Ecosections (select one)") {
+        sel_area_shpfl <- bc_shp
+      } else {
+        sel_area_shpfl <- bc_ecosec_shp %>%
+          filter(ECOSEC_NM == input$ecosec_area)
+      }
+    } else if (input$major_area == "Major watersheds") {
+      if (input$wtrshd_area == "Major watersheds (select one)") {
+        sel_area_shpfl <- bc_shp
+      } else {
+        sel_area_shpfl <- bc_wtrshd_shp %>%
+          filter(MJR_WTRSHM == input$wtrshd_area)
+      }
+    } else if (input$major_area == "FWA watersheds") {
+      if (input$fwa_area == "FWA watersheds (select one)") {
+        sel_area_shpfl <- bc_shp
+      } else {
+        sel_area_shpfl <- bc_fwa_shp %>%
+          filter(WATERSHE_2 == input$fwa_area)
+      }
+    } else if (input$major_area == "FLP boundaries") {
+      if (input$flp_area == "FLP boundaries (select one)") {
+        sel_area_shpfl <- bc_shp
+      } else {
+        sel_area_shpfl <- bc_flp_shp %>%
+          filter(flp_unit_nam == input$flp_area)
+      }
+    } else if (input$major_area == "Municipalities") {
+      if (input$muni_area == "Municipalities (select one)") {
+        sel_area_shpfl <- bc_shp
+      } else {
+        sel_area_shpfl <- bc_muni_shp %>%
+          filter(ABRVN == input$muni_area)
+      }
+    }
 
-      region
-    })
+    sel_area_shpfl
+  })
+
+  # Region name (interactive)
+  get_region <- reactive({
+    region <- NULL
+
+    if (input$major_area == "BC") {
+      region <- "BC"
+    } else if (input$major_area == "Western North America") {
+      region <- "Western North America"
+    } else if (input$major_area == "Ecoprovinces") {
+      region <- input$ecoprov_area
+    } else if (input$major_area == "Ecoregions") {
+      region <- input$ecorgn_area
+    } else if (input$major_area == "Ecosections") {
+      region <- input$ecosec_area
+    } else if (input$major_area == "Municipalities") {
+      region <- input$muni_area
+    } else if (input$major_area == "Major watersheds") {
+      region <- input$wtrshd_area
+    } else if (input$major_area == "FWA watersheds") {
+      region <- input$fwa_area
+    } else if (input$major_area == "FLP boundaries") {
+      region <- input$flp_area
+    }
+
+    region
+  })
 
   ## Filter : variable ---------------------------------
 
@@ -1101,8 +1384,7 @@ server <- function(session, input, output) {
     )
     pickerInput(
       "month_picker",
-      "Select month or season or annual"
-      ,
+      "Select month or season or annual",
       choices = mon_choices,
       selected = "annual"
     )
@@ -1122,20 +1404,18 @@ server <- function(session, input, output) {
     whichInput$type <- "specific"
   })
 
-
   # Get values (variables name and unit )-------------------------
   ### Years
   get_years <- reactive({
     if (whichInput$type == "specific") {
       sel_yrs <- input$year_specific
-    } else{
+    } else {
       sel_yrs <- seq(input$year_range[1], input$year_range[2], 1)
     }
   })
 
-
   # Variables ( parameters) full name (interactive)
-  get_par_full <-  reactive({
+  get_par_full <- reactive({
     req(input$par_picker)
     if (input$par_picker == 'tmin') {
       parr_full = "minimum temperature"
@@ -1145,11 +1425,11 @@ server <- function(session, input, output) {
       parr_full = "mean temperature"
     } else if (input$par_picker == 'prcp') {
       parr_full = "total precipitation"
-    }else if (input$par_picker == 'rh') {
+    } else if (input$par_picker == 'rh') {
       parr_full = "relative humidity (RH)"
-    }else if (input$par_picker == 'vpd') {
+    } else if (input$par_picker == 'vpd') {
       parr_full = "vapor pressure deficit (VPD)"
-    }else if (input$par_picker == 'soil_moisture') {
+    } else if (input$par_picker == 'soil_moisture') {
       parr_full = "volumetric soil moisture (0-1m)"
     }
     parr_full
@@ -1158,7 +1438,11 @@ server <- function(session, input, output) {
   ## Units ( interactive)
   get_unit <- reactive({
     req(input$par_picker)
-    if (input$par_picker == "tmax" | input$par_picker == "tmin" | input$par_picker == "tmean") {
+    if (
+      input$par_picker == "tmax" |
+        input$par_picker == "tmin" |
+        input$par_picker == "tmean"
+    ) {
       unt <- "°C"
     } else if (input$par_picker == "prcp") {
       unt <- "mm"
@@ -1168,13 +1452,13 @@ server <- function(session, input, output) {
       unt <- "kPa"
     } else if (input$par_picker == "soil_moisture") {
       unt <- "m\U00B3/m"
-    }else {
+    } else {
       unt <- " "
     }
     unt
   })
 
-# Months/Seasons full name ( interactive)
+  # Months/Seasons full name ( interactive)
   get_mon_full <- reactive({
     req(input$month_picker)
 
@@ -1184,21 +1468,31 @@ server <- function(session, input, output) {
       summer = "Summer",
       fall = "Fall",
       winter = "Winter",
-      Jan = "January", Feb = "February", Mar = "March", Apr = "April",
-      May = "May", Jun = "June", Jul = "July", Aug = "August",
-      Sep = "September", Oct = "October", Nov = "November", Dec = "December"
+      Jan = "January",
+      Feb = "February",
+      Mar = "March",
+      Apr = "April",
+      May = "May",
+      Jun = "June",
+      Jul = "July",
+      Aug = "August",
+      Sep = "September",
+      Oct = "October",
+      Nov = "November",
+      Dec = "December"
     )
 
     mon_full <- month_lookup[[input$month_picker]]
 
-    if (is.null(mon_full)) mon_full <- "Unknown"
+    if (is.null(mon_full)) {
+      mon_full <- "Unknown"
+    }
     mon_full
   })
 
   # Reset  selection /filters -----
   observeEvent(input$reset_input, {
     shinyjs::reset("selection-panel")
-
   })
 
   # Location map plot -------------------------------------------
@@ -1216,33 +1510,40 @@ server <- function(session, input, output) {
     lyr_id <- NULL
 
     # Select appropriate shapefile based on inputs
-    if (input$major_area == "Major watersheds" &&
-        input$wtrshd_area == "Major watersheds (select one)") {
+    if (
+      input$major_area == "Major watersheds" &&
+        input$wtrshd_area == "Major watersheds (select one)"
+    ) {
       sel_area_shpfl <- bc_wtrshd_shp['MJR_WTRSHM']
       lyr_id <- "MJR_WTRSHM"
-
-    } else if (input$major_area == "Ecoprovinces" &&
-               input$ecoprov_area == "Ecoprovinces (select one)") {
+    } else if (
+      input$major_area == "Ecoprovinces" &&
+        input$ecoprov_area == "Ecoprovinces (select one)"
+    ) {
       sel_area_shpfl <- bc_ecoprv_shp['name']
       lyr_id <- "name"
-
-    } else if (input$major_area == "Ecoregions" &&
-               input$ecorgn_area == "Ecoregions (select one)") {
+    } else if (
+      input$major_area == "Ecoregions" &&
+        input$ecorgn_area == "Ecoregions (select one)"
+    ) {
       sel_area_shpfl <- bc_ecorgn_shp['CRGNNM']
       lyr_id <- "CRGNNM"
-
-    } else if (input$major_area == "Ecosections" &&
-               input$ecosec_area == "Ecosections (select one)") {
+    } else if (
+      input$major_area == "Ecosections" &&
+        input$ecosec_area == "Ecosections (select one)"
+    ) {
       sel_area_shpfl <- bc_ecosec_shp['ECOSEC_NM']
       lyr_id <- "ECOSEC_NM"
-
-    } else if (input$major_area == "Municipalities" &&
-               input$muni_area == "Municipalities (select one)") {
+    } else if (
+      input$major_area == "Municipalities" &&
+        input$muni_area == "Municipalities (select one)"
+    ) {
       sel_area_shpfl <- bc_muni_shp['ABRVN']
       lyr_id <- "ABRVN"
-
-    } else if (input$major_area == "FLP boundaries" &&
-               input$flp_area == "FLP boundaries (select one)") {
+    } else if (
+      input$major_area == "FLP boundaries" &&
+        input$flp_area == "FLP boundaries (select one)"
+    ) {
       sel_area_shpfl <- bc_flp_shp['flp_unit_nam']
       lyr_id <- "flp_unit_nam"
     }
@@ -1251,7 +1552,11 @@ server <- function(session, input, output) {
     leaflet(sel_area_shpfl) %>%
       addTiles() %>%
       addPolygons(
-        layerId = if (!is.null(lyr_id)) as.formula(paste0("~", lyr_id)) else NULL,
+        layerId = if (!is.null(lyr_id)) {
+          as.formula(paste0("~", lyr_id))
+        } else {
+          NULL
+        },
         popup = if (!is.null(lyr_id)) as.formula(paste0("~", lyr_id)) else NULL,
         color = "Red",
         weight = 1,
@@ -1265,140 +1570,154 @@ server <- function(session, input, output) {
     nm <- input$loc_map_shape_click$id
     print(nm)
 
-    switch(input$major_area,
-           "Ecoprovinces"   = updatePickerInput(session, "ecoprov_area", selected = nm),
-           "Ecoregions"     = updateSelectInput(session, "ecorgn_area", selected = nm),
-           "Ecosections"    = updateSelectInput(session, "ecosec_area", selected = nm),
-           "Major watersheds" = updateSelectInput(session, "wtrshd_area", selected = nm),
-           "FLP boundaries" = updateSelectInput(session, "flp_area", selected = nm),
-           "Municipalities" = updateSelectInput(session, "muni_area", selected = nm)
-           # "FWA watersheds" = updateSelectInput(session, "fwa_area", selected = nm)
+    switch(
+      input$major_area,
+      "Ecoprovinces" = updatePickerInput(
+        session,
+        "ecoprov_area",
+        selected = nm
+      ),
+      "Ecoregions" = updateSelectInput(session, "ecorgn_area", selected = nm),
+      "Ecosections" = updateSelectInput(session, "ecosec_area", selected = nm),
+      "Major watersheds" = updateSelectInput(
+        session,
+        "wtrshd_area",
+        selected = nm
+      ),
+      "FLP boundaries" = updateSelectInput(session, "flp_area", selected = nm),
+      "Municipalities" = updateSelectInput(session, "muni_area", selected = nm)
+      # "FWA watersheds" = updateSelectInput(session, "fwa_area", selected = nm)
     )
   })
 
   #  Selected data for calculations and plotting -----------------
- ano_clm_trn_sel_dt_rct <- eventReactive(input$run_ana_button, {
-   req(input$month_picker)
-   req(input$par_picker)
-   req(input$major_area)
+  ano_clm_trn_sel_dt_rct <- eventReactive(input$run_ana_button, {
+    req(input$month_picker)
+    req(input$par_picker)
+    req(input$major_area)
 
-   ### For sample run ----
-   # monn = "Aug"
-   # parr = "tmean"
-   # sel_yrs <- seq(1951,2025,1)
-   # sel_yrs
-   # sel_area_shpfl <- wna_shp
-   # sel_area_shpfl
-   # region = "WNA"
-   # ano_clm_trn_dt_fl %>%
-   #   filter(mon == monn &
-   #            par == parr) -> ano_clm_trn_dt_fl_mon
-   # ano_clm_trn_dt_fl_mon
-   # ano_dt_sel_rast <- rast(ano_clm_trn_dt_fl_mon$dt_pth)
-   # ano_dt_sel_rast
-   # terra::plot(ano_dt_sel_rast,70:nlyr(ano_dt_sel_rast))
+    ## For sample run ----
+    # monn = "Jun"
+    # parr = "tmean"
+    # sel_yrs <- seq(1951,2026,1)
+    # sel_yrs
+    # sel_area_shpfl <- bc_shp
+    # sel_area_shpfl
+    # region = "BC"
+    # ano_clm_trn_dt_fl %>%
+    #   filter(mon == monn &
+    #            par == parr) -> ano_clm_trn_dt_fl_mon
+    # ano_clm_trn_dt_fl_mon
+    # ano_dt_sel_rast <- rast(ano_clm_trn_dt_fl_mon$dt_pth)
+    # ano_dt_sel_rast
+    # terra::plot(ano_dt_sel_rast,70:nlyr(ano_dt_sel_rast))
+    #
+    # end of sample run
 
-   ano_clm_trn_dt_fl %>%
-     filter(mon == input$month_picker &
-              par == input$par_picker) -> ano_clm_trn_dt_fl_mon
+    ano_clm_trn_dt_fl %>%
+      filter(
+        mon == input$month_picker &
+          par == input$par_picker
+      ) -> ano_clm_trn_dt_fl_mon
 
-   # Clip by shapefile of the selected area
-   sel_area_shpfl <- get_shapefile()
+    # Clip by shapefile of the selected area
+    sel_area_shpfl <- get_shapefile()
 
-   # other requirements
-   monn = unique(ano_clm_trn_dt_fl_mon$mon)
-   parr = unique(ano_clm_trn_dt_fl_mon$par)
+    # other requirements
+    monn = unique(ano_clm_trn_dt_fl_mon$mon)
+    parr = unique(ano_clm_trn_dt_fl_mon$par)
 
+    # Anomaly
+    ano_clm_trn_dt_fl_mon %>%
+      filter(dt_type == 'ano') -> ano_dt_fl_mon
 
-   # Anomaly
-   ano_clm_trn_dt_fl_mon %>%
-     filter(dt_type =='ano') -> ano_dt_fl_mon
+    ano_dt_sel_rast <- rast(ano_dt_fl_mon$dt_pth)
+    ano_dt_sel_rast
+    # plot(ano_dt_sel_rast,1)
+    yr_df <- tibble(paryr = names(ano_dt_sel_rast))
+    yr_df %<>%
+      mutate(yr = as.numeric(str_extract(paryr, "[0-9]+")))
+    names(ano_dt_sel_rast) <- yr_df$yr
+    terra::time(ano_dt_sel_rast) <- yr_df$yr
 
-   ano_dt_sel_rast <- rast(ano_dt_fl_mon$dt_pth)
-   ano_dt_sel_rast
-   # plot(ano_dt_sel_rast)
-   yr_df <- tibble(paryr = names(ano_dt_sel_rast))
-   yr_df %<>%
-     mutate(yr = as.numeric(str_extract(paryr, "[0-9]+")))
-   names(ano_dt_sel_rast) <- yr_df$yr
-   terra::time(ano_dt_sel_rast) <- yr_df$yr
+    # crop mask for selected area
+    ano_dt_shp_rast <-
+      ano_dt_sel_rast |>
+      terra::crop(sel_area_shpfl, snap = "out") |>
+      terra::mask(sel_area_shpfl, touches = TRUE)
+    # plot(ano_dt_shp_rast, 77)
 
-   #crop for selected area
-   ano_dt_shp_rast <-
-     terra::crop(ano_dt_sel_rast, sel_area_shpfl, snap="out",mask = T)
-   ano_dt_shp_rast
+    # Climatology
+    ano_clm_trn_dt_fl_mon %>%
+      filter(dt_type == 'clm') -> clm_dt_fl_mon
 
-   # Climatology
-   ano_clm_trn_dt_fl_mon %>%
-     filter(dt_type =='clm') -> clm_dt_fl_mon
+    clm_dt_sel_rast <- rast(clm_dt_fl_mon$dt_pth)
+    clm_dt_sel_rast
 
-   clm_dt_sel_rast <- rast(clm_dt_fl_mon$dt_pth)
-   clm_dt_sel_rast
+    #crop for selected area
+    clm_dt_shp_rast <-
+      clm_dt_sel_rast |>
+      terra::crop(sel_area_shpfl, snap = "out") |>
+      terra::mask(sel_area_shpfl, touches = TRUE)
 
-   #crop for selected area
-   clm_dt_shp_rast <-
-     terra::crop(clm_dt_sel_rast, sel_area_shpfl, snap="out",mask = T)
-   clm_dt_shp_rast
+    #calculate percentage for prcp and soil-moisture
+    if (parr == 'prcp' | parr == 'soil_moisture') {
+      ano_dt_shp_rast1 <- (ano_dt_shp_rast / clm_dt_shp_rast) * 100
+      #If prcp anomalies are very high ( > 200 %) then convert and limit to 200.
+      ano_dt_shp_rast2 <-
+        ifel(ano_dt_shp_rast1 > 201, 200, ano_dt_shp_rast1)
+      ano_dt_shp_rast3 <-
+        ifel(ano_dt_shp_rast2 < -201, -200, ano_dt_shp_rast2)
+      ano_dt_shp_rast <- ano_dt_shp_rast3
+    } else {
+      ano_dt_shp_rast <- ano_dt_shp_rast
+    }
+    # plot(aano_dt_shp_rast,40:44)
+    ano_dt_shp_rast
 
-   #calculate percentage for prcp and soil-moisture
-   if (parr == 'prcp' | parr == 'soil_moisture' ) {
-     ano_dt_shp_rast1 <- (ano_dt_shp_rast / clm_dt_shp_rast) * 100
-     #If prcp anomalies are very high ( > 200 %) then convert and limit to 200.
-     ano_dt_shp_rast2 <-
-       ifel(ano_dt_shp_rast1 > 201, 200, ano_dt_shp_rast1)
-     ano_dt_shp_rast3 <-
-       ifel(ano_dt_shp_rast2 < -201, -200, ano_dt_shp_rast2)
-     ano_dt_shp_rast <- ano_dt_shp_rast3
-   } else{
-     ano_dt_shp_rast <- ano_dt_shp_rast
-   }
-   # plot(aano_dt_shp_rast,40:44)
-   ano_dt_shp_rast
+    # Spatial trends
+    # trends50
+    ano_clm_trn_dt_fl_mon %>%
+      filter(dt_type == 'trend' & start_year == '1950') -> trend_dt_fl_mon50
 
-   # Spatial trends
-   # trends50
-   ano_clm_trn_dt_fl_mon %>%
-     filter(dt_type =='trend' & start_year == '1950') -> trend_dt_fl_mon50
+    trn_dt_sel_rast50 <- rast(trend_dt_fl_mon50$dt_pth)
+    trn_dt_sel_rast50
+    # plot(trn_dt_sel_rast50)
 
-   trn_dt_sel_rast50 <- rast(trend_dt_fl_mon50$dt_pth)
-   trn_dt_sel_rast50
-   # plot(trn_dt_sel_rast50)
+    #crop for selected area
+    trn_dt_shp_rast50 <-
+      trn_dt_sel_rast50 |>
+      terra::crop(sel_area_shpfl, snap = "out") |>
+      terra::mask(sel_area_shpfl, touches = TRUE)
 
-   #crop for selected area
-   trn_dt_shp_rast50 <-
-     terra::crop(trn_dt_sel_rast50, sel_area_shpfl, snap="out",mask = T)
-   trn_dt_shp_rast50
+    # trends80
+    ano_clm_trn_dt_fl_mon %>%
+      filter(dt_type == 'trend' & start_year == '1980') -> trend_dt_fl_mon80
 
-   # trends80
-   ano_clm_trn_dt_fl_mon %>%
-     filter(dt_type =='trend' & start_year == '1980') -> trend_dt_fl_mon80
+    trn_dt_sel_rast80 <- rast(trend_dt_fl_mon80$dt_pth)
+    trn_dt_sel_rast80
+    # plot(trn_dt_sel_rast80)
 
-   trn_dt_sel_rast80 <- rast(trend_dt_fl_mon80$dt_pth)
-   trn_dt_sel_rast80
-   # plot(trn_dt_sel_rast80)
+    #crop for selected area
+    trn_dt_shp_rast80 <-
+      trn_dt_sel_rast80 |>
+      terra::crop(sel_area_shpfl, snap = "out") |>
+      terra::mask(sel_area_shpfl, touches = TRUE)
 
-   #crop for selected area
-   trn_dt_shp_rast80 <-
-     terra::crop(trn_dt_sel_rast80, sel_area_shpfl, snap="out",mask = T)
-   trn_dt_shp_rast80
+    # Final return list
+    result_lst <- return(list(
+      fltr_ano_dt = ano_dt_shp_rast,
+      fltr_clm_dt = clm_dt_shp_rast,
+      fltr_trn50_dt = trn_dt_shp_rast50,
+      fltr_trn80_dt = trn_dt_shp_rast80,
+      fltr_mtdt_fl = ano_clm_trn_dt_fl_mon
+    ))
 
-
-   # Final return list
-   result_lst <-  return(list(
-     fltr_ano_dt = ano_dt_shp_rast,
-     fltr_clm_dt =  clm_dt_shp_rast,
-     fltr_trn50_dt =  trn_dt_shp_rast50,
-     fltr_trn80_dt =  trn_dt_shp_rast80,
-     fltr_mtdt_fl = ano_clm_trn_dt_fl_mon
-   ))
-
-   return(result_lst)
-
- })
+    return(result_lst)
+  })
 
   # Time-series and linear trend -------------------------
-  time_series_trnd_rct <- eventReactive(input$run_ana_button,{
-
+  time_series_trnd_rct <- eventReactive(input$run_ana_button, {
     withProgress(message = 'Calculating linear trends', value = 0, {
       incProgress(0.02, detail = "Filtering data...")
       ## time series data generate -----------
@@ -1411,12 +1730,17 @@ server <- function(session, input, output) {
 
       # Shapefile spatial average anomalies by year
       ano_shp_av_dt <-
-        tibble(rownames_to_column(global(
-          ano_dt_shp_rast, fun = "mean", na.rm = T
-        ), "yr")) %>%
+        tibble(rownames_to_column(
+          global(
+            ano_dt_shp_rast,
+            fun = "mean",
+            na.rm = T
+          ),
+          "yr"
+        )) %>%
         dplyr::select(yr, ano = mean)
 
-      ano_shp_av_dt$ano <- round(ano_shp_av_dt$ano, digits=4)
+      ano_shp_av_dt$ano <- round(ano_shp_av_dt$ano, digits = 4)
 
       ano_shp_av_dt %<>%
         drop_na()
@@ -1429,7 +1753,7 @@ server <- function(session, input, output) {
 
       # To download time series
       ano_shp_av_dt %>%
-        dplyr::select(yr,ano,par,mon,region) -> av_ano_ts
+        dplyr::select(yr, ano, par, mon, region) -> av_ano_ts
 
       ## Trend calculation and plot ------------
 
@@ -1441,24 +1765,27 @@ server <- function(session, input, output) {
       # Trend on average anomaly 1950 - now
       ano_shp_av_dt %<>%
         filter(yr > 1950) %<>%
-        mutate(# trnd =zyp.trend.vector(ano)[["trend"]],
+        mutate(
+          # trnd =zyp.trend.vector(ano)[["trend"]],
           # incpt =zyp.trend.vector(ano)[["intercept"]],
           #sig = zyp.trend.vector(ano)[["sig"]])
-          sig = round(MannKendall(ano)[[2]], digits = 4))
+          sig = round(MannKendall(ano)[[2]], digits = 4)
+        )
       ano_shp_av_dt
 
       ano_mk_trnd <-
-        zyp.sen(ano ~ yr, ano_shp_av_dt)##Give the trend###
+        zyp.sen(ano ~ yr, ano_shp_av_dt) ##Give the trend###
       ano_mk_trnd$coefficients
-      ano_shp_av_dt$trn <-  ano_mk_trnd$coeff[[2]]
-      ano_shp_av_dt$incpt <-  ano_mk_trnd$coeff[[1]]
+      ano_shp_av_dt$trn <- ano_mk_trnd$coeff[[2]]
+      ano_shp_av_dt$incpt <- ano_mk_trnd$coeff[[1]]
 
       xs = c(min(ano_shp_av_dt$yr), max(ano_shp_av_dt$yr))
       trn_slp = c(unique(ano_shp_av_dt$incpt), unique(ano_shp_av_dt$trn))
       ys = cbind(1, xs) %*% trn_slp
       ano_shp_av_dt$trn_lab = paste(
         "italic(1950-~trend)==",
-        round(ano_shp_av_dt$trn, 2),"~yr^{-1}~','~italic(p)==",
+        round(ano_shp_av_dt$trn, 2),
+        "~yr^{-1}~','~italic(p)==",
         round(ano_shp_av_dt$sig, 2)
       )
 
@@ -1468,24 +1795,27 @@ server <- function(session, input, output) {
       # Trend on average anomaly 1980 - now
       ano_shp_av_dt %>%
         filter(yr > 1979) %>%
-        mutate(# trnd =zyp.trend.vector(ano)[["trend"]],
+        mutate(
+          # trnd =zyp.trend.vector(ano)[["trend"]],
           # incpt =zyp.trend.vector(ano)[["intercept"]],
           #sig = zyp.trend.vector(ano)[["sig"]])
-          sig = round(MannKendall(ano)[[2]], digits = 2)) -> ano_shp_av_dt80
+          sig = round(MannKendall(ano)[[2]], digits = 2)
+        ) -> ano_shp_av_dt80
       ano_shp_av_dt80
 
       ano_mk_trnd80 <-
-        zyp.sen(ano ~ yr, ano_shp_av_dt80)##Give the trend###
+        zyp.sen(ano ~ yr, ano_shp_av_dt80) ##Give the trend###
       ano_mk_trnd80$coefficients
-      ano_shp_av_dt80$trn <-  ano_mk_trnd80$coeff[[2]]
-      ano_shp_av_dt80$incpt <-  ano_mk_trnd80$coeff[[1]]
+      ano_shp_av_dt80$trn <- ano_mk_trnd80$coeff[[2]]
+      ano_shp_av_dt80$incpt <- ano_mk_trnd80$coeff[[1]]
 
       xs80 = c(min(ano_shp_av_dt80$yr), max(ano_shp_av_dt80$yr))
       trn_slp80 = c(unique(ano_shp_av_dt80$incpt), unique(ano_shp_av_dt80$trn))
       ys80 = cbind(1, xs80) %*% trn_slp80
       ano_shp_av_dt80$trn_lab = paste(
         "italic(1980-~trend)==",
-        round(ano_shp_av_dt80$trn, 2),"~yr^{-1}~','~italic(p)==",
+        round(ano_shp_av_dt80$trn, 2),
+        "~yr^{-1}~','~italic(p)==",
         round(ano_shp_av_dt80$sig, 2)
       )
 
@@ -1497,27 +1827,53 @@ server <- function(session, input, output) {
       minyr <- min(ano_shp_av_dt$yr)
       maxyr <- max(ano_shp_av_dt$yr)
 
-      if(ymax < 1){
+      if (ymax < 1) {
         ybrk_neg <-
-          round(c(seq((-1) * (max(
-            abs(ano_shp_av_dt$ano)
-          )), 0, length.out = 2)), digits=2)
+          round(
+            c(seq(
+              (-1) *
+                (max(
+                  abs(ano_shp_av_dt$ano)
+                )),
+              0,
+              length.out = 2
+            )),
+            digits = 2
+          )
         ybrk_neg
         ybrk_pos <-
-          round(c(seq(0, (1) * (max(
-            abs(ano_shp_av_dt$ano)
-          )), length.out = 2))[-1], digits=2)
+          round(
+            c(seq(
+              0,
+              (1) *
+                (max(
+                  abs(ano_shp_av_dt$ano)
+                )),
+              length.out = 2
+            ))[-1],
+            digits = 2
+          )
         ybrk_pos
       } else {
         ybrk_neg <-
-          ceiling(c(seq((-1) * (max(
-            abs(ano_shp_av_dt$ano)
-          )), 0, length.out = 4)))
+          ceiling(c(seq(
+            (-1) *
+              (max(
+                abs(ano_shp_av_dt$ano)
+              )),
+            0,
+            length.out = 4
+          )))
         ybrk_neg
         ybrk_pos <-
-          floor(c(seq(0, (1) * (max(
-            abs(ano_shp_av_dt$ano)
-          )), length.out = 4)))[-1]
+          floor(c(seq(
+            0,
+            (1) *
+              (max(
+                abs(ano_shp_av_dt$ano)
+              )),
+            length.out = 4
+          )))[-1]
         ybrk_pos
       }
       #create breaks with "00"
@@ -1544,9 +1900,9 @@ server <- function(session, input, output) {
       }
       ybrk_posp
 
-      if(ymax < 1){
+      if (ymax < 1) {
         ybrks_seq <- c(ybrk_neg, ybrk_pos)
-      }else {
+      } else {
         ybrks_seq <- c(ybrk_negn, ybrk_posp)
       }
       ybrks_seq
@@ -1557,21 +1913,35 @@ server <- function(session, input, output) {
       ano_shp_av_dt
       tail(ano_shp_av_dt)
 
-      if (parr == "prcp" |parr == "soil_moisture") {
-        par_title <-  paste0(get_region(), " ",
-                             get_par_full(), " ", "anomaly", " (% of normal)",
-                             " : ",
-                             get_mon_full())
-      } else{
-        par_title <-  paste0(get_region(), " ",
-                             get_par_full(), " ", "anomaly"," (", get_unit(),")",
-                             " : ",
-                             get_mon_full())
+      if (parr == "prcp" | parr == "soil_moisture") {
+        par_title <- paste0(
+          get_region(),
+          " ",
+          get_par_full(),
+          " ",
+          "anomaly",
+          " (% of normal)",
+          " : ",
+          get_mon_full()
+        )
+      } else {
+        par_title <- paste0(
+          get_region(),
+          " ",
+          get_par_full(),
+          " ",
+          "anomaly",
+          " (",
+          get_unit(),
+          ")",
+          " : ",
+          get_mon_full()
+        )
       }
 
-      if (parr == "prcp" |parr == "soil_moisture") {
+      if (parr == "prcp" | parr == "soil_moisture") {
         y_axis_lab <- paste0(parr, " average anomaly (% of normal)")
-      } else{
+      } else {
         y_axis_lab <- paste0(parr, " average anomaly ", "(", get_unit(), ")")
       }
 
@@ -1600,9 +1970,7 @@ server <- function(session, input, output) {
         ) +
         scale_fill_gradientn(
           name = paste0(parr, " anomaly ", "get_unit()"),
-          colours = cpt(pal = "ncl_BlWhRe",
-                        n = 100,
-                        rev = F),
+          colours = cpt(pal = "ncl_BlWhRe", n = 100, rev = F),
           limits = c(ymin, ymax),
           breaks = ybrks_seq
         ) +
@@ -1630,7 +1998,8 @@ server <- function(session, input, output) {
           y = ymax - 0.05,
           fill = NA,
           label = ano_shp_av_dt$trn_lab[[1]],
-          size = 4.0, parse=T
+          size = 4.0,
+          parse = T
         ) +
         # add 80s trend
         geom_segment(
@@ -1658,9 +2027,11 @@ server <- function(session, input, output) {
           breaks = seq(1950, maxyr, 5),
           expand = c(0.02, 0.02)
         ) +
-        scale_y_continuous(name = y_axis_lab,
-                           limits = c(ymin, ymax),
-                           breaks = ybrks_seq) +
+        scale_y_continuous(
+          name = y_axis_lab,
+          limits = c(ymin, ymax),
+          breaks = ybrks_seq
+        ) +
         labs(title = par_title, subtitle = "Baseline: 1981-2010") +
         scale_color_manual(
           " ",
@@ -1669,7 +2040,7 @@ server <- function(session, input, output) {
             "1950-trend" = "black",
             "1980-trend" = "deepskyblue2"
           ),
-          labels =  c(
+          labels = c(
             "3-yrs moving mean" = "3-yrs moving mean",
             "1950-trend" = "1950-trend",
             "1980-trend" = "1980-trend"
@@ -1686,7 +2057,7 @@ server <- function(session, input, output) {
           ),
           axis.line = element_line(colour = "black", linewidth = 1),
           axis.ticks.length = unit(-0.20, "cm"),
-          element_line(colour = "black", linewidth =  1),
+          element_line(colour = "black", linewidth = 1),
           axis.title.y = element_text(
             angle = 90,
             face = "plain",
@@ -1742,96 +2113,121 @@ server <- function(session, input, output) {
           legend.text = element_text(margin = margin(t = -5), size = 12),
           strip.text.x = element_text(size = 12, angle = 0),
           strip.text.y = element_text(size = 12, face = "bold"),
-          axis.text = element_text(margin = margin(t = -5, r = -5, b = -5, l = -5)),
+          axis.text = element_text(
+            margin = margin(t = -5, r = -5, b = -5, l = -5)
+          ),
           strip.background = element_rect(fill = "black"),
           strip.text = element_text(colour = 'Black')
         )
       ano_shp_trn_plt
 
-      if (parr == "prcp" | parr == "soil_moisture" |parr == "rh") {
+      if (parr == "prcp" | parr == "soil_moisture" | parr == "rh") {
         ano_shp_trn_plt <- ano_shp_trn_plt +
           scale_fill_gradientn(
             name = paste0(parr, "  anomaly ", get_unit()),
-            colours = cpt(pal = "cmocean_curl",
-                          n = 100,
-                          rev = T),
+            colours = cpt(pal = "cmocean_curl", n = 100, rev = T),
             limits = c(ymin, ymax),
             breaks = ybrks_seq
           )
       }
-      ano_shp_trn_plt<- ano_shp_trn_plt +
+      ano_shp_trn_plt <- ano_shp_trn_plt +
         theme(axis.title.y = element_blank())
       ano_shp_trn_plt
 
       # plotly display
 
       trn1980_lab <-
-        paste0('1980-trend = ',
-               round(ano_shp_av_dt80$trn[[1]], 2),'yr<sup>-1</sup>','<span>&#44;</span> ',
-               ' <i>p<i>=',
-               round(ano_shp_av_dt80$sig[[1]], 2) )
+        paste0(
+          '1980-trend = ',
+          round(ano_shp_av_dt80$trn[[1]], 2),
+          'yr<sup>-1</sup>',
+          '<span>&#44;</span> ',
+          ' <i>p<i>=',
+          round(ano_shp_av_dt80$sig[[1]], 2)
+        )
       trn1980_lab
       trn1950_lab <-
-        paste0('1950-trend = ',
-               round(ano_shp_av_dt$trn[[1]], 2),'yr<sup>-1</sup>','<span>&#44;</span> ',
-               ' <i>p<i>=',
-               round(ano_shp_av_dt$sig[[1]], 2) )
+        paste0(
+          '1950-trend = ',
+          round(ano_shp_av_dt$trn[[1]], 2),
+          'yr<sup>-1</sup>',
+          '<span>&#44;</span> ',
+          ' <i>p<i>=',
+          round(ano_shp_av_dt$sig[[1]], 2)
+        )
       trn1950_lab
 
       #Convert to plotly
-      ano_shp_trn_plty<-  ggplotly(ano_shp_trn_plt) %>%
-        layout(legend = list(orientation = "h",
-                             xanchor = "center",
-                             x = 0.6,
-                             y = 1.0))%>%
-        layout(margin = list(l = 0, r = 0, b = 10, t = 80),
-               title = list( x = 0.001 ,
-                             y = 0.92,
-                             text = paste0(par_title,
-                                           '<br>',
-                                           '<sup>',
-                                           'Baseline: 1981-2010', '</sup>')))%>%
+      ano_shp_trn_plty <- ggplotly(ano_shp_trn_plt) %>%
+        layout(
+          legend = list(orientation = "h", xanchor = "center", x = 0.6, y = 1.0)
+        ) %>%
+        layout(
+          margin = list(l = 0, r = 0, b = 10, t = 80),
+          title = list(
+            x = 0.001,
+            y = 0.92,
+            text = paste0(
+              par_title,
+              '<br>',
+              '<sup>',
+              'Baseline: 1981-2010',
+              '</sup>'
+            )
+          )
+        ) %>%
         layout(
           annotations = list(
             list(
-              x = 1 ,
+              x = 1,
               y = 0.0,
               text = plt_wtrmrk,
               showarrow = F,
               xref = 'paper',
               yref = 'paper',
-              xanchor='right', yanchor='auto', xshift=0, yshift=0,
-              font=list(size=9, color='#e5e5e5')
+              xanchor = 'right',
+              yanchor = 'auto',
+              xshift = 0,
+              yshift = 0,
+              font = list(size = 9, color = '#e5e5e5')
             )
-          ))%>%
+          )
+        ) %>%
         layout(
           annotations = list(
             list(
-              x = 0.30 ,
+              x = 0.30,
               y = 0.97,
               text = trn1950_lab,
               showarrow = F,
               xref = 'paper',
               yref = 'paper',
-              xanchor='right', yanchor='auto', xshift=0, yshift=0,
-              font=list(size=15, color="black")
+              xanchor = 'right',
+              yanchor = 'auto',
+              xshift = 0,
+              yshift = 0,
+              font = list(size = 15, color = "black")
             )
-          ))%>%
+          )
+        ) %>%
         layout(
           annotations = list(
             list(
-              x = 0.30 ,
+              x = 0.30,
               y = 0.93,
               text = trn1980_lab,
               showarrow = F,
               xref = 'paper',
               yref = 'paper',
-              xanchor='right', yanchor='auto', xshift=0, yshift=0,
-              font=list(size=15, color='#00bfff')
+              xanchor = 'right',
+              yanchor = 'auto',
+              xshift = 0,
+              yshift = 0,
+              font = list(size = 15, color = '#00bfff')
             )
-          ))%>%
-        layout(xaxis = list(showgrid = FALSE),
-               yaxis = list(showgrid = FALSE))
+          )
+        ) %>%
+        layout(xaxis = list(showgrid = FALSE), yaxis = list(showgrid = FALSE))
       ano_shp_trn_plty
 
       ### File name for download -----
@@ -1843,30 +2239,34 @@ server <- function(session, input, output) {
       }
 
       fl_nam <-
-        paste0(get_region(),
-               "_",
-               parr,"_anomaly_timeseries",
-               "_",
-               monn,
-               "_",
-               min_year,
-               "_",
-               mx_yr)
+        paste0(
+          get_region(),
+          "_",
+          parr,
+          "_anomaly_timeseries",
+          "_",
+          monn,
+          "_",
+          min_year,
+          "_",
+          mx_yr
+        )
       fl_nam
       incProgress(0.05, detail = "Finalizing linear trend ...")
       # Final return list
-      return(list(lnr_trn_ptly_plt =  ano_shp_trn_plty,
-                  fl_nam_dwnld = fl_nam,
-                  lnr_trn_plt_dwnld =  ano_shp_trn_plt,
-                  ts_data_csv = av_ano_ts
+      return(list(
+        lnr_trn_ptly_plt = ano_shp_trn_plty,
+        fl_nam_dwnld = fl_nam,
+        lnr_trn_plt_dwnld = ano_shp_trn_plt,
+        ts_data_csv = av_ano_ts
       ))
     })
-
   })
 
   ## display linear trend  ---------------
   output$lnr_trn_plt <- renderPlotly({
-    time_series_trnd_rct()[[1]]})
+    time_series_trnd_rct()[[1]]
+  })
 
   ## Download linear trend plot and time series data --------
   # Download plot
@@ -1893,12 +2293,10 @@ server <- function(session, input, output) {
   # Download time series (.csv)
   output$download_ano_ts_data <- downloadHandler(
     filename = function(file) {
-      paste0(time_series_trnd_rct()[[2]],
-             "_data.csv")
+      paste0(time_series_trnd_rct()[[2]], "_data.csv")
     },
     content = function(file) {
-      write_csv(time_series_trnd_rct()[[4]],
-                file, append = FALSE)
+      write_csv(time_series_trnd_rct()[[4]], file, append = FALSE)
     }
   )
 
@@ -1911,11 +2309,11 @@ server <- function(session, input, output) {
 
     ano_clm_trn_sel_dt_rct()[[1]] -> ano_dt_shp_rast
 
-   ano_clm_trn_sel_dt_rct()[[5]] -> sel_dt_mtdt
-   parr <- unique(sel_dt_mtdt$par)
-   monn <- unique(sel_dt_mtdt$mon)
+    ano_clm_trn_sel_dt_rct()[[5]] -> sel_dt_mtdt
+    parr <- unique(sel_dt_mtdt$par)
+    monn <- unique(sel_dt_mtdt$mon)
 
-   sel_area_shpfl <- get_shapefile()
+    sel_area_shpfl <- get_shapefile()
 
     ano_dt_sel_rast <- ano_dt_shp_rast
     names(ano_dt_sel_rast)
@@ -1925,11 +2323,13 @@ server <- function(session, input, output) {
 
     if (length(sel_yrs) > 50) {
       sel_yrs <- sel_yrs[1:50]
-      shinyalert(html = T,
-                 text = tagList(h3(
-                   "Too many years selected, maximum 50 allowed."
-                 )),
-                 showCancelButton = T)
+      shinyalert(
+        html = T,
+        text = tagList(h3(
+          "Too many years selected, maximum 50 allowed."
+        )),
+        showCancelButton = T
+      )
     }
 
     yr_df <- tibble(paryr = names(ano_dt_sel_rast))
@@ -1937,7 +2337,10 @@ server <- function(session, input, output) {
       mutate(yr = as.numeric(str_extract(paryr, "[0-9]+")))
     names(ano_dt_sel_rast) <- yr_df$yr
 
-    ano_dt_rast  <-  subset(ano_dt_sel_rast, which(names(ano_dt_sel_rast) %in% sel_yrs))
+    ano_dt_rast <- subset(
+      ano_dt_sel_rast,
+      which(names(ano_dt_sel_rast) %in% sel_yrs)
+    )
     ano_dt_rast
     names(ano_dt_sel_rast)
 
@@ -2025,30 +2428,38 @@ server <- function(session, input, output) {
     # Plot using terra rast
 
     # Climate plot title ( use log for prcp)
-    if (parr == "prcp" |parr == "soil_moisture") {
-      par_title <-  paste0(get_region(), " ",
-                           get_par_full(), " anomaly (% of normal)",
-                           ": ",
-                           get_mon_full())
+    if (parr == "prcp" | parr == "soil_moisture") {
+      par_title <- paste0(
+        get_region(),
+        " ",
+        get_par_full(),
+        " anomaly (% of normal)",
+        ": ",
+        get_mon_full()
+      )
     } else {
-      par_title <-  paste0(get_region(), " ",
-                           get_par_full(), " anomaly (", get_unit(),")",
-                           ": ",
-                           get_mon_full())
+      par_title <- paste0(
+        get_region(),
+        " ",
+        get_par_full(),
+        " anomaly (",
+        get_unit(),
+        ")",
+        ": ",
+        get_mon_full()
+      )
     }
 
-    xlim <- c(-140,-113.0)
-    ylim <- c(45,61)
+    xlim <- c(-140, -113.0)
+    ylim <- c(45, 61)
 
     ### plot to display ----
 
-    spatial_ano_plt <-  ggplot() +
+    spatial_ano_plt <- ggplot() +
       geom_spatraster(data = ano_dt_rast) +
       scale_fill_gradientn(
         name = paste0(parr, " anomaly ", get_unit()),
-        colours = cpt(pal = "ncl_BlWhRe",
-                      n = 100,
-                      rev = F),
+        colours = cpt(pal = "ncl_BlWhRe", n = 100, rev = F),
         na.value = "transparent",
         limits = c(minval, maxval),
         breaks = brks_seq
@@ -2063,7 +2474,7 @@ server <- function(session, input, output) {
       ) +
       # coord_sf(xlim = xlim, ylim = ylim)+
       scale_x_continuous(
-        name =  "Longitude (°W) ",
+        name = "Longitude (°W) ",
         breaks = seq(xmi - 5, xmx + 5, 10),
         labels = abs,
         expand = c(0.01, 0.01)
@@ -2129,7 +2540,9 @@ server <- function(session, input, output) {
         legend.text = element_text(margin = margin(t = -5), size = 16),
         strip.text.x = element_text(size = 12, angle = 0),
         strip.text.y = element_text(size = 12, face = "bold"),
-        axis.text = element_text(margin = margin(t = -5, r = -5, b = -5, l = -5)),
+        axis.text = element_text(
+          margin = margin(t = -5, r = -5, b = -5, l = -5)
+        ),
         strip.background = element_rect(color = "black", fill = "gray90"),
         strip.text = element_text(
           face = "bold",
@@ -2164,25 +2577,26 @@ server <- function(session, input, output) {
         axis.ticks.y = element_blank()
       )
 
-    if (parr == "prcp" & maxval > 200 |parr == "soil_moisture" & maxval > 200 |parr == "rh" & maxval > 200 ) {
+    if (
+      parr == "prcp" &
+        maxval > 200 |
+        parr == "soil_moisture" & maxval > 200 |
+        parr == "rh" & maxval > 200
+    ) {
       spatial_ano_plt <- spatial_ano_plt +
         scale_fill_gradientn(
           name = paste0(parr, " anomaly ", get_unit()),
-          colours = cpt(pal = "cmocean_curl",
-                        n = 100,
-                        rev = T),
+          colours = cpt(pal = "cmocean_curl", n = 100, rev = T),
           na.value = "transparent",
           limits = c(minval, maxval),
           breaks = brks_seq,
           labels = labels_val
         )
-    } else if (parr == "prcp" |parr == "soil_moisture" |parr == "rh" ) {
+    } else if (parr == "prcp" | parr == "soil_moisture" | parr == "rh") {
       spatial_ano_plt <- spatial_ano_plt +
         scale_fill_gradientn(
           name = paste0(parr, "  anomaly (%) "),
-          colours = cpt(pal = "cmocean_curl",
-                        n = 100,
-                        rev = T),
+          colours = cpt(pal = "cmocean_curl", n = 100, rev = T),
           na.value = "transparent",
           limits = c(minval, maxval),
           breaks = brks_seq
@@ -2195,14 +2609,18 @@ server <- function(session, input, output) {
         title = par_title,
         subtitle = paste0(
           "Baseline: 1981-2010. ",
-          '[',get_region(),  ' anomaly over ',
+          '[',
+          get_region(),
+          ' anomaly over ',
           minyr,
           '-',
           maxyr,
           ': Mean = ',
           ano_ovr_dt[2, 2],
           ' ,',
-          ' Range = ',ano_ovr_dt[1, 2], ' - ',
+          ' Range = ',
+          ano_ovr_dt[1, 2],
+          ' - ',
           ano_ovr_dt[3, 2],
           ']'
         )
@@ -2218,28 +2636,29 @@ server <- function(session, input, output) {
       )
     spatial_ano_plt
 
-
     ### File name for download ------------
     fl_nam <-
-      paste0(get_region(),
-             "_",
-             parr,"_anomaly",
-             "_",
-             monn,
-             "_",
-             input$year_range[1],
-             "_",
-             input$year_range[2])
+      paste0(
+        get_region(),
+        "_",
+        parr,
+        "_anomaly",
+        "_",
+        monn,
+        "_",
+        input$year_range[1],
+        "_",
+        input$year_range[2]
+      )
     fl_nam
 
     ## final reactive output list  -------------------
 
     return(list(
-      sptl_ano_data =  ano_dt_rast,
+      sptl_ano_data = ano_dt_rast,
       sptl_ano_plt = spatial_ano_plt,
       download_fl_nam = fl_nam
     ))
-
   })
 
   ### Spatial anomaly map display ---------------------
@@ -2247,8 +2666,8 @@ server <- function(session, input, output) {
     spatial_ano_dt_plt_rct()[[2]]
   })
 
-   ### Spatial anomaly map and data download ------------------
-   # Spatial anomaly plot download/save
+  ### Spatial anomaly map and data download ------------------
+  # Spatial anomaly plot download/save
   output$download_sptl_ano_plt <- downloadHandler(
     filename = function(file) {
       paste0(spatial_ano_dt_plt_rct()[[3]], "_plot.png")
@@ -2274,16 +2693,17 @@ server <- function(session, input, output) {
       paste0(spatial_ano_dt_plt_rct()[[3]], "_data.tif")
     },
     content = function(file) {
-      writeRaster(spatial_ano_dt_plt_rct()[[1]],
-                  file,
-                  filetype = "GTiff",
-                  overwrite = TRUE)
+      writeRaster(
+        spatial_ano_dt_plt_rct()[[1]],
+        file,
+        filetype = "GTiff",
+        overwrite = TRUE
+      )
     }
   )
 
- # Climate normal plot ----------------------------------------------------------------------------
-  clm_nor_plt_rct <- eventReactive(input$run_ana_button,{
-
+  # Climate normal plot ----------------------------------------------------------------------------
+  clm_nor_plt_rct <- eventReactive(input$run_ana_button, {
     ano_clm_trn_sel_dt_rct()[[2]] -> clm_dt_shp_rast
 
     ano_clm_trn_sel_dt_rct()[[5]] -> sel_dt_mtdt
@@ -2292,26 +2712,40 @@ server <- function(session, input, output) {
 
     sel_area_shpfl <- get_shapefile()
 
-  ## Climate normal plot title -----
+    ## Climate normal plot title -----
     if (parr == "prcp") {
       clm_nor_title_txt <-
         # Climate plot title ( use log for prcp)
-        paste0(get_region(), " mean ",
-               get_par_full()," (average of  1981-2010)","(", get_unit(),")" ," (log-scale)",
-               "  : ",
-               get_mon_full())
-    } else{
-      clm_nor_title_txt <-  paste0(get_region(), " ",
-                                   get_par_full(), " (average of  1981-2010) ", "(", get_unit(),")" ,
-                                   " : ",
-                                   get_mon_full())
+        paste0(
+          get_region(),
+          " mean ",
+          get_par_full(),
+          " (average of  1981-2010)",
+          "(",
+          get_unit(),
+          ")",
+          " (log-scale)",
+          "  : ",
+          get_mon_full()
+        )
+    } else {
+      clm_nor_title_txt <- paste0(
+        get_region(),
+        " ",
+        get_par_full(),
+        " (average of  1981-2010) ",
+        "(",
+        get_unit(),
+        ")",
+        " : ",
+        get_mon_full()
+      )
     }
     clm_nor_title_txt
 
+    ## Climate normal plot for display -------
 
- ## Climate normal plot for display -------
-
-        # Calculate mean and range of normal values
+    # Calculate mean and range of normal values
     mn_clm_val <-
       round(global(clm_dt_shp_rast, 'mean', na.rm = T), digits = 2)
     mi_clm_val <-
@@ -2323,11 +2757,11 @@ server <- function(session, input, output) {
 
     if (parr == "prcp") {
       clm_dt_shp_rast1 <- log(clm_dt_shp_rast)
-    } else{
+    } else {
       clm_dt_shp_rast1 <- clm_dt_shp_rast
     }
 
-    spatial_clm_plt <-  ggplot() +
+    spatial_clm_plt <- ggplot() +
       geom_spatraster(data = clm_dt_shp_rast1) +
       scale_fill_continuous(
         type = "viridis",
@@ -2344,7 +2778,7 @@ server <- function(session, input, output) {
         alpha = 0.8
       ) +
       scale_x_continuous(
-        name =  "Longitude (°W) ",
+        name = "Longitude (°W) ",
         # breaks = seq(xmi - 5, xmx + 5, 10),
         labels = abs,
         expand = c(0.01, 0.01)
@@ -2410,7 +2844,9 @@ server <- function(session, input, output) {
         legend.text = element_text(margin = margin(t = -5), size = 16),
         strip.text.x = element_text(size = 12, angle = 0),
         strip.text.y = element_text(size = 12, face = "bold"),
-        axis.text = element_text(margin = margin(t = -5, r = -5, b = -5, l = -5)),
+        axis.text = element_text(
+          margin = margin(t = -5, r = -5, b = -5, l = -5)
+        ),
         strip.background = element_rect(color = "black", fill = "gray90"),
         strip.text = element_text(
           face = "bold",
@@ -2446,7 +2882,7 @@ server <- function(session, input, output) {
       )
     spatial_clm_plt
 
-    if (parr == "prcp" |parr == "soil_moisture" |parr == "rh") {
+    if (parr == "prcp" | parr == "soil_moisture" | parr == "rh") {
       spatial_clm_plt <- spatial_clm_plt +
         scale_fill_continuous(
           type = "viridis",
@@ -2457,7 +2893,7 @@ server <- function(session, input, output) {
         )
     }
 
-  spatial_clm_plt <- spatial_clm_plt +
+    spatial_clm_plt <- spatial_clm_plt +
       labs(tag = plt_wtrmrk) +
       theme(
         plot.tag.position = "bottom",
@@ -2471,8 +2907,11 @@ server <- function(session, input, output) {
         # title = par_title,
         subtitle = paste0(
           'Mean = ',
-          mn_clm_val[[1]]," ",
-          "(", get_unit(),")" ,
+          mn_clm_val[[1]],
+          " ",
+          "(",
+          get_unit(),
+          ")",
           "  ",
           "Range = ",
           "[",
@@ -2488,45 +2927,64 @@ server <- function(session, input, output) {
       )
     spatial_clm_plt
 
- ## Climate normal data and plot download ---------
-  fl_nam <-
-    paste0(get_region(),
-           "_",
-       get_par_full(),"_climate_normal_1981_2010",
-         "_",
-           get_mon_full())
-  fl_nam
+    ## Climate normal data and plot download ---------
+    fl_nam <-
+      paste0(
+        get_region(),
+        "_",
+        get_par_full(),
+        "_climate_normal_1981_2010",
+        "_",
+        get_mon_full()
+      )
+    fl_nam
 
-  # Plot with title for download
+    # Plot with title for download
 
-      # Climate plot title ( use log for prcp)
-      if (parr == "prcp") {
-        par_title <-  paste0(get_region()," ",
-                             get_par_full(),"","(", get_unit(),")" ," (log-scale)",
-                             " : ",
-                             get_mon_full(), " (average 1981-2010)")
-      } else{
-        par_title <-  paste0(get_region(), " ",
-                             get_par_full(), " ", "(", get_unit(),")" ,
-                             " : ",
-                             get_mon_full(), " (average 1981-2010)")
-      }
+    # Climate plot title ( use log for prcp)
+    if (parr == "prcp") {
+      par_title <- paste0(
+        get_region(),
+        " ",
+        get_par_full(),
+        "",
+        "(",
+        get_unit(),
+        ")",
+        " (log-scale)",
+        " : ",
+        get_mon_full(),
+        " (average 1981-2010)"
+      )
+    } else {
+      par_title <- paste0(
+        get_region(),
+        " ",
+        get_par_full(),
+        " ",
+        "(",
+        get_unit(),
+        ")",
+        " : ",
+        get_mon_full(),
+        " (average 1981-2010)"
+      )
+    }
 
-      spatial_clm_plt_dnwld <-  spatial_clm_plt+
-        labs( title = par_title)
-      spatial_clm_plt_dnwld
+    spatial_clm_plt_dnwld <- spatial_clm_plt +
+      labs(title = par_title)
+    spatial_clm_plt_dnwld
 
-  ### Final reactive output list --------------
+    ### Final reactive output list --------------
 
-      return(list(
-        clm_nor_title_txt = clm_nor_title_txt,
-        clm_nor_plt = spatial_clm_plt,
-        clm_nor_plt_dnwld = spatial_clm_plt_dnwld,
-        clm_nor_data =  clm_dt_shp_rast1,
-        download_fl_nam = fl_nam
-      ))
-
-})
+    return(list(
+      clm_nor_title_txt = clm_nor_title_txt,
+      clm_nor_plt = spatial_clm_plt,
+      clm_nor_plt_dnwld = spatial_clm_plt_dnwld,
+      clm_nor_data = clm_dt_shp_rast1,
+      download_fl_nam = fl_nam
+    ))
+  })
 
   ## Climate normal plot display & download ------------
 
@@ -2541,56 +2999,57 @@ server <- function(session, input, output) {
   })
 
   # climate normal plot download/save
-    output$download_clm_nor_plt <- downloadHandler(
-      filename = function(file) {
-        paste0(clm_nor_plt_rct()[[5]], "_plot.png")
-      },
-      content = function(file) {
-        ggsave(
-          file,
-          plot =  clm_nor_plt_rct()[[3]],
-          width = 11,
-          height = 9,
-          units = "in",
-          dpi = 300,
-          scale = 0.9,
-          limitsize = F,
-          device = "png"
-        )
-      }
-    )
+  output$download_clm_nor_plt <- downloadHandler(
+    filename = function(file) {
+      paste0(clm_nor_plt_rct()[[5]], "_plot.png")
+    },
+    content = function(file) {
+      ggsave(
+        file,
+        plot = clm_nor_plt_rct()[[3]],
+        width = 11,
+        height = 9,
+        units = "in",
+        dpi = 300,
+        scale = 0.9,
+        limitsize = F,
+        device = "png"
+      )
+    }
+  )
 
-    # Climate normal data save in tiff
-    output$download_clm_nor_data <- downloadHandler(
-      filename = function(file) {
-        paste0(clm_nor_plt_rct()[[5]], "_data.tif")
-      },
-      content = function(file) {
-        writeRaster(clm_nor_plt_rct()[[4]],
-                    file,
-                    filetype = "GTiff",
-                    overwrite = TRUE)
-      }
-    )
+  # Climate normal data save in tiff
+  output$download_clm_nor_data <- downloadHandler(
+    filename = function(file) {
+      paste0(clm_nor_plt_rct()[[5]], "_data.tif")
+    },
+    content = function(file) {
+      writeRaster(
+        clm_nor_plt_rct()[[4]],
+        file,
+        filetype = "GTiff",
+        overwrite = TRUE
+      )
+    }
+  )
 
-    # Spatial anomaly trends for 1950s and 1980s ---------------------------------------------------------
+  # Spatial anomaly trends for 1950s and 1980s ---------------------------------------------------------
 
-    spatial_ano_trnd_rct <- eventReactive(input$run_ana_button,{
+  spatial_ano_trnd_rct <- eventReactive(input$run_ana_button, {
+    withProgress(message = 'Calculating spatial trends', value = 0, {
+      incProgress(0.1, detail = "Extracting data ...")
 
-      withProgress(message = 'Calculating spatial trends', value = 0, {
-        incProgress(0.1, detail = "Extracting data ...")
+      ano_clm_trn_sel_dt_rct()[[5]] -> sel_dt_mtdt
+      parr <- unique(sel_dt_mtdt$par)
+      monn <- unique(sel_dt_mtdt$mon)
 
-        ano_clm_trn_sel_dt_rct()[[5]] -> sel_dt_mtdt
-        parr <- unique(sel_dt_mtdt$par)
-        monn <- unique(sel_dt_mtdt$mon)
+      sel_area_shpfl <- get_shapefile()
 
-        sel_area_shpfl <- get_shapefile()
+      # 1950s spatial trend ----------
+      ano_clm_trn_sel_dt_rct()[[3]] -> ano_trn_mag_sig50
+      # ano_trn_mag_sig50 <- trn_dt_shp_rast50
 
-        # 1950s spatial trend ----------
-        ano_clm_trn_sel_dt_rct()[[3]] -> ano_trn_mag_sig50
-        # ano_trn_mag_sig50 <- trn_dt_shp_rast50
-
-       names(ano_trn_mag_sig50) <- c("trnmag", "pval")
+      names(ano_trn_mag_sig50) <- c("trnmag", "pval")
       # plot(ano_trn_mag_sig50
       mn_trn_val50 <-
         round(global(ano_trn_mag_sig50[[1]], 'mean', na.rm = T), digits = 3)
@@ -2600,7 +3059,11 @@ server <- function(session, input, output) {
         round(global(ano_trn_mag_sig50[[1]], 'max', na.rm = T), digits = 3)
 
       # Convert to point data
-      ano_sp_mk_trn_sig_dt50 <- as_tibble(ano_trn_mag_sig50, xy = TRUE, na.rm = TRUE) %>%
+      ano_sp_mk_trn_sig_dt50 <- as_tibble(
+        ano_trn_mag_sig50,
+        xy = TRUE,
+        na.rm = TRUE
+      ) %>%
         mutate(trnmag = round(trnmag, 3))
 
       if (parr == 'prcp' | parr == 'soil_moisture') {
@@ -2620,14 +3083,33 @@ server <- function(session, input, output) {
       mxtrn50
 
       ano_dt_sp_trn_sig_plt50 <- ggplot() +
-        geom_tile(data = ano_sp_mk_trn_sig_dt50, aes(x=x,y=y,fill=trnmag),alpha=1)+
-        scale_fill_continuous_diverging(palette="Blue-Red",n_interp=21,
-                                        limits=c(-mxtrn50,mxtrn50),
-                                        # breaks=seq(-1.2, 1.2,0.3),
-                                        # labels=seq(-0.8, 0.8,0.2),
-                                        # name=expression(paste0(parr," trend ", unt, " yr \U2212 \U00B9")))+
-                                        name=bquote(~"trend"~yr^{-1}))+
-        geom_point(data=ano_dt_sig_trn50,aes(x=x,y=y),color="Black",fill="Gray10", alpha=0.4,size=0.3, shape =3)+
+        geom_tile(
+          data = ano_sp_mk_trn_sig_dt50,
+          aes(x = x, y = y, fill = trnmag),
+          alpha = 1
+        ) +
+        scale_fill_continuous_diverging(
+          palette = "Blue-Red",
+          n_interp = 21,
+          limits = c(-mxtrn50, mxtrn50),
+          # breaks=seq(-1.2, 1.2,0.3),
+          # labels=seq(-0.8, 0.8,0.2),
+          # name=expression(paste0(parr," trend ", unt, " yr \U2212 \U00B9")))+
+          name = bquote(
+            ~"trend" ~ yr^{
+              -1
+            }
+          )
+        ) +
+        geom_point(
+          data = ano_dt_sig_trn50,
+          aes(x = x, y = y),
+          color = "Black",
+          fill = "Gray10",
+          alpha = 0.4,
+          size = 0.3,
+          shape = 3
+        ) +
         geom_sf(
           data = sel_area_shpfl,
           colour = "black",
@@ -2636,7 +3118,7 @@ server <- function(session, input, output) {
           alpha = 0.8
         ) +
         scale_x_continuous(
-          name =  "Longitude (°W) ",
+          name = "Longitude (°W) ",
           # breaks = seq(xmi - 5, xmx + 5, 10),
           labels = abs,
           expand = c(0.01, 0.01)
@@ -2702,14 +3184,16 @@ server <- function(session, input, output) {
           legend.text = element_text(margin = margin(t = -5), size = 16),
           strip.text.x = element_text(size = 12, angle = 0),
           strip.text.y = element_text(size = 12, face = "bold"),
-          axis.text = element_text(margin = margin(t = -5, r = -5, b = -5, l = -5)),
+          axis.text = element_text(
+            margin = margin(t = -5, r = -5, b = -5, l = -5)
+          ),
           strip.background = element_rect(color = "black", fill = "gray90"),
           strip.text = element_text(
             face = "bold",
             size = 18,
             colour = 'black'
           )
-        )+
+        ) +
         guides(
           fill = guide_colorbar(
             barwidth = 1.0,
@@ -2738,18 +3222,26 @@ server <- function(session, input, output) {
         )
       ano_dt_sp_trn_sig_plt50
 
-      if (parr == "prcp" |parr == "soil_moisture" |parr == "rh") {
+      if (parr == "prcp" | parr == "soil_moisture" | parr == "rh") {
         ano_dt_sp_trn_sig_plt50 <- ano_dt_sp_trn_sig_plt50 +
-          scale_fill_continuous_diverging(palette="green-brown",n_interp=21, rev=T,
-                                          limits=c(-mxtrn50,mxtrn50),
-                                          # breaks=seq(-1.2, 1.2,0.3),
-                                          # labels=seq(-0.8, 0.8,0.2),
-                                          # name=expression(paste0(parr," trend ", unt, " yr \U2212 \U00B9")))+
-                                          name=bquote(~"trend"~yr^{-1}))
+          scale_fill_continuous_diverging(
+            palette = "green-brown",
+            n_interp = 21,
+            rev = T,
+            limits = c(-mxtrn50, mxtrn50),
+            # breaks=seq(-1.2, 1.2,0.3),
+            # labels=seq(-0.8, 0.8,0.2),
+            # name=expression(paste0(parr," trend ", unt, " yr \U2212 \U00B9")))+
+            name = bquote(
+              ~"trend" ~ yr^{
+                -1
+              }
+            )
+          )
       }
       ano_dt_sp_trn_sig_plt50
 
-      ano_dt_sp_trn_sig_plt50 <-  ano_dt_sp_trn_sig_plt50 +
+      ano_dt_sp_trn_sig_plt50 <- ano_dt_sp_trn_sig_plt50 +
         labs(tag = plt_wtrmrk) +
         theme(
           plot.tag.position = "bottom",
@@ -2763,14 +3255,20 @@ server <- function(session, input, output) {
           # title = par_title,
           subtitle = paste0(
             'Mean = ',
-            mn_trn_val50[[1]]," ",
-            "(", trn_unt," yr", "\u207B", "\u00B9)" ,
+            mn_trn_val50[[1]],
+            " ",
+            "(",
+            trn_unt,
+            " yr",
+            "\u207B",
+            "\u00B9)",
             "  ",
             "Range = ",
             "[",
             mi_trn_val50[[1]],
             " - ",
-            mx_trn_val50[[1]],"]. "
+            mx_trn_val50[[1]],
+            "]. "
           )
         ) +
         theme(
@@ -2796,7 +3294,11 @@ server <- function(session, input, output) {
         round(global(ano_trn_mag_sig80[[1]], 'max', na.rm = T), digits = 3)
 
       # plot (1980-now)
-      ano_sp_mk_trn_sig_dt80 <- as_tibble(ano_trn_mag_sig80, xy = TRUE, na.rm = TRUE) %>%
+      ano_sp_mk_trn_sig_dt80 <- as_tibble(
+        ano_trn_mag_sig80,
+        xy = TRUE,
+        na.rm = TRUE
+      ) %>%
         mutate(trnmag = round(trnmag, 3))
 
       #### Plot trend maps (1980-now)
@@ -2806,18 +3308,37 @@ server <- function(session, input, output) {
         dplyr::filter(pval <= 0.1)
       ano_dt_sig_trn80
 
-      mxtrn80 <- max(abs(ano_sp_mk_trn_sig_dt80$trnmag),na.rm = T)
+      mxtrn80 <- max(abs(ano_sp_mk_trn_sig_dt80$trnmag), na.rm = T)
       mxtrn80
 
-      ano_dt_sp_trn_sig_plt80 <-ggplot()+
-        geom_tile(data = ano_sp_mk_trn_sig_dt80,aes(x=x,y=y,fill=trnmag),alpha=1)+
-        scale_fill_continuous_diverging(palette="Blue-Red",n_interp=21,
-                                        limits=c(-mxtrn80,mxtrn80),
-                                        # breaks=seq(-1.2, 1.2,0.3),
-                                        # labels=seq(-0.8, 0.8,0.2),
-                                        # name=expression(paste0(parr," trend ", unt, " yr \U2212 \U00B9")))+
-                                        name=bquote(~"trend"~yr^{-1}))+
-        geom_point(data=ano_dt_sig_trn80,aes(x=x,y=y),color="Black",fill="Gray10", alpha=0.4,size=0.3, shape =3)+
+      ano_dt_sp_trn_sig_plt80 <- ggplot() +
+        geom_tile(
+          data = ano_sp_mk_trn_sig_dt80,
+          aes(x = x, y = y, fill = trnmag),
+          alpha = 1
+        ) +
+        scale_fill_continuous_diverging(
+          palette = "Blue-Red",
+          n_interp = 21,
+          limits = c(-mxtrn80, mxtrn80),
+          # breaks=seq(-1.2, 1.2,0.3),
+          # labels=seq(-0.8, 0.8,0.2),
+          # name=expression(paste0(parr," trend ", unt, " yr \U2212 \U00B9")))+
+          name = bquote(
+            ~"trend" ~ yr^{
+              -1
+            }
+          )
+        ) +
+        geom_point(
+          data = ano_dt_sig_trn80,
+          aes(x = x, y = y),
+          color = "Black",
+          fill = "Gray10",
+          alpha = 0.4,
+          size = 0.3,
+          shape = 3
+        ) +
         geom_sf(
           data = sel_area_shpfl,
           colour = "black",
@@ -2826,7 +3347,7 @@ server <- function(session, input, output) {
           alpha = 0.8
         ) +
         scale_x_continuous(
-          name =  "Longitude (°W) ",
+          name = "Longitude (°W) ",
           # breaks = seq(xmi - 5, xmx + 5, 10),
           labels = abs,
           expand = c(0.01, 0.01)
@@ -2892,7 +3413,9 @@ server <- function(session, input, output) {
           legend.text = element_text(margin = margin(t = -5), size = 16),
           strip.text.x = element_text(size = 12, angle = 0),
           strip.text.y = element_text(size = 12, face = "bold"),
-          axis.text = element_text(margin = margin(t = -5, r = -5, b = -5, l = -5)),
+          axis.text = element_text(
+            margin = margin(t = -5, r = -5, b = -5, l = -5)
+          ),
           strip.background = element_rect(color = "black", fill = "gray90"),
           strip.text = element_text(
             face = "bold",
@@ -2928,18 +3451,26 @@ server <- function(session, input, output) {
         )
       ano_dt_sp_trn_sig_plt80
 
-      if (parr == "prcp" |parr == "soil_moisture" |parr == "rh") {
+      if (parr == "prcp" | parr == "soil_moisture" | parr == "rh") {
         ano_dt_sp_trn_sig_plt80 <- ano_dt_sp_trn_sig_plt80 +
-          scale_fill_continuous_diverging(palette="green-brown",n_interp=21, rev=T,
-                                          limits=c(-mxtrn80,mxtrn80),
-                                          # breaks=seq(-1.2, 1.2,0.3),
-                                          # labels=seq(-0.8, 0.8,0.2),
-                                          # name=expression(paste0(parr," trend ", unt, " yr \U2212 \U00B9")))+
-                                          name=bquote(~"trend"~yr^{-1}))
+          scale_fill_continuous_diverging(
+            palette = "green-brown",
+            n_interp = 21,
+            rev = T,
+            limits = c(-mxtrn80, mxtrn80),
+            # breaks=seq(-1.2, 1.2,0.3),
+            # labels=seq(-0.8, 0.8,0.2),
+            # name=expression(paste0(parr," trend ", unt, " yr \U2212 \U00B9")))+
+            name = bquote(
+              ~"trend" ~ yr^{
+                -1
+              }
+            )
+          )
       }
       ano_dt_sp_trn_sig_plt80
 
-      ano_dt_sp_trn_sig_plt80 <-  ano_dt_sp_trn_sig_plt80 +
+      ano_dt_sp_trn_sig_plt80 <- ano_dt_sp_trn_sig_plt80 +
         labs(tag = plt_wtrmrk) +
         theme(
           plot.tag.position = "bottom",
@@ -2953,8 +3484,13 @@ server <- function(session, input, output) {
           # title = par_title,
           subtitle = paste0(
             'Mean = ',
-            mn_trn_val80[[1]]," ",
-            "(", trn_unt," yr", "\u207B", "\u00B9)" ,
+            mn_trn_val80[[1]],
+            " ",
+            "(",
+            trn_unt,
+            " yr",
+            "\u207B",
+            "\u00B9)",
             "  ",
             "Range = ",
             "[",
@@ -2972,333 +3508,410 @@ server <- function(session, input, output) {
       ano_dt_sp_trn_sig_plt80
 
       ### Plots titles --------------
-      spl_trn_title_txt50 <-  paste0(get_region(), " ",get_mon_full(), ' ',
-                                     get_par_full(), " anomlay trend",
-                                     " (", trn_unt," yr", "\u207B", "\u00B9) since 1950: ", get_mon_full(),". Black dots indicate cells with significant trends.")
+      spl_trn_title_txt50 <- paste0(
+        get_region(),
+        " ",
+        get_mon_full(),
+        ' ',
+        get_par_full(),
+        " anomlay trend",
+        " (",
+        trn_unt,
+        " yr",
+        "\u207B",
+        "\u00B9) since 1950: ",
+        get_mon_full(),
+        ". Black dots indicate cells with significant trends."
+      )
 
-      spl_trn_title_txt80 <-  paste0(get_region(), " ",get_mon_full(), ' ',
-                                     get_par_full(), " anomlay trend",
-                                     " (",trn_unt,
-                                     " yr", "\u207B", "\u00B9) since 1980: ", get_mon_full(),". Black dots indicate cells with significant trends.")
+      spl_trn_title_txt80 <- paste0(
+        get_region(),
+        " ",
+        get_mon_full(),
+        ' ',
+        get_par_full(),
+        " anomlay trend",
+        " (",
+        trn_unt,
+        " yr",
+        "\u207B",
+        "\u00B9) since 1980: ",
+        get_mon_full(),
+        ". Black dots indicate cells with significant trends."
+      )
 
       ##  For plot and data downloads ---------
 
       trnd_fl_nam50 <-
-        paste0(get_region(),
-               "_",
-               get_par_full(),"_spatial_trend_1950_present",
-               "_",
-               get_mon_full())
+        paste0(
+          get_region(),
+          "_",
+          get_par_full(),
+          "_spatial_trend_1950_present",
+          "_",
+          get_mon_full()
+        )
       trnd_fl_nam50
       trnd_fl_nam80 <-
-        paste0(get_region(),
-               "_",
-               get_par_full(),"_spatial_trend_1980_present",
-               "_",
-               get_mon_full())
+        paste0(
+          get_region(),
+          "_",
+          get_par_full(),
+          "_spatial_trend_1980_present",
+          "_",
+          get_mon_full()
+        )
       trnd_fl_nam80
 
       # Plot with title for download
 
-      par_title50 <-  paste0(get_region(), " ",
-                             get_par_full(), " anomaly trend (",trn_unt," yr", "\u207B", "\u00B9): ",get_mon_full(),"1950-present.
-                             Black dots indicate cells with significant trends." )
-      par_title80 <-  paste0(get_region(), " ",
-                             get_par_full(), " anomaly trend (", trn_unt," yr", "\u207B", "\u00B9): ",get_mon_full(),"1980-present.
-                             Black dots indicate cells with significant trends." )
+      par_title50 <- paste0(
+        get_region(),
+        " ",
+        get_par_full(),
+        " anomaly trend (",
+        trn_unt,
+        " yr",
+        "\u207B",
+        "\u00B9): ",
+        get_mon_full(),
+        "1950-present.
+                             Black dots indicate cells with significant trends."
+      )
+      par_title80 <- paste0(
+        get_region(),
+        " ",
+        get_par_full(),
+        " anomaly trend (",
+        trn_unt,
+        " yr",
+        "\u207B",
+        "\u00B9): ",
+        get_mon_full(),
+        "1980-present.
+                             Black dots indicate cells with significant trends."
+      )
 
-
-      par_title50 <-  paste0(get_region(), " ",
-                             get_par_full(), " anomaly trend (", trn_unt," yr", "\u207B", "\u00B9): ",get_mon_full()," 1950-present.
-                             Black dots indicate cells with significant trends." )
-      par_title80 <-  paste0(get_region(), " ",
-                             get_par_full(), " anomaly trend (", trn_unt," yr", "\u207B", "\u00B9): ",get_mon_full()," 1980-present.
-                             Black dots indicate cells with significant trends." )
+      par_title50 <- paste0(
+        get_region(),
+        " ",
+        get_par_full(),
+        " anomaly trend (",
+        trn_unt,
+        " yr",
+        "\u207B",
+        "\u00B9): ",
+        get_mon_full(),
+        " 1950-present.
+                             Black dots indicate cells with significant trends."
+      )
+      par_title80 <- paste0(
+        get_region(),
+        " ",
+        get_par_full(),
+        " anomaly trend (",
+        trn_unt,
+        " yr",
+        "\u207B",
+        "\u00B9): ",
+        get_mon_full(),
+        " 1980-present.
+                             Black dots indicate cells with significant trends."
+      )
 
       # Plot download
-      ano_dt_sp_trn_sig_plt50_dnwld <-  ano_dt_sp_trn_sig_plt50+
-        labs( title = par_title50)
+      ano_dt_sp_trn_sig_plt50_dnwld <- ano_dt_sp_trn_sig_plt50 +
+        labs(title = par_title50)
       ano_dt_sp_trn_sig_plt50_dnwld
 
-      ano_dt_sp_trn_sig_plt80_dnwld <-  ano_dt_sp_trn_sig_plt80+
-        labs( title = par_title80)
+      ano_dt_sp_trn_sig_plt80_dnwld <- ano_dt_sp_trn_sig_plt80 +
+        labs(title = par_title80)
       ano_dt_sp_trn_sig_plt80_dnwld
 
       incProgress(0.02, detail = "Finalizing spatial trends ...")
       # return plot or data here
       return(list(
         plt_title_1950 = spl_trn_title_txt50,
-        trn_plt_1950 =  ano_dt_sp_trn_sig_plt50,
+        trn_plt_1950 = ano_dt_sp_trn_sig_plt50,
         plt_title_1980 = spl_trn_title_txt80,
         trn_plt_1980 = ano_dt_sp_trn_sig_plt80,
 
         dnwld_fl_nam50 = trnd_fl_nam50,
-        dnwld_trn_plt50 =  ano_dt_sp_trn_sig_plt50_dnwld,
+        dnwld_trn_plt50 = ano_dt_sp_trn_sig_plt50_dnwld,
         dnwld_trn_dt50 = ano_trn_mag_sig50,
 
         download_fl_nam80 = trnd_fl_nam80,
-        downalod_trn_plt80 =  ano_dt_sp_trn_sig_plt80_dnwld,
+        downalod_trn_plt80 = ano_dt_sp_trn_sig_plt80_dnwld,
         dnwld_trn_dt80 = ano_trn_mag_sig80
       ))
-      })
     })
+  })
 
-    ### Display and download trend maps and data ----------
-    # Display
-    output$clm_trn50_title <- renderText({
-      spatial_ano_trnd_rct()[[1]]
-    })
-    output$clm_trn50_map <- renderPlot({
-      spatial_ano_trnd_rct()[[2]]
-    })
+  ### Display and download trend maps and data ----------
+  # Display
+  output$clm_trn50_title <- renderText({
+    spatial_ano_trnd_rct()[[1]]
+  })
+  output$clm_trn50_map <- renderPlot({
+    spatial_ano_trnd_rct()[[2]]
+  })
 
-    output$clm_trn80_title <- renderText({
-      spatial_ano_trnd_rct()[[3]]
-    })
-    output$clm_trn80_map <- renderPlot({
-      spatial_ano_trnd_rct()[[4]]
-    })
+  output$clm_trn80_title <- renderText({
+    spatial_ano_trnd_rct()[[3]]
+  })
+  output$clm_trn80_map <- renderPlot({
+    spatial_ano_trnd_rct()[[4]]
+  })
 
-    # Download trend maps and data
-    # 1950s plt
-    output$download_clm_trn50_plt <- downloadHandler(
-      filename = function(file) {
-        paste0(spatial_ano_trnd_rct()[[5]], "_plot.png")
-      },
-      content = function(file) {
-        ggsave(
-          file,
-          plot =   spatial_ano_trnd_rct()[[6]],
-          width = 11,
-          height = 9,
-          units = "in",
-          dpi = 300,
-          scale = 0.9,
-          limitsize = F,
-          device = "png"
-        )
-      }
-    )
+  # Download trend maps and data
+  # 1950s plt
+  output$download_clm_trn50_plt <- downloadHandler(
+    filename = function(file) {
+      paste0(spatial_ano_trnd_rct()[[5]], "_plot.png")
+    },
+    content = function(file) {
+      ggsave(
+        file,
+        plot = spatial_ano_trnd_rct()[[6]],
+        width = 11,
+        height = 9,
+        units = "in",
+        dpi = 300,
+        scale = 0.9,
+        limitsize = F,
+        device = "png"
+      )
+    }
+  )
 
-    # 1950s trend data
-    output$download_clm_trn50_data <- downloadHandler(
-      filename = function(file) {
-        paste0(spatial_ano_trnd_rct()[[5]], "_data.tif")
-      },
-      content = function(file) {
-        writeRaster(spatial_ano_trnd_rct()[[7]],
-                    file,
-                    filetype = "GTiff",
-                    overwrite = TRUE)
-      }
-    )
+  # 1950s trend data
+  output$download_clm_trn50_data <- downloadHandler(
+    filename = function(file) {
+      paste0(spatial_ano_trnd_rct()[[5]], "_data.tif")
+    },
+    content = function(file) {
+      writeRaster(
+        spatial_ano_trnd_rct()[[7]],
+        file,
+        filetype = "GTiff",
+        overwrite = TRUE
+      )
+    }
+  )
 
-    # 1980s plt
-    output$download_clm_trn80_plt <- downloadHandler(
-      filename = function(file) {
-        paste0(spatial_ano_trnd_rct()[[8]], "_plot.png")
-      },
-      content = function(file) {
-        ggsave(
-          file,
-          plot =   spatial_ano_trnd_rct()[[9]],
-          width = 11,
-          height = 9,
-          units = "in",
-          dpi = 300,
-          scale = 0.9,
-          limitsize = F,
-          device = "png"
-        )
-      }
-    )
+  # 1980s plt
+  output$download_clm_trn80_plt <- downloadHandler(
+    filename = function(file) {
+      paste0(spatial_ano_trnd_rct()[[8]], "_plot.png")
+    },
+    content = function(file) {
+      ggsave(
+        file,
+        plot = spatial_ano_trnd_rct()[[9]],
+        width = 11,
+        height = 9,
+        units = "in",
+        dpi = 300,
+        scale = 0.9,
+        limitsize = F,
+        device = "png"
+      )
+    }
+  )
 
-    # 1980s trend data
-    output$download_clm_trn80_data <- downloadHandler(
-      filename = function(file) {
-        paste0(spatial_ano_trnd_rct()[[8]], "_data.tif")
-      },
-      content = function(file) {
-        writeRaster(spatial_ano_trnd_rct()[[10]],
-                    file,
-                    filetype = "GTiff",
-                    overwrite = TRUE)
-      }
-    )
-
+  # 1980s trend data
+  output$download_clm_trn80_data <- downloadHandler(
+    filename = function(file) {
+      paste0(spatial_ano_trnd_rct()[[8]], "_data.tif")
+    },
+    content = function(file) {
+      writeRaster(
+        spatial_ano_trnd_rct()[[10]],
+        file,
+        filetype = "GTiff",
+        overwrite = TRUE
+      )
+    }
+  )
 
   # Feedback text -------
   output$feedback_text <- renderText({
-    HTML("<p>We used <a href='https://cds.climate.copernicus.eu/cdsapp#!/dataset/reanalysis-era5-land?tab=overview' target='_blank'>
+    HTML(
+      "<p>We used <a href='https://cds.climate.copernicus.eu/cdsapp#!/dataset/reanalysis-era5-land?tab=overview' target='_blank'>
 ERA5-Land hourly data</a> to calculate the anomalies and climatology.
 Anomalies are calculated as the measure of departure from the climatological averages spanning from 1981 to 2010.
 Should you have any inquiries or wish to provide feedback, please do not hesitate to use
 <a href='https://forms.office.com/r/wN0QYAvSTZ' target='_blank'>this feedback form</a> or write to
-<a href='mailto:Aseem.Sharma@gov.bc.ca'><b>Aseem Sharma</b></a>.</p>")
-
-
+<a href='mailto:Aseem.Sharma@gov.bc.ca'><b>Aseem Sharma</b></a>.</p>"
+    )
   })
 
   # Reports --------------------------------------
 
-    ## Years present in reports ----
-    report_years <- sort(unique(
-      as.numeric(substr(
-        report_suffixes[grepl("^[A-Za-z]{3}[0-9]{4}$", report_suffixes)],
-        4, 7
-      )),
-      decreasing = TRUE
-    ))
+  ## Years present in reports ----
+  report_years <- sort(unique(
+    as.numeric(substr(
+      report_suffixes[grepl("^[A-Za-z]{3}[0-9]{4}$", report_suffixes)],
+      4,
+      7
+    )),
+    decreasing = TRUE
+  ))
 
-    ## Helper: resolve report filename ----
-    get_report_filename <- function(suffix) {
+  ## Helper: resolve report filename ----
+  get_report_filename <- function(suffix) {
+    switch(
+      suffix,
+      "ann2025" = "bc_annual_climate_summary_2025.html",
+      "ann2024" = "bc_annual_climate_summary_2024.html",
+      "ann2023" = "bc_annual_climate_summary_2023.html",
+      "longterm" = "bc_longterm_temp_prcp_anomaly_report_1980_2022_html.html",
+      {
+        month_abbr <- toupper(substr(suffix, 1, 3))
+        year <- substr(suffix, 4, 7)
+        month_num <- match(month_abbr, toupper(month.abb))
 
-      switch(
-        suffix,
-        "ann2025"  = "bc_annual_climate_summary_2025.html",
-        "ann2024"  = "bc_annual_climate_summary_2024.html",
-        "ann2023"  = "bc_annual_climate_summary_2023.html",
-        "longterm" = "bc_longterm_temp_prcp_anomaly_report_1980_2022_html.html",
-        {
+        if (!is.na(month_num)) {
+          month_full <- format(
+            as.Date(paste0(year, "-", month_num, "-01")),
+            "%B"
+          )
 
-          month_abbr <- toupper(substr(suffix, 1, 3))
-          year <- substr(suffix, 4, 7)
-          month_num <- match(month_abbr, toupper(month.abb))
+          file1 <- paste0(
+            "bc_monthly_climate_summary_",
+            month_full,
+            "_",
+            year,
+            ".html"
+          )
+          file2 <- paste0(
+            month_full,
+            "_",
+            year,
+            "_bc_mon_sea_ann_climate_summary.html"
+          )
 
-          if (!is.na(month_num)) {
-
-            month_full <- format(
-              as.Date(paste0(year, "-", month_num, "-01")),
-              "%B"
-            )
-
-            file1 <- paste0("bc_monthly_climate_summary_", month_full, "_", year, ".html")
-            file2 <- paste0(month_full, "_", year, "_bc_mon_sea_ann_climate_summary.html")
-
-            for (f in c(file1, file2)) {
-              if (file.exists(file.path("www", f))) return(f)
-            }
-
-            file1
-          } else {
-            paste0("unknown_suffix_", suffix, ".html")
+          for (f in c(file1, file2)) {
+            if (file.exists(file.path("www", f))) return(f)
           }
+
+          file1
+        } else {
+          paste0("unknown_suffix_", suffix, ".html")
         }
-      )
-    }
+      }
+    )
+  }
 
-    ## Helper: render a report link ----
-    renderReportLink <- function(outputId, label, fileName, type = "monthly") {
+  ## Helper: render a report link ----
+  renderReportLink <- function(outputId, label, fileName, type = "monthly") {
+    color <- switch(
+      type,
+      "monthly" = "#007ACC",
+      "annual" = "#1B7F3B",
+      "longterm" = "#8B0000"
+    )
 
-      color <- switch(
-        type,
-        "monthly"  = "#007ACC",
-        "annual"   = "#1B7F3B",
-        "longterm" = "#8B0000"
-      )
-
-      output[[outputId]] <- renderUI({
-        tags$div(
-          style = "margin-bottom: 6px;",
-          tags$a(
-            href = fileName,
-            target = "_blank",
-            style = sprintf(
-              "font-size: 16px; font-weight: 600; text-decoration: none; color: %s;",
-              color
-            ),
-            label,
-            tags$img(
-              src = "html_logo.png",
-              height = "18px",
-              width = "18px",
-              style = "margin-left: 6px; vertical-align: middle;"
-            )
+    output[[outputId]] <- renderUI({
+      tags$div(
+        style = "margin-bottom: 6px;",
+        tags$a(
+          href = fileName,
+          target = "_blank",
+          style = sprintf(
+            "font-size: 16px; font-weight: 600; text-decoration: none; color: %s;",
+            color
+          ),
+          label,
+          tags$img(
+            src = "html_logo.png",
+            height = "18px",
+            width = "18px",
+            style = "margin-left: 6px; vertical-align: middle;"
           )
         )
-      })
-    }
-
-    ##  Year-wise report columns ----
-    lapply(report_years, function(yr) {
-
-      output[[paste0("reports_year_", yr)]] <- renderUI({
-
-        tagList(
-
-          ## ---- Annual report (TOP) ----
-          if (paste0("ann", yr) %in% report_suffixes) {
-
-            output_id <- paste0("doc_ann_", yr)
-
-            renderReportLink(
-              output_id,
-              paste("Annual", yr),
-              get_report_filename(paste0("ann", yr)),
-              type = "annual"
-            )
-
-            tagList(
-              uiOutput(output_id),
-              tags$hr()
-            )
-          },
-
-          ##  Monthly reports ----
-          tags$div(
-            tags$h5("Monthly"),
-
-            lapply(report_suffixes, function(suffix) {
-
-              if (!grepl("^[A-Za-z]{3}[0-9]{4}$", suffix)) return(NULL)
-
-              year <- substr(suffix, 4, 7)
-              if (as.numeric(year) != yr) return(NULL)
-
-              month_abbr <- toupper(substr(suffix, 1, 3))
-              month_num <- match(month_abbr, toupper(month.abb))
-              if (is.na(month_num)) return(NULL)
-
-              label <- format(
-                as.Date(paste0(year, "-", month_num, "-01")),
-                "%B %Y"
-              )
-
-              output_id <- paste0("doc_", suffix)
-
-              renderReportLink(
-                output_id,
-                label,
-                get_report_filename(suffix),
-                type = "monthly"
-              )
-
-              uiOutput(output_id)
-            })
-          ),
-
-          ## Long-term report (ONLY after 2023) ----
-          if (yr == 2023 && "longterm" %in% report_suffixes) {
-
-            output_id <- "doc_longterm"
-
-            renderReportLink(
-              output_id,
-              "Long-term trend (1980–2022)",
-              get_report_filename("longterm"),
-              type = "longterm"
-            )
-
-            tagList(
-              tags$hr(),
-              uiOutput(output_id)
-            )
-          }
-        )
-      })
+      )
     })
+  }
 
+  ##  Year-wise report columns ----
+  lapply(report_years, function(yr) {
+    output[[paste0("reports_year_", yr)]] <- renderUI({
+      tagList(
+        ## ---- Annual report (TOP) ----
+        if (paste0("ann", yr) %in% report_suffixes) {
+          output_id <- paste0("doc_ann_", yr)
 
+          renderReportLink(
+            output_id,
+            paste("Annual", yr),
+            get_report_filename(paste0("ann", yr)),
+            type = "annual"
+          )
+
+          tagList(
+            uiOutput(output_id),
+            tags$hr()
+          )
+        },
+
+        ##  Monthly reports ----
+        tags$div(
+          tags$h5("Monthly"),
+
+          lapply(report_suffixes, function(suffix) {
+            if (!grepl("^[A-Za-z]{3}[0-9]{4}$", suffix)) {
+              return(NULL)
+            }
+
+            year <- substr(suffix, 4, 7)
+            if (as.numeric(year) != yr) {
+              return(NULL)
+            }
+
+            month_abbr <- toupper(substr(suffix, 1, 3))
+            month_num <- match(month_abbr, toupper(month.abb))
+            if (is.na(month_num)) {
+              return(NULL)
+            }
+
+            label <- format(
+              as.Date(paste0(year, "-", month_num, "-01")),
+              "%B %Y"
+            )
+
+            output_id <- paste0("doc_", suffix)
+
+            renderReportLink(
+              output_id,
+              label,
+              get_report_filename(suffix),
+              type = "monthly"
+            )
+
+            uiOutput(output_id)
+          })
+        ),
+
+        ## Long-term report (ONLY after 2023) ----
+        if (yr == 2023 && "longterm" %in% report_suffixes) {
+          output_id <- "doc_longterm"
+
+          renderReportLink(
+            output_id,
+            "Long-term trend (1980–2022)",
+            get_report_filename("longterm"),
+            type = "longterm"
+          )
+
+          tagList(
+            tags$hr(),
+            uiOutput(output_id)
+          )
+        }
+      )
+    })
+  })
 
   ## Climate stripes plots ------------------------------------
 
@@ -3308,8 +3921,8 @@ Should you have any inquiries or wish to provide feedback, please do not hesitat
       src = "www/bc_annual_tmean_ano_stripe_withtitle.png",
       contentType = "image/png",
       width = 1400,
-      height = 700 ,
-      align ='center'
+      height = 700,
+      align = 'center'
     )
   })
 
@@ -3317,7 +3930,7 @@ Should you have any inquiries or wish to provide feedback, please do not hesitat
   output$clm_strp_plt_ttl_dnwld <- downloadHandler(
     filename = function() {
       "bc_annual_tmean_ano_stripe_withtitle.png"
-      },
+    },
     content = function(file) {
       # Copy the file from the www folder to the user's download location
       file.copy("www/bc_annual_tmean_ano_stripe_withtitle.png", file)
@@ -3330,8 +3943,8 @@ Should you have any inquiries or wish to provide feedback, please do not hesitat
       src = "www/bc_annual_tmean_ano_stripe.png", # Path to the image file
       contentType = "image/png",
       width = 1400,
-      height = 700 ,
-      align ='center'
+      height = 700,
+      align = 'center'
     )
   })
 
@@ -3343,12 +3956,15 @@ Should you have any inquiries or wish to provide feedback, please do not hesitat
     content = function(file) {
       # Copy the file from the www folder to the user's download location
       file.copy("www/bc_annual_tmean_ano_stripe.png", file)
-    })
+    }
+  )
 
   # App deployment date ----
   output$deploymentDate <- renderText({
-    paste0("This app was last updated on ",
-           readLines("deployment_history.txt"), '.'
+    paste0(
+      "This app was last updated on ",
+      readLines("deployment_history.txt"),
+      '.'
     )
   })
 }

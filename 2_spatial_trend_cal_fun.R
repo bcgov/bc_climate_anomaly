@@ -1,3 +1,4 @@
+rm(list = ls())
 # Required -------------------------------
 rqr_pkgs <-
   c(
@@ -24,10 +25,10 @@ ano_dt_pth <- './ano_clm_trn_data/'
 sptl_trn_dt_pth <- ano_dt_pth
 
 min_year <- 1951
-max_year <- 2025
+max_year <- 2026
 
-update_month <- "Dec"
-update_year <- "2025"
+update_month <- "May"
+update_year <- "2026"
 
 ## Months, parameters ----
 months_nam <-
@@ -220,6 +221,8 @@ spatial_trend_cal_fun <- function(parr, ano_dt_fl, clm_dt_fl, monn) {
         "{parr}_spatial_trend_mon_{mons_unq_i}_wna_{start_year}_{end_year}.nc"
       )
     )
+
+    # Save new file
     terra::writeCDF(
       trend_stack,
       filename = output_file,
@@ -229,6 +232,18 @@ spatial_trend_cal_fun <- function(parr, ano_dt_fl, clm_dt_fl, monn) {
       split = TRUE,
       compression = 9
     )
+
+    # Remove previous years files if exist however with different end year to avoid confusion
+    prev_trnd_file <- file.path(
+      sptl_trn_dt_pth,
+      glue::glue(
+        "{parr}_spatial_trend_mon_{mons_unq_i}_wna_{start_year}_{end_year-1}.nc"
+      )
+    )
+    if (file.exists(prev_trnd_file)) {
+      message("Removing previous trend file: ", basename(prev_trnd_file))
+      file.remove(prev_trnd_file)
+    }
 
     # Trends  1980s ----------
     # Extract year info
@@ -279,19 +294,29 @@ spatial_trend_cal_fun <- function(parr, ano_dt_fl, clm_dt_fl, monn) {
       split = TRUE,
       compression = 9
     )
+
+    # Remove previous years files if exist however with different end year to avoid confusion
+    prev_trnd_file <- file.path(
+      sptl_trn_dt_pth,
+      glue::glue(
+        "{parr}_spatial_trend_mon_{mons_unq_i}_wna_{start_year80}_{end_year80-1}.nc"
+      )
+    )
+    if (file.exists(prev_trnd_file)) {
+      message("Removing previous trend file: ", basename(prev_trnd_file))
+      file.remove(prev_trnd_file)
+    }
   }
 }
 
 # make the vecto of months as required for calculation
 ano_dt_fl
-monns <- unique(ano_dt_fl$mon)
-# monns <-c('May', 'winter')
-
 # Plan for multicore or multisession
 plan(multisession, workers = 7) # adjust number of cores
 
 # Parallelized version over parameters
-monns <- unique(ano_dt_fl$mon)
+# monns <- unique(ano_dt_fl$mon)
+monns <- c('Jun', 'spring')
 
 # Use future_walk to iterate in parallel (no return value needed)
 future_walk(parameters, function(par_j) {
@@ -303,6 +328,7 @@ future_walk(parameters, function(par_j) {
     monn = monns
   )
 })
+
 
 # Regular foor loop -----------------
 

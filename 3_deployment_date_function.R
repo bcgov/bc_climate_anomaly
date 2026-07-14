@@ -4,9 +4,11 @@ deployment_history_file <- file("deployment_history.txt")
 
 # record the time
 deployment_date <- format(Sys.time(), '%d %B, %Y')
-cat(paste0(deployment_date, "\n"),
-    file = deployment_history_file,
-    append = TRUE)
+cat(
+  paste0(deployment_date, "\n"),
+  file = deployment_history_file,
+  append = TRUE
+)
 close(deployment_history_file)
 
 #' #' Return the last recorded deployment date of the application.
@@ -17,4 +19,3 @@ close(deployment_history_file)
 #'     # return the most recent line
 #'     deployment_history[[length(deployment_history)]]
 #'   }
-
