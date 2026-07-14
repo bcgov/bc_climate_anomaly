@@ -898,8 +898,9 @@ ano_mon_summary_plt_fun <- function(ano_dt_fl, current_month, parr) {
 
   # Clip for selected area :: BC
   ano_dt_shp_rast <-
-    terra::crop(ano_dt_rast, sel_area_shpfl, mask = T)
-  ano_dt_shp_rast
+    ano_dt_rast |>
+    terra::crop(sel_area_shpfl, snap = "out") |>
+    terra::mask(sel_area_shpfl, touches = TRUE)
 
   # Spatial trend --------------------------
   ano_dt_shp_rast
@@ -1530,7 +1531,10 @@ ano_mon_summary_plt_fun <- function(ano_dt_fl, current_month, parr) {
   cur_mon_ano_sum_tab$max_ano <- round(cur_mon_ano_rng[2], digits = 2)
 
   # Spatial Trend
-  ano_trn_mag_shp <- crop(ano_trn_mag, sel_area_shpfl, mask = T)
+  ano_trn_mag_shp <-
+    ano_trn_mag |>
+    terra::crop(sel_area_shpfl, snap = "out") |>
+    terra::mask(sel_area_shpfl, touches = TRUE)
   # plot(ano_trn_mag_shp)
   cur_mon_trn_rng <- terra::minmax(ano_trn_mag_shp, compute = T)
 
@@ -2315,8 +2319,10 @@ ano_sea_ann_lngtrn_plt_fun <- function(ano_dt_fl, sea, parr) {
 
   # Clip for selected area :: BC
   ano_dt_shp_rast <-
-    terra::crop(ano_dt_rast, sel_area_shpfl, mask = T)
-  ano_dt_shp_rast
+    ano_dt_rast |>
+    terra::crop(sel_area_shpfl, snap = "out") |>
+    terra::mask(sel_area_shpfl, touches = TRUE)
+
   # plot(ano_dt_shp_rast)
   ano_dt_shp_rast
 
@@ -2726,7 +2732,11 @@ ano_sea_ann_lngtrn_plt_fun <- function(ano_dt_fl, sea, parr) {
   cur_sea_ano_sum_tab$max_ano <- round(cur_sea_ano_rng[2], digits = 2)
 
   # Spatial Trend
-  ano_trn_mag_shp <- crop(ano_trn_mag, sel_area_shpfl, mask = T)
+  ano_trn_mag_shp <-
+    ano_trn_mag |>
+    terra::crop(sel_area_shpfl, snap = "out") |>
+    terra::mask(sel_area_shpfl, touches = TRUE)
+
   # plot(ano_trn_mag_shp)
   cur_sea_trn_rng <- terra::minmax(ano_trn_mag_shp, compute = T)
 
