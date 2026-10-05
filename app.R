@@ -1,178 +1,648 @@
-## R Shiny app An app to visualize monthly and annual temperature and precipitation anomalies in BC and its sub regions ( eco-regions and watersheds) along with their trends.
-## author: Aseem Raj Sharma aseem.sharma@gov.bc.ca
+## BC Climate anomaly app: An app to visualize monthly and annual temperature and precipitation anomalies in BC and its sub regions or user defined area along with their trends.
+## author: Aseem Raj Sharma, PhD. E-mail: aseem.sharma@gov.bc.ca
 # Copyright 2023 Province of British Columbia
-#
 # Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-#
 # http://www.apache.org/licenses/LICENSE-2.0
-#
+
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Run this after running trend calculation, bc monthly report quarto and upload history scripts.
+# This script need to be run after running trend calculation, bc monthly report quarto and upload history scripts.
+# Required libraries -------------------
+library(shiny)
+library(shinydashboard)
+library(shinyWidgets)
+library(shinythemes)
+library(shinyjs)
+library(shinyalert)
+library(shinycssloaders)
+library(plotly)
 
-# Required -------------------
-library('shiny')
-library('shinydashboard')
-library('shinyWidgets')
-library("shinythemes")
-library("shinyjs")
-library('shinyalert')
-library('shinycssloaders')
-library('plotly')
+library(markdown)
+library(rmarkdown)
 
-library('markdown')
-library('rmarkdown')
+library(terra)
+library(tidyterra)
+library(leaflet)
 
-library('terra')
-library('tidyterra')
-library('leaflet')
+library(tidyverse)
+library(magrittr)
+library(lubridate)
 
-library('tidyverse')
-library('magrittr')
-library('lubridate')
+library(zoo)
+library(zyp)
+library(colorspace)
+library(cptcity)
 
-library('zoo')
-library('zyp')
-library('colorspace')
-library('cptcity')
-
-# Load and process input data -------
-## Paths --
-# setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
+# Paths -----------------------------------------------------------------------
 shp_fls_pth <- './shapefiles/'
 ano_dt_pth <- './ano_clm_trn_data/'
 
-# Credit  -----
-plt_wtrmrk <-
-  "@Aseem R. Sharma, BC Ministry of Forests. Data credit: ERA5land/C3S/ECMWF."
-plt_wtrmrk
-
-# Date of deployment -----------------------
+# Global Metadata -------------------------------------------------------------
+plt_wtrmrk <- "@Aseem R. Sharma, BC Ministry of Forests. Data credit: ERA5land/C3S/ECMWF."
 app_deployment_date <- format(Sys.Date(), "%d %B, %Y")
-app_deployment_date
 
-# Shape files --------------
-# Domain
-xmi = -140
-xmx = -108
-ymi = 39
-ymx = 60
+# Extent Domain (Western North America) ----------------------------------------
+xmi <- -140
+xmx <- -108
+ymi <- 39
+ymx <- 60
 
-# List of shape files
-list.files(
+# Update month, season, year ------------------------------
+min_year <- 1951
+max_year <- 2026
+
+update_month <- "August"
+update_year <- "2026"
+
+# Load Shape files -------------------------------------------------------
+shp_fls_lst <- list.files(
   path = shp_fls_pth,
   pattern = "\\.(shp|gpkg)$",
   full.names = TRUE,
   ignore.case = TRUE
-) -> shp_fls_lst
-shp_fls_lst
+)
 
-# Western North America
-na_shp <- vect(shp_fls_lst[str_detect(shp_fls_lst, "north_america") == T])
-# plot(na_shp)
-wna_shp <- crop(na_shp, ext(xmi, xmx, ymi, ymx))
-# plot(wna_shp)
+get_shp <- function(lst, pattern) {
+  match_file <- lst[str_detect(lst, pattern)]
+  if (length(match_file) == 0) {
+    stop(paste("Shapefile matching pattern '", pattern, "' not found."))
+  }
+  vect(match_file[1])
+}
 
-# BC
-bc_shp <- vect(shp_fls_lst[str_detect(shp_fls_lst, "bc_shapefile") == T])
-# plot(bc_shp)
+target_crs <- "EPSG:4326"
 
-# BC eco-province
-bc_ecoprv_shp <- vect(shp_fls_lst[
-  str_detect(shp_fls_lst, "bc_ecoprovince") == T
-])
-# plot(bc_ecoprv_shp)
-# text(bc_ecoprv_shp, "code", cex = 0.8, col = "black")
+# User-supplied location helpers -------------------------------------------------
+# The app works internally in WGS84 (EPSG:4326).
+# Uploaded shapefiles are validated and reprojected to WGS84.
+# Check that the ENTIRE uploaded geometry is inside the Western North America
+# climate-data domain. Because the domain is a rectangle, checking the complete
+# bounding extent is sufficient to guarantee that the whole geometry is inside.
 
-# Remove coastal ecoprovince
-bc_ecoprv_shp %<>%
-  filter(code != 'NEP')
-# plot(bc_ecoprv_shp)
-# text(bc_ecoprv_shp, "code", cex = 0.8, col = "black")
+check_user_location_domain <- function(shp) {
+  # Coordinates must be in WGS84 before checking the domain.
+  shp <- terra::project(shp, "EPSG:4326")
 
-# BC eco-regions
-bc_ecorgn_shp <- vect(shp_fls_lst[
-  str_detect(shp_fls_lst, "bc_ecoregions") == T
-])
-# plot(bc_ecorgns_shp)
+  bb <- terra::ext(shp)
 
-# BC eco-sections
-bc_ecosec_shp <- vect(shp_fls_lst[
-  str_detect(shp_fls_lst, "bc_ecosections") == T
-])
-# plot(bc_ecosec_shp)
-# bc_ecosec_shp$ECOSEC_NM
-bc_ecosec_shp <- project(bc_ecosec_shp, "EPSG:4326")
+  # Require the complete shapefile extent to be within the domain.
+  outside_domain <-
+    bb$xmin < xmi ||
+    bb$xmax > xmx ||
+    bb$ymin < ymi ||
+    bb$ymax > ymx
 
-# FLP tables ( Forest landscape planning)
-bc_flp_shp <- vect(shp_fls_lst[str_detect(shp_fls_lst, "flp") == T])
-# plot(bc_flp_shp)
+  if (outside_domain) {
+    stop(
+      paste0(
+        "The entire uploaded shapefile must be within the Western North America ",
+        "domain. Allowed longitude: ",
+        xmi,
+        " to ",
+        xmx,
+        " degrees; allowed latitude: ",
+        ymi,
+        " to ",
+        ymx,
+        " degrees. The uploaded geometry extends outside this domain."
+      )
+    )
+  }
 
-bc_flp_shp %<>%
-  mutate(flp_unit_nam = paste0('FLP- ', ORG_UNIT))
+  shp
+}
 
-# BC watersheds
-bc_wtrshd_shp <- vect(shp_fls_lst[
-  str_detect(shp_fls_lst, "bc_watersheds") == T
-])
-# plot(bc_wtrshd_shp)
+# Common validation for both uploaded shapefiles and point location
+validate_user_shapefile <- function(shp, target_crs = "EPSG:4326") {
+  if (is.null(shp) || nrow(shp) == 0) {
+    stop("The shapefile contains no features.")
+  }
 
-# BC FWA watersheds ( Freshwater atlas watersheds)
-bc_fwa_shp <- vect(shp_fls_lst[str_detect(shp_fls_lst, "fwa_watersheds") == T])
-# plot(bc_wtrshd_shp)
-bc_fwa_shp <- project(bc_fwa_shp, "EPSG:4326")
+  # A valid CRS is required so the geometry can be correctly transformed.
+  shp_crs <- terra::crs(shp, proj = TRUE)
+  if (is.na(shp_crs) || shp_crs == "") {
+    stop(
+      "The shapefile has no coordinate reference system (.prj missing). Please provide a shapefile with a valid projection."
+    )
+  }
 
-# BC municipalities
-bc_muni_shp <- vect(shp_fls_lst[
-  str_detect(shp_fls_lst, "bc_municipalities") == T
-])
-# plot(bc_muni_shp)
-bc_muni_shp <- project(bc_muni_shp, "EPSG:4326")
-
-## Months, parameters ----
-months_nam <-
-  c(
-    "annual",
-    "winter",
-    "spring",
-    "summer",
-    "fall",
-    "Jan",
-    "Feb",
-    "Mar",
-    "Apr",
-    "May",
-    "Jun",
-    "Jul",
-    "Aug",
-    "Sep",
-    "Oct",
-    "Nov",
-    "Dec"
+  # Validate geometry before analysis.
+  valid <- tryCatch(
+    terra::is.valid(shp),
+    error = function(e) rep(FALSE, nrow(shp))
   )
-months_nam
+
+  if (any(!valid)) {
+    stop(
+      "The shapefile contains invalid geometries. Please repair the geometry and upload it again."
+    )
+  }
+
+  # Reproject to the app's working CRS.
+  shp <- tryCatch(
+    terra::project(shp, target_crs),
+    error = function(e) {
+      stop("The shapefile projection could not be converted to EPSG:4326.")
+    }
+  )
+
+  # IMPORTANT: the ENTIRE geometry must be inside the Western North America
+  # domain, not merely intersect it.
+  shp <- check_user_location_domain(shp)
+
+  # Check supported geometry types.
+  geom_types <- unique(terra::geomtype(shp))
+
+  if (!all(geom_types %in% c("polygons", "points", "lines"))) {
+    stop("The uploaded shapefile contains unsupported geometry.")
+  }
+
+  # A point shapefile must contain exactly one point.
+  if (all(terra::geomtype(shp) == "points") && nrow(shp) != 1) {
+    stop(
+      "A point shapefile must contain exactly one point. For multiple locations, upload a polygon shapefile instead."
+    )
+  }
+
+  # The app supports polygon shapefiles or exactly one point.
+  if (!all(terra::geomtype(shp) %in% c("polygons", "points"))) {
+    stop(
+      "The custom shapefile must contain polygon features or exactly one point."
+    )
+  }
+
+  if (
+    length(geom_types) > 1 ||
+      (!all(terra::geomtype(shp) == "points") &&
+        !all(terra::geomtype(shp) %in% c("polygons", "multipolygons")))
+  ) {
+    # Keep mixed geometry handling conservative.
+    if (!all(terra::geomtype(shp) %in% c("polygons", "multipolygons"))) {
+      stop(
+        "The custom shapefile must contain polygon features or exactly one point."
+      )
+    }
+  }
+
+  shp
+}
+
+# Read and validate an uploaded shapefile -------------------------------------
+
+read_user_shapefile <- function(uploaded_files, target_crs = "EPSG:4326") {
+  ## 1. Check upload ------------------
+
+  if (is.null(uploaded_files) || nrow(uploaded_files) == 0) {
+    stop("No shapefile was uploaded.")
+  }
+
+  ## 2. Create temporary folder --------------
+
+  shp_dir <- tempfile("user_shapefile_")
+  dir.create(
+    shp_dir,
+    recursive = TRUE,
+    showWarnings = FALSE
+  )
+
+  ## 3. Copy uploaded shapefile components using original filenames -------------
+
+  for (i in seq_len(nrow(uploaded_files))) {
+    file_name <- basename(uploaded_files$name[i])
+
+    file.copy(
+      uploaded_files$datapath[i],
+      file.path(shp_dir, file_name),
+      overwrite = TRUE
+    )
+  }
+
+  ## 4. Find the .shp file -----------------------
+  shp_files <- list.files(
+    shp_dir,
+    pattern = "\\.shp$",
+    full.names = TRUE,
+    ignore.case = TRUE
+  )
+
+  if (length(shp_files) == 0) {
+    stop(
+      "No .shp file was found. Please upload the complete shapefile."
+    )
+  }
+
+  if (length(shp_files) > 1) {
+    stop(
+      "More than one .shp file was uploaded. Please upload only one shapefile."
+    )
+  }
+
+  shp_path <- shp_files[1]
+
+  ## 5. Check required shapefile components --------------
+
+  shp_base <- tools::file_path_sans_ext(shp_path)
+
+  required_files <- c(
+    paste0(shp_base, ".shp"),
+    paste0(shp_base, ".shx"),
+    paste0(shp_base, ".dbf")
+  )
+
+  if (!all(file.exists(required_files))) {
+    stop(
+      "The shapefile is incomplete. Please upload the .shp, .shx and .dbf files together."
+    )
+  }
+
+  ## 6. Read shapefile using its ORIGINAL CRS ------------------
+  shp <- tryCatch(
+    {
+      terra::vect(shp_path)
+    },
+    error = function(e) {
+      stop(
+        paste0(
+          "The shapefile could not be read. ",
+          "Please make sure the .shp, .shx and .dbf files belong to the same shapefile."
+        )
+      )
+    }
+  )
+
+  if (is.null(shp) || nrow(shp) == 0) {
+    stop("The uploaded shapefile contains no features.")
+  }
+
+  ## 7. Make sure the original CRS is defined -----------------
+
+  original_crs <- terra::crs(shp)
+
+  if (
+    is.na(original_crs) ||
+      !nzchar(original_crs)
+  ) {
+    stop(
+      paste0(
+        "The uploaded shapefile does not have a valid CRS. ",
+        "Please include the correct .prj file."
+      )
+    )
+  }
+
+  ## 8. Convert to WGS84 FIRST -------------------------
+
+  shp_wgs84 <- tryCatch(
+    {
+      terra::project(
+        shp,
+        target_crs
+      )
+    },
+    error = function(e) {
+      stop(
+        paste0(
+          "The shapefile could not be converted to WGS84 (EPSG:4326). ",
+          "Please check that the .prj file correctly describes the original CRS."
+        )
+      )
+    }
+  )
+
+  ## 9. Confirm that the result is WGS84 -------------
+  if (
+    !grepl(
+      "4326|WGS.?84|longlat",
+      terra::crs(shp_wgs84),
+      ignore.case = TRUE
+    )
+  ) {
+    stop(
+      "The uploaded shapefile could not be confirmed as WGS84 (EPSG:4326)."
+    )
+  }
+
+  # 10. Create the allowed WGS84 analysis domain and check
+
+  domain_poly <- terra::as.polygons(
+    terra::ext(
+      xmi,
+      xmx,
+      ymi,
+      ymx
+    ),
+    crs = target_crs
+  )
+
+  # Check ACTUAL geometry overlap with the domain
+  # A shapefile is accepted if at least part of its geometry
+  # overlaps the allowed domain.
+  has_overlap <- tryCatch(
+    {
+      test_intersection <- terra::intersect(
+        shp_wgs84,
+        domain_poly
+      )
+
+      nrow(test_intersection) > 0 &&
+        any(!terra::is.empty(test_intersection))
+    },
+    error = function(e) {
+      stop(
+        paste0(
+          "Could not determine whether the shapefile overlaps ",
+          "the Western North America domain."
+        )
+      )
+    }
+  )
+
+  if (!has_overlap) {
+    stop(
+      paste0(
+        "The uploaded shapefile does not overlap the Western North America domain. ",
+        "Allowed longitude: ",
+        xmi,
+        " to ",
+        xmx,
+        " and latitude: ",
+        ymi,
+        " to ",
+        ymx,
+        "."
+      )
+    )
+  }
+
+  # 12. Return the shapefile in WGS84
+  shp_wgs84
+}
+
+# Apply selected location to a raster ------------------------------------------
+# User points extract the raster cell containing the uploaded point
+# and return a raster with values only in that cell.
+
+apply_location_to_raster <- function(r, location) {
+  ## USER-PROVIDED POINT ------------------------------
+
+  if (location$type == "point") {
+    # Make sure the uploaded location is a SpatVector
+
+    if (!inherits(location$data, "SpatVector")) {
+      stop(
+        "The uploaded point is not a valid terra spatial point."
+      )
+    }
+    # Make sure it contains exactly one point
+
+    if (
+      terra::geomtype(location$data)[1] != "points" ||
+        nrow(location$data) != 1
+    ) {
+      stop(
+        "The uploaded location must contain exactly one point."
+      )
+    }
+    # Make sure point and raster use the same CRS
+
+    point_crs <- terra::crs(location$data)
+    raster_crs <- terra::crs(r)
+
+    if (
+      is.na(point_crs) ||
+        point_crs == ""
+    ) {
+      stop(
+        "The uploaded point does not have a valid coordinate reference system."
+      )
+    }
+
+    # Convert point to raster CRS if necessary
+    point_for_raster <- location$data
+
+    if (
+      !terra::same.crs(
+        location$data,
+        r
+      )
+    ) {
+      point_for_raster <- tryCatch(
+        terra::project(
+          location$data,
+          raster_crs
+        ),
+
+        error = function(e) {
+          stop(
+            "The uploaded point could not be converted to the climate raster projection."
+          )
+        }
+      )
+    }
+
+    # Extract raster value AND cell number
+    ext_val <- tryCatch(
+      terra::extract(
+        r,
+        point_for_raster,
+        cells = TRUE,
+        ID = FALSE
+      ),
+
+      error = function(e) {
+        stop(
+          paste0(
+            "The uploaded point could not be extracted ",
+            "from the climate raster."
+          )
+        )
+      }
+    )
+
+    ## Check extraction result ------------------
+
+    if (
+      is.null(ext_val) ||
+        nrow(ext_val) != 1
+    ) {
+      stop(
+        "No climate-data cell could be found at the uploaded point."
+      )
+    }
+
+    # ----------------------------------------------------------
+    # Get raster cell number
+
+    cell <- suppressWarnings(
+      as.integer(ext_val$cell[1])
+    )
+
+    if (
+      is.na(cell) ||
+        cell < 1 ||
+        cell > terra::ncell(r)
+    ) {
+      stop(
+        "The uploaded point does not correspond to a valid raster cell."
+      )
+    }
+
+    # Get climate values
+
+    vals <- ext_val[
+      1,
+      setdiff(
+        names(ext_val),
+        "cell"
+      ),
+      drop = FALSE
+    ]
+
+    # Check for missing climate data
+
+    if (
+      ncol(vals) == 0 ||
+        all(
+          is.na(
+            as.numeric(vals[1, ])
+          )
+        )
+    ) {
+      stop(
+        "No climate-data value is available at the uploaded point."
+      )
+    }
+
+    # Create output raster
+
+    out <- r
+
+    # Get all raster values as matrix
+    out_vals <- terra::values(
+      out,
+      mat = TRUE
+    )
+
+    # Set all cells to NA
+    out_vals[,] <- NA_real_
+
+    # Put extracted values into selected cell
+    out_vals[
+      cell,
+      seq_len(ncol(vals))
+    ] <- as.numeric(
+      vals[1, ]
+    )
+
+    # Put values back into raster
+    terra::values(out) <- out_vals
+
+    return(out)
+  }
+
+  # ============================================================
+  # EXISTING POLYGON WORKFLOW
+  # ============================================================
+
+  r |>
+    terra::crop(
+      location$data,
+      snap = "out"
+    ) |>
+    terra::mask(
+      location$data,
+      touches = TRUE
+    )
+}
+
+add_user_point_marker <- function(p, location) {
+  if (location$type == "point") {
+    xy <- terra::crds(location$data)
+    p +
+      ggplot2::geom_point(
+        data = data.frame(x = xy[1, 1], y = xy[1, 2]),
+        ggplot2::aes(x = x, y = y),
+        colour = "red",
+        size = 3.5,
+        shape = 21,
+        fill = "white",
+        stroke = 1.2,
+        inherit.aes = FALSE
+      )
+  } else {
+    p
+  }
+}
+
+location_label <- function(location) {
+  if (location$type == "point") {
+    xy <- terra::crds(location$data)[1, ]
+    return(paste0(
+      "User point (",
+      round(abs(xy[1]), 4),
+      "°W, ",
+      round(xy[2], 4),
+      "°N)"
+    ))
+  }
+  "User shapefile"
+}
+
+# Existing shape files
+na_shp <- get_shp(shp_fls_lst, "north_america")
+wna_shp <- project(crop(na_shp, ext(xmi, xmx, ymi, ymx)), target_crs)
+
+bc_shp <- project(get_shp(shp_fls_lst, "bc_shapefile"), target_crs)
+
+bc_ecoprv_shp <- get_shp(shp_fls_lst, "bc_ecoprovince") %>%
+  filter(code != 'NEP') %>%
+  project(target_crs)
+
+bc_ecorgn_shp <- project(get_shp(shp_fls_lst, "bc_ecoregions"), target_crs)
+bc_ecosec_shp <- project(get_shp(shp_fls_lst, "bc_ecosections"), target_crs)
+
+bc_flp_shp <- get_shp(shp_fls_lst, "flp")
+bc_flp_shp$flp_unit_nam <- paste0('FLP- ', bc_flp_shp$ORG_UNIT)
+bc_flp_shp <- project(bc_flp_shp, target_crs)
+
+bc_wtrshd_shp <- project(get_shp(shp_fls_lst, "bc_watersheds"), target_crs)
+bc_fwa_shp <- project(get_shp(shp_fls_lst, "fwa_watersheds"), target_crs)
+bc_muni_shp <- project(get_shp(shp_fls_lst, "bc_municipalities"), target_crs)
+
+# Parameters & Date Range Settings report ------------------------------------------
+months_nam <- c(
+  "annual",
+  "winter",
+  "spring",
+  "summer",
+  "fall",
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec"
+)
 
 parameters <- c("tmean", "tmax", "tmin", "prcp", "vpd", "rh", "soil_moisture")
-parameters
-
-min_year <- 1951
-max_year <- 2026 # current year of preparation
-
-update_month <- "June"
-update_year <- "2026"
 
 years <- seq(min_year, max_year, 1)
-yr_choices <- sort(years, decreasing = T)
+yr_choices <- sort(years, decreasing = TRUE)
 
 report_years <- seq(2023, max_year, 1)
 
-## Anomalies climatology and trend Data files -----
+# Anomaly & Climatology Data Cataloging -------------------------------------
 list.files(
   path = ano_dt_pth,
   pattern = ".nc",
@@ -183,7 +653,7 @@ ano_clm_trn_dt_fls
 ano_clm_trn_dt_fl <- tibble(dt_pth = ano_clm_trn_dt_fls) %>%
   mutate(fl_nam = basename(dt_pth)) %>%
   mutate(
-    par = str_extract(fl_nam, paste(parameters, collapse = "|")), # prcp
+    par = str_extract(fl_nam, paste(parameters, collapse = "|")),
     dt_type = str_extract(fl_nam, "(ano|clm|spatial_trend)"), # ano, clm, spatial_trend
     mon = str_extract(
       fl_nam,
@@ -201,7 +671,7 @@ ano_clm_trn_dt_fl <- tibble(dt_pth = ano_clm_trn_dt_fls) %>%
   dplyr::select(-fl_nam)
 ano_clm_trn_dt_fl
 
-# Report suffixes ----------------------
+# Report Suffix Construction ------------------------------------------------
 month_labs <- c(
   "January" = "jan",
   "February" = "feb",
@@ -220,28 +690,21 @@ month_labs <- c(
 upd_mon_lab <- month_labs[[update_month]]
 upd_year <- as.integer(update_year)
 
-# Build rolling monthly suffixes
-
 build_monthly_suffixes <- function(start_year, end_year, start_month) {
   months_order <- names(month_labs)
-
   suffixes <- c()
 
   for (yr in seq(end_year, start_year, by = -1)) {
-    if (yr == end_year) {
-      mons <- months_order[1:match(start_month, months_order)]
+    mons <- if (yr == end_year) {
+      months_order[1:match(start_month, months_order)]
     } else {
-      mons <- rev(months_order)
+      months_order
     }
 
     for (m in rev(mons)) {
-      suffixes <- c(
-        suffixes,
-        paste0(month_labs[[m]], yr)
-      )
+      suffixes <- c(suffixes, paste0(month_labs[[m]], yr))
     }
   }
-
   suffixes
 }
 
@@ -251,25 +714,73 @@ monthly_suffixes <- build_monthly_suffixes(
   start_month = update_month
 )
 
-# Annual suffixes
-annual_suffixes <- paste0(
-  "ann",
-  seq(upd_year - 1, 2024, by = -1)
-)
+start_ann_yr <- 2024
+end_ann_yr <- upd_year - 1
 
+annual_suffixes <- if (end_ann_yr >= start_ann_yr) {
+  paste0("ann", seq(end_ann_yr, start_ann_yr, by = -1))
+} else {
+  character(0)
+}
 
-# Final vector
 report_suffixes <- c(
   monthly_suffixes,
   annual_suffixes,
   "longterm"
 )
 
-report_suffixes
+# UI  --------------------------------------
+# Reusable Footer Module for BC Gov styling
+bcgov_footer <- function() {
+  column(
+    width = 12,
+    style = "background-color:#003366; border-top:2px solid #fcba19; position:relative; margin-top:20px;",
+    tags$footer(
+      class = "footer",
+      tags$div(
+        class = "container",
+        style = "display:flex; justify-content:center; flex-direction:column; text-align:center; height:46px;",
+        tags$ul(
+          style = "display:flex; flex-direction:row; flex-wrap:wrap; margin:0; list-style:none; align-items:center; height:100%;",
+          tags$li(a(
+            href = "https://www2.gov.bc.ca/gov/content/home",
+            "Home",
+            style = "font-size:1em; font-weight:normal; color:white; padding:0 5px; border-right:1px solid #4b5e7e;"
+          )),
+          tags$li(a(
+            href = "https://www2.gov.bc.ca/gov/content/home/disclaimer",
+            "Disclaimer",
+            style = "font-size:1em; font-weight:normal; color:white; padding:0 5px; border-right:1px solid #4b5e7e;"
+          )),
+          tags$li(a(
+            href = "https://www2.gov.bc.ca/gov/content/home/privacy",
+            "Privacy",
+            style = "font-size:1em; font-weight:normal; color:white; padding:0 5px; border-right:1px solid #4b5e7e;"
+          )),
+          tags$li(a(
+            href = "https://www2.gov.bc.ca/gov/content/home/accessibility",
+            "Accessibility",
+            style = "font-size:1em; font-weight:normal; color:white; padding:0 5px; border-right:1px solid #4b5e7e;"
+          )),
+          tags$li(a(
+            href = "https://www2.gov.bc.ca/gov/content/home/copyright",
+            "Copyright",
+            style = "font-size:1em; font-weight:normal; color:white; padding:0 5px; border-right:1px solid #4b5e7e;"
+          )),
+          tags$li(a(
+            href = "https://www2.gov.bc.ca/StaticWebResources/static/gov3/html/contact-us.html",
+            "Contact",
+            style = "font-size:1em; font-weight:normal; color:white; padding:0 5px;"
+          ))
+        )
+      )
+    )
+  )
+}
 
-
-#  UI --------------------------------------
+# UI
 ui <- fluidPage(
+  useShinyjs(),
   navbarPage(
     id = "bc_clm",
     title = "BC Climate Anomaly",
@@ -284,7 +795,7 @@ ui <- fluidPage(
         width = 12,
         wellPanel(
           HTML(
-            "<h3><b>BC climate anomaly app</b>: Visualizing Climate Anomalies in British Columbia (BC) </h2>"
+            "<h3><b>BC climate anomaly app</b>: Visualizing Climate Anomalies in British Columbia (BC)</h3>"
           )
         ),
         includeMarkdown("intro_bc_climate_anomaly_app.Rmd"),
@@ -292,102 +803,35 @@ ui <- fluidPage(
           width = 12,
           HTML(
             "<h4><b>Citation</b></h4>
-                            <h5> <u>Please cite the contents of this app as:</u>
-                            <br>
-                            Sharma, A.R. 2023. BC climate anomaly app: Visualizing monthly, seasonal, and annual climate anomalies in British Columbia (BC).</a>
-                            British Columbia Ministry of Forests.
-                  <a href='https://bcgov-env.shinyapps.io/bc_climate_anomaly/'
-            target='_blank'>https://bcgov-env.shinyapps.io/bc_climate_anomaly/</a> </h5>"
+             <h5><u>Please cite the contents of this app as:</u><br>
+             Sharma, A.R. 2023. BC climate anomaly app: Visualizing monthly, seasonal, and annual climate anomalies in British Columbia (BC).
+             British Columbia Ministry of Forests.
+             <a href='https://bcgov-env.shinyapps.io/bc_climate_anomaly/' target='_blank'>https://bcgov-env.shinyapps.io/bc_climate_anomaly/</a></h5>"
           )
         ),
         column(
           width = 12,
           HTML(
-            "<h5> <u>App created by:</u>
-             <br>
+            "<h5><u>App created by:</u><br>
              <b>Aseem R. Sharma, PhD</b><br>
-              Research Climatologist<br>
-              FFEC, FEA, OCF, BC Ministry of Forests<br>
-              <a href= 'mailto: Aseem.Sharma@gov.bc.ca'>Aseem.Sharma@gov.bc.ca</a> <br>
-              <br>
-              <h4><b>Code</b></h4>
-              <h5> The code and data of this app are available through GitHub at <a href='https://github.com/bcgov/bc_climate_anomaly.git' target='_blank'> https://github.com/bcgov/bc_climate_anomaly.</a></h5>"
+             Research Climatologist<br>
+             FFEC, FEA, OCF, BC Ministry of Forests<br>
+             <a href='mailto:Aseem.Sharma@gov.bc.ca'>Aseem.Sharma@gov.bc.ca</a><br><br>
+             <h4><b>Code</b></h4>
+             <h5>The code and data of this app are available through GitHub at <a href='https://github.com/bcgov/bc_climate_anomaly.git' target='_blank'>https://github.com/bcgov/bc_climate_anomaly</a>.</h5>"
           )
         ),
         column(
           width = 12,
           HTML(
-            "<h5> <b>Disclaimer</b><h5>
-              <h8>  This app and the climate reports here have been prepared using <a href='https://www.ecmwf.int/en/era5-land'>ERA5-Land</a> data
-              from the European Centre for Medium-Range Weather Forecasts (ECMWF),
-              as available at the time of preparation.
-              Please note that the original data may be subject to updates or revisions.
-              Any modifications to the original data may result in adjustments to the findings presented in this report.</h8>"
+            "<h5><b>Disclaimer</b></h5>
+             <p>This app and the climate reports here have been prepared using <a href='https://www.ecmwf.int/en/era5-land' target='_blank'>ERA5-Land</a> data
+             from the European Centre for Medium-Range Weather Forecasts (ECMWF), as available at the time of preparation.
+             Please note that the original data may be subject to updates or revisions. Any modifications to the original data may result in adjustments to the findings presented in this report.</p>"
           )
         ),
-        column(width = 12, textOutput("deploymentDate"), ),
-
-        ###### footer ----------------------------
-        column(
-          width = 12,
-          style = "background-color:#003366; border-top:2px solid #fcba19;",
-          column(
-            width = 12,
-            style = "background-color:#003366; border-top:2px solid #fcba19;",
-            tags$footer(
-              class = "footer",
-              tags$div(
-                class = "container",
-                style = "display:flex; justify-content:center; flex-direction:column; text-align:center; height:46px;",
-                tags$ul(
-                  style = "display:flex; flex-direction:row; flex-wrap:wrap; margin:0; list-style:none; align-items:center; height:100%;",
-                  tags$li(
-                    a(
-                      href = "https://www2.gov.bc.ca/gov/content/home",
-                      "Home",
-                      style = "font-size:1em; font-weight:normal; color:white; padding-left:5px; padding-right:5px; border-right:1px solid #4b5e7e;"
-                    )
-                  ),
-                  tags$li(
-                    a(
-                      href = "https://www2.gov.bc.ca/gov/content/home/disclaimer",
-                      "Disclaimer",
-                      style = "font-size:1em; font-weight:normal; color:white; padding-left:5px; padding-right:5px; border-right:1px solid #4b5e7e;"
-                    )
-                  ),
-                  tags$li(
-                    a(
-                      href = "https://www2.gov.bc.ca/gov/content/home/privacy",
-                      "Privacy",
-                      style = "font-size:1em; font-weight:normal; color:white; padding-left:5px; padding-right:5px; border-right:1px solid #4b5e7e;"
-                    )
-                  ),
-                  tags$li(
-                    a(
-                      href = "https://www2.gov.bc.ca/gov/content/home/accessibility",
-                      "Accessibility",
-                      style = "font-size:1em; font-weight:normal; color:white; padding-left:5px; padding-right:5px; border-right:1px solid #4b5e7e;"
-                    )
-                  ),
-                  tags$li(
-                    a(
-                      href = "https://www2.gov.bc.ca/gov/content/home/copyright",
-                      "Copyright",
-                      style = "font-size:1em; font-weight:normal; color:white; padding-left:5px; padding-right:5px; border-right:1px solid #4b5e7e;"
-                    )
-                  ),
-                  tags$li(
-                    a(
-                      href = "https://www2.gov.bc.ca/StaticWebResources/static/gov3/html/contact-us.html",
-                      "Contact",
-                      style = "font-size:1em; font-weight:normal; color:white; padding-left:5px; padding-right:5px; border-right:1px solid #4b5e7e;"
-                    )
-                  )
-                )
-              )
-            )
-          )
-        )
+        column(width = 12, textOutput("deploymentDate")),
+        bcgov_footer()
       )
     ),
 
@@ -396,507 +840,588 @@ ui <- fluidPage(
       title = "About",
       value = "about",
       withMathJax(includeMarkdown("about_bc_climate_anomaly_app.Rmd")),
-      ###### footer ---------------------------
-      column(
-        width = 12,
-        style = "background-color:#003366; border-top:2px solid #fcba19;",
-        column(
-          width = 12,
-          style = "background-color:#003366; border-top:2px solid #fcba19;",
-          tags$footer(
-            class = "footer",
-            tags$div(
-              class = "container",
-              style = "display:flex; justify-content:center; flex-direction:column; text-align:center; height:46px;",
-              tags$ul(
-                style = "display:flex; flex-direction:row; flex-wrap:wrap; margin:0; list-style:none; align-items:center; height:100%;",
-                tags$li(
-                  a(
-                    href = "https://www2.gov.bc.ca/gov/content/home",
-                    "Home",
-                    style = "font-size:1em; font-weight:normal; color:white; padding-left:5px; padding-right:5px; border-right:1px solid #4b5e7e;"
-                  )
-                ),
-                tags$li(
-                  a(
-                    href = "https://www2.gov.bc.ca/gov/content/home/disclaimer",
-                    "Disclaimer",
-                    style = "font-size:1em; font-weight:normal; color:white; padding-left:5px; padding-right:5px; border-right:1px solid #4b5e7e;"
-                  )
-                ),
-                tags$li(
-                  a(
-                    href = "https://www2.gov.bc.ca/gov/content/home/privacy",
-                    "Privacy",
-                    style = "font-size:1em; font-weight:normal; color:white; padding-left:5px; padding-right:5px; border-right:1px solid #4b5e7e;"
-                  )
-                ),
-                tags$li(
-                  a(
-                    href = "https://www2.gov.bc.ca/gov/content/home/accessibility",
-                    "Accessibility",
-                    style = "font-size:1em; font-weight:normal; color:white; padding-left:5px; padding-right:5px; border-right:1px solid #4b5e7e;"
-                  )
-                ),
-                tags$li(
-                  a(
-                    href = "https://www2.gov.bc.ca/gov/content/home/copyright",
-                    "Copyright",
-                    style = "font-size:1em; font-weight:normal; color:white; padding-left:5px; padding-right:5px; border-right:1px solid #4b5e7e;"
-                  )
-                ),
-                tags$li(
-                  a(
-                    href = "https://www2.gov.bc.ca/StaticWebResources/static/gov3/html/contact-us.html",
-                    "Contact",
-                    style = "font-size:1em; font-weight:normal; color:white; padding-left:5px; padding-right:5px; border-right:1px solid #4b5e7e;"
-                  )
-                )
-              )
-            )
-          )
-        )
-      )
+      bcgov_footer()
     ),
 
-    ## Ano App page ----------------------------
+    ## Anomaly App page ----------------------------
     tabPanel(
       title = "Anomaly app",
       value = "ano_app",
       sidebarLayout(
         sidebarPanel(
-          shinyjs::useShinyjs(),
           id = "selection-panel",
-          # style = "position:fixed; width:24%; max-height: 100vh;",
           width = 3,
 
-          ##### Filters/selectors ------------------
-          # Custom CSS
-          tags$head(tags$style(HTML(
-            "
-    select.form-control {
-      transition: background-color 0.3s ease;
-    }
-    select.form-control:focus {
-      background-color: #d4edda !important;
-    }
-    .selectize-dropdown .option {
-      border-bottom: 1px solid #ccc;
-      padding: 6px 10px;
-    }
-  "
-          ))),
-          helpText(HTML("<h4><b> Filter/Selections</b> </h4>", )),
-          helpText(HTML(
-            '
-  <style>
-    .flash-text {
-      color: red;
-      animation: flash 1s infinite;
-    }
-    @keyframes flash {
-      0%   { opacity: 1; }
-      50%  { opacity: 0; }
-      100% { opacity: 1; }
-    }
-  </style>
-  <p>After selection, click <b><i class="flash-text">Run Analysis</i></b> to get outputs.</p>
-'
-          )),
-          # helpText(HTML("<h4><b> Filter/Selections</b> </h4>",)),
-          # helpText(HTML("<p> After selection click <i> <b> Run Analysis</i></b> to get outputs. </p>",)),
-          fluidRow(
-            useShinyjs(),
-            pickerInput(
-              "major_area",
-              "Select region ",
-              choices = c(
-                "Western North America",
-                "BC",
-                "Ecoprovinces",
-                "Ecoregions",
-                'Ecosections',
-                "Major watersheds",
-                'FWA watersheds',
-                'FLP boundaries',
-                'Municipalities'
-              ),
-              selected = 'BC'
-            ),
-            hidden(
-              pickerInput(
-                "ecoprov_area",
-                "Ecoprovinces",
-                choices = c("Ecoprovinces (select one)", c(bc_ecoprv_shp$name)),
-                multiple = F
-              )
-            ),
-            hidden(
-              pickerInput(
-                "ecorgn_area",
-                "Ecoregions",
-                choices = c("Ecoregions (select one)", c(bc_ecorgn_shp$CRGNNM)),
-                multiple = F
-              )
-            ),
-            hidden(
-              pickerInput(
-                "ecosec_area",
-                "Ecosections",
-                choices = c(
-                  "Ecosections (select one)",
-                  c(bc_ecosec_shp$ECOSEC_NM)
-                ),
-                multiple = F
-              )
-            ),
-            hidden(
-              selectInput(
-                "wtrshd_area",
-                "Watershed",
-                choices = c(
-                  "Major watersheds (select one)",
-                  c(bc_wtrshd_shp$MJR_WTRSHM)
-                ),
-                multiple = F
-              )
-            ),
-            hidden(
-              selectInput(
-                "fwa_area",
-                "FWA watersheds",
-                choices = c(
-                  "FWA watersheds (select one)",
-                  c(bc_fwa_shp$WATERSHE_2)
-                ),
-                multiple = F
-              )
-            ),
-            hidden(
-              selectInput(
-                "flp_area",
-                "FLP boundaries",
-                choices = c(
-                  "FLP boundaries (select one)",
-                  c(bc_flp_shp$flp_unit_nam)
-                ),
-                multiple = F
-              )
-            ),
-            hidden(
-              pickerInput(
-                "muni_area",
-                "Municipalities",
-                choices = c(
-                  "Municipalities (select one)",
-                  c(bc_muni_shp$ABRVN)
-                ),
-                multiple = F
-              )
-            ),
-            HTML(
-              "(Western North America, BC, Eco-provinces/regions/sections,
-                 Major Watersheds, FWA watersheds, FLP boundaries, Municipalities)"
-            ),
-          ),
-          br(),
-          fluidRow(
-            offset = 3,
-            # div(style = "height:70px;width:100%;background-color: #999999;border-style: dashed;border-color: #000000",)
-            uiOutput("par_picker"),
-            HTML("(Temperature, VPD, Precipitaiton, RH, Soil moisture)"),
-          ),
-          br(),
-          fluidRow(title = "Month", uiOutput("month_picker")),
-          br(),
-          fluidRow(
-            helpText(HTML(
-              "<h5><b> Choose range of years or specific year(s)</b> </h5>",
-            )),
-            actionButton("rng_years_choose", "Range of years"),
-            actionButton("ab_years_choose", "Specific year(s)"),
-            sliderInput(
-              "year_range",
-              "year range",
-              min_year,
-              max_year,
-              value = c((max_year - 5), (max_year)),
-              sep = ""
-            ),
-            chooseSliderSkin(skin = "Shiny"),
-            tags$style(
-              HTML(
-                ".js-irs-0 .irs-single, .js-irs-0 .irs-bar-edge, .js-irs-0 .irs-bar {background: purple}"
-              )
-            ),
-            hidden(selectInput(
-              "year_specific",
-              "year(s)",
-              choices = yr_choices,
-              multiple = T,
-              selected = max_year
-            )),
+          # =========================================================
+          # COMPACT SIDEBAR CSS
+          # =========================================================
+          tags$head(
+            tags$style(HTML(
+              "
+        #selection-panel {
+          padding-top: 5px;
+          padding-bottom: 5px;
+        }
 
-            # Run analysis and Reset selection
-            # Run analysis and Reset selection
-            br(),
-            actionButton(
-              "run_ana_button",
-              tags$b(tags$span(style = "color: red;", "Run analysis"))
-            ),
-            actionButton("reset_input", "Reset"),
-            br()
+        #selection-panel .form-group {
+          margin-top: 0px;
+          margin-bottom: 5px;
+        }
+
+        #selection-panel .help-block {
+          margin-top: 2px;
+          margin-bottom: 3px;
+          line-height: 1.15;
+        }
+
+        #selection-panel p {
+          margin-top: 2px;
+          margin-bottom: 4px;
+          line-height: 1.2;
+        }
+
+        /* All four selection headings at the same level */
+        #selection-panel h4 {
+          margin-top: 5px;
+          margin-bottom: 4px;
+          line-height: 1.1;
+        }
+
+        #selection-panel h5 {
+          margin-top: 3px;
+          margin-bottom: 3px;
+          line-height: 1.1;
+        }
+
+        #selection-panel hr {
+          margin-top: 5px;
+          margin-bottom: 5px;
+        }
+
+        #selection-panel .btn {
+          margin-top: 0px;
+          margin-bottom: 2px;
+          padding-top: 5px;
+          padding-bottom: 5px;
+        }
+
+        #selection-panel .radio-inline {
+          margin-top: 0px;
+          margin-bottom: 0px;
+        }
+
+        #selection-panel .radio {
+          margin-top: 2px;
+          margin-bottom: 2px;
+        }
+
+        #selection-panel .form-control {
+          padding-top: 4px;
+          padding-bottom: 4px;
+          height: 32px;
+        }
+
+        #selection-panel .row {
+          margin-bottom: 0px;
+        }
+
+        select.form-control {
+          transition: background-color 0.3s ease;
+        }
+
+        select.form-control:focus {
+          background-color: #d4edda !important;
+        }
+
+        .selectize-dropdown .option {
+          border-bottom: 1px solid #ccc;
+          padding: 5px 8px;
+        }
+
+        .flash-text {
+          color: red;
+          animation: flash 1s infinite;
+        }
+
+        @keyframes flash {
+          0%   { opacity: 1; }
+          50%  { opacity: 0; }
+          100% { opacity: 1; }
+        }
+
+        #selection-panel #loc_map {
+          margin-top: 0px;
+        }
+
+        #selection-panel .well {
+          padding: 5px 8px;
+          margin-bottom: 0px;
+        }
+        "
+            ))
           ),
-          fluidRow(column(
-            HTML("<h4><b>Location Map</b> </h4>"),
-            title = "Map Location",
-            width = 12,
-            withSpinner(leafletOutput("loc_map", height = "22vh"), type = 6)
-          )),
-          br(),
-          br(),
-          fluidRow(column(
-            width = 12,
-            wellPanel(
-              style = "background-color: white;",
-              HTML(
-                '<h4>For climate extreme indices (CEI) refer to <a href="https://bcgov-env.shinyapps.io/bc_climate_extremes_app/" target="_blank"><b>bc_climate_extremes_app</b></a></h4>'
-              ),
+
+          # =========================================================
+          # MAIN HEADING
+          # =========================================================
+
+          helpText(
+            HTML("<h4><b>Filter/Selections</b></h4>")
+          ),
+
+          helpText(
+            HTML(
+              '<p>Select an area, climate variable, and period, then click <b><i class="flash-text">Run Analysis</i></b>.</p>'
             )
-          )),
+          ),
+
+          tags$hr(),
+
+          # =========================================================
+          # 1. AREA
+          # =========================================================
+          helpText(
+            HTML(
+              "<h4><b>1. Area of Interest</b></h4>"
+            )
+          ),
+
+          # Select an area
+          helpText(
+            HTML("<h5><b>Select an area OR</b></h5>")
+          ),
+          HTML(
+            "<small>(Western North America, BC, Eco-provinces/regions/sections, Major Watersheds, FWA watersheds, FLP boundaries, Municipalities)</small>"
+          ),
+
+          pickerInput(
+            "major_area",
+            NULL,
+            choices = c(
+              "Western North America",
+              "BC",
+              "Ecoprovinces",
+              "Ecoregions",
+              "Ecosections",
+              "Major watersheds",
+              "FWA watersheds",
+              "FLP boundaries",
+              "Municipalities"
+            ),
+            selected = "BC"
+          ),
+
+          hidden(
+            pickerInput(
+              "ecoprov_area",
+              "Ecoprovinces",
+              choices = c(
+                "Ecoprovinces (select one)",
+                bc_ecoprv_shp$name
+              ),
+              multiple = FALSE
+            )
+          ),
+
+          hidden(
+            pickerInput(
+              "ecorgn_area",
+              "Ecoregions",
+              choices = c(
+                "Ecoregions (select one)",
+                bc_ecorgn_shp$CRGNNM
+              ),
+              multiple = FALSE
+            )
+          ),
+
+          hidden(
+            pickerInput(
+              "ecosec_area",
+              "Ecosections",
+              choices = c(
+                "Ecosections (select one)",
+                bc_ecosec_shp$ECOSEC_NM
+              ),
+              multiple = FALSE
+            )
+          ),
+
+          hidden(
+            selectInput(
+              "wtrshd_area",
+              "Watershed",
+              choices = c(
+                "Major watersheds (select one)",
+                bc_wtrshd_shp$MJR_WTRSHM
+              ),
+              multiple = FALSE
+            )
+          ),
+
+          hidden(
+            selectInput(
+              "fwa_area",
+              "FWA watersheds",
+              choices = c(
+                "FWA watersheds (select one)",
+                bc_fwa_shp$WATERSHE_2
+              ),
+              multiple = FALSE
+            )
+          ),
+
+          hidden(
+            selectInput(
+              "flp_area",
+              "FLP boundaries",
+              choices = c(
+                "FLP boundaries (select one)",
+                bc_flp_shp$flp_unit_nam
+              ),
+              multiple = FALSE
+            )
+          ),
+
+          hidden(
+            pickerInput(
+              "muni_area",
+              "Municipalities",
+              choices = c(
+                "Municipalities (select one)",
+                bc_muni_shp$ABRVN
+              ),
+              multiple = FALSE
+            )
+          ),
+          # User input
+          helpText(
+            HTML("<h5><b>Provide your own location</b></h5>")
+          ),
+
+          radioButtons(
+            "user_location_type",
+            NULL,
+            choices = c(
+              "None" = "none",
+              "Shapefile" = "shp",
+              "Point" = "point"
+            ),
+            selected = "none",
+            inline = TRUE
+          ),
+
+          conditionalPanel(
+            condition = "input.user_location_type == 'shp'",
+            fileInput(
+              "user_shp",
+              "Upload shapefile",
+              multiple = TRUE,
+              accept = c(
+                ".zip",
+                ".shp",
+                ".shx",
+                ".dbf",
+                ".prj",
+                ".cpg"
+              )
+            ),
+            helpText(
+              "Upload a ZIP or complete shapefile (.shp, .shx, .dbf, .prj)."
+            )
+          ),
+
+          conditionalPanel(
+            condition = "input.user_location_type == 'point'",
+            fluidRow(
+              column(
+                width = 6,
+                numericInput(
+                  "user_lon",
+                  "Longitude",
+                  value = NULL,
+                  min = -180,
+                  max = 180,
+                  step = 0.0001,
+                  width = "100%"
+                )
+              ),
+              column(
+                width = 6,
+                numericInput(
+                  "user_lat",
+                  "Latitude",
+                  value = NULL,
+                  min = -90,
+                  max = 90,
+                  step = 0.0001,
+                  width = "100%"
+                )
+              )
+            ),
+            helpText(
+              "Point must be within -140 to -108°W, 39 to 60°N."
+            )
+          ),
+
+          uiOutput("user_location_status"),
+
+          tags$hr(),
+
+          # Section 2
+          helpText(
+            HTML("<h4><b>2. Climate variable</b></h4>")
+          ),
+
+          uiOutput("par_picker"),
+
+          HTML(
+            "<small>
+    (Temperature, VPD, Precipitation, RH, Soil moisture)
+  </small>"
+          ),
+
+          tags$hr(),
+
+          # Section 3
+          helpText(
+            HTML("<h4><b>3. Month, season, or annual</b></h4>")
+          ),
+
+          uiOutput("month_picker"),
+
+          tags$hr(),
+
+          # Section 4
+          helpText(
+            HTML("<h4><b>4. Range of years or specific year(s)</b></h4>")
+          ),
+
+          actionButton("rng_years_choose", "Range of years"),
+          actionButton("ab_years_choose", "Specific year(s)"),
+
+          sliderInput(
+            "year_range",
+            "Year range",
+            min_year,
+            max_year,
+            value = c((max_year - 5), max_year),
+            sep = ""
+          ),
+
+          chooseSliderSkin(skin = "Shiny"),
+
+          hidden(
+            selectInput(
+              "year_specific",
+              "Year(s)",
+              choices = yr_choices,
+              multiple = TRUE,
+              selected = max_year
+            )
+          ),
+
+          tags$hr(),
+
+          # =========================================================
+          # RUN ANALYSIS + RESET
+          # =========================================================
+
+          fluidRow(
+            column(
+              width = 8,
+
+              actionButton(
+                "run_ana_button",
+                tags$b(
+                  tags$span(
+                    style = "color: red;",
+                    "Run Analysis"
+                  )
+                ),
+                width = "100%"
+              )
+            ),
+
+            column(
+              width = 4,
+
+              actionButton(
+                "reset_input",
+                "Reset",
+                width = "100%"
+              )
+            )
+          ),
+
+          # =========================================================
+          # LOCATION MAP
+          # =========================================================
+
+          fluidRow(
+            column(
+              width = 12,
+
+              HTML(
+                "<h4><b>Location Map</b></h4>"
+              ),
+
+              withSpinner(
+                leafletOutput(
+                  "loc_map",
+                  height = "20vh"
+                ),
+                type = 6
+              )
+            )
+          ),
+
+          # =========================================================
+          # CEI LINK
+          # =========================================================
+
+          fluidRow(
+            column(
+              width = 12,
+
+              wellPanel(
+                style = "
+            background-color: white;
+            padding: 5px 8px;
+            margin-bottom: 0px;
+          ",
+
+                HTML(
+                  '<h4 style="margin: 2px 0;">
+              For climate extreme indices (CEI) refer to
+              <a href="https://bcgov-env.shinyapps.io/bc_climate_extremes_app/" target="_blank">
+                <b>bc_climate_extremes_app</b>
+              </a>
+            </h4>'
+                )
+              )
+            )
+          )
         ),
         mainPanel(
-          tags$head(tags$style(HTML(
-            '.box {margin: 25px;}'
-          ))),
           width = 9,
-          ##### Linear trends and spatial anomaly map plots and summary ---------------------
           column(
             width = 10,
-            wellPanel(
-              HTML(
-                "<h4><b> Time series, linear trends and spatial anomaly maps</b> </h4>"
+            wellPanel(HTML(
+              "<h4><b>Time series, linear trends and spatial anomaly maps</b></h4>"
+            ))
+          ),
+          fluidRow(
+            column(
+              width = 12,
+              tabBox(
+                width = 12,
+                tabPanel(
+                  title = "Time-series plot",
+                  status = "primary",
+                  withSpinner(
+                    plotlyOutput("lnr_trn_plt", height = "60vh"),
+                    type = 6
+                  ),
+                  downloadButton("download_lnr_trn_plt", "Download plot"),
+                  downloadButton(
+                    "download_ano_ts_data",
+                    "Download anomaly time series data"
+                  )
+                ),
+                tabPanel(
+                  title = "Spatial anomaly maps",
+                  status = "primary",
+                  withSpinner(
+                    plotOutput("sptl_ano_map", height = "70vh"),
+                    type = 6
+                  ),
+                  downloadButton("download_sptl_ano_plt", "Download plot"),
+                  downloadButton(
+                    "download_sptl_ano_data",
+                    "Download raster data"
+                  )
+                )
               )
             )
           ),
-          fluidRow(column(
-            width = 12,
-            offset = 0.1,
-            tabBox(
-              width = 12,
-              tabPanel(
-                width = 12,
-                status = 'primary',
-                title = "Time-series plot",
-                withSpinner(
-                  plotlyOutput("lnr_trn_plt", height = "60vh"),
-                  type = 6
-                ),
-                downloadButton(
-                  outputId = "download_lnr_trn_plt",
-                  label = "Download plot"
-                ),
-                downloadButton(
-                  outputId = "download_ano_ts_data",
-                  label = "Download anomaly time series data"
-                ),
-              ),
-              tabPanel(
-                width = 12,
-                status = 'primary',
-                title = "Spatial anomaly maps",
-                withSpinner(
-                  plotOutput("sptl_ano_map", height = "70vh"),
-                  type = 6
-                ),
-                downloadButton(
-                  outputId = "download_sptl_ano_plt",
-                  label = "Download plot"
-                ),
-                downloadButton(
-                  outputId = "download_sptl_ano_data",
-                  label = "Download raster data"
-                ),
-              ),
-            )
-          )),
-          ###### climate normal map and  spatial trends maps (1950s 1980s) --------------------------
+
+          ## Climate normals & spatial trends
           fluidRow(
             box(
               width = 4,
               align = "left",
-              wellPanel(HTML(
-                "<h5><b>Climate Normal (1981-2010)</b> </h5>"
-              )),
+              wellPanel(HTML("<h5><b>Climate Normal (1981-2010)</b></h5>")),
               uiOutput("clm_nor_title", height = "30vh"),
               withSpinner(
                 plotOutput("clm_nor_map", width = "100%", height = "30vh"),
                 type = 6
               ),
-              downloadButton(
-                outputId = "download_clm_nor_plt",
-                label = "Download plot"
-              ),
-              downloadButton(
-                outputId = "download_clm_nor_data",
-                label = "Download raster data"
-              ),
+              downloadButton("download_clm_nor_plt", "Download plot"),
+              downloadButton("download_clm_nor_data", "Download raster data")
             ),
             box(
               width = 4,
               align = "left",
-              wellPanel(HTML(
-                "<h5><b> Spatial trends since 1950 </b> </h5>"
-              )),
+              wellPanel(HTML("<h5><b>Spatial trends since 1950</b></h5>")),
               uiOutput("clm_trn50_title", height = "30vh"),
               withSpinner(
                 plotOutput("clm_trn50_map", width = "100%", height = "30vh"),
                 type = 6
               ),
-              downloadButton(
-                outputId = "download_clm_trn50_plt",
-                label = "Download plot"
-              ),
-              downloadButton(
-                outputId = "download_clm_trn50_data",
-                label = "Download raster data"
-              ),
+              downloadButton("download_clm_trn50_plt", "Download plot"),
+              downloadButton("download_clm_trn50_data", "Download raster data")
             ),
             box(
               width = 4,
               align = "left",
-              wellPanel(HTML(
-                "<h5><b> Spatial trends since 1980 </b> </h5>"
-              )),
+              wellPanel(HTML("<h5><b>Spatial trends since 1980</b></h5>")),
               uiOutput("clm_trn80_title", height = "30vh"),
               withSpinner(
                 plotOutput("clm_trn80_map", width = "100%", height = "30vh"),
                 type = 6
               ),
-              downloadButton(
-                outputId = "download_clm_trn80_plt",
-                label = "Download plot"
-              ),
-              downloadButton(
-                outputId = "download_clm_trn80_data",
-                label = "Download raster data"
-              ),
+              downloadButton("download_clm_trn80_plt", "Download plot"),
+              downloadButton("download_clm_trn80_data", "Download raster data")
             )
           ),
-
-          ##### App disclaimer -----------------------
 
           column(
             width = 12,
             HTML(
-              "<h5><b> Disclaimer:</b> </h5> <h6> This analysis utilizes ERA5-Land data.
-                Any modifications to the dataset or discrepancies in the results due to data
-                changes should be carefully considered by users. </h6>"
-            )
-          ),
-        ),
-      ),
-
-      ##### footer ---------------------------
-      HTML("<br>", "<br>"),
-      column(
-        width = 12,
-        style = "background-color:#003366; border-top:2px solid #fcba19;position:relative;",
-        tags$footer(
-          class = "footer",
-          tags$div(
-            class = "container",
-            style = "display:flex; justify-content:center; flex-direction:column; text-align:center; height:46px;",
-            tags$ul(
-              style = "display:flex; flex-direction:row; flex-wrap:wrap; margin:0; list-style:none; align-items:center; height:100%;",
-              tags$li(
-                a(
-                  href = "https://www2.gov.bc.ca/gov/content/home",
-                  "Home",
-                  style = "font-size:1em; font-weight:normal; color:white; padding-left:5px; padding-right:5px; border-right:1px solid #4b5e7e;"
-                )
-              ),
-              tags$li(
-                a(
-                  href = "https://www2.gov.bc.ca/gov/content/home/disclaimer",
-                  "Disclaimer",
-                  style = "font-size:1em; font-weight:normal; color:white; padding-left:5px; padding-right:5px; border-right:1px solid #4b5e7e;"
-                )
-              ),
-              tags$li(
-                a(
-                  href = "https://www2.gov.bc.ca/gov/content/home/privacy",
-                  "Privacy",
-                  style = "font-size:1em; font-weight:normal; color:white; padding-left:5px; padding-right:5px; border-right:1px solid #4b5e7e;"
-                )
-              ),
-              tags$li(
-                a(
-                  href = "https://www2.gov.bc.ca/gov/content/home/accessibility",
-                  "Accessibility",
-                  style = "font-size:1em; font-weight:normal; color:white; padding-left:5px; padding-right:5px; border-right:1px solid #4b5e7e;"
-                )
-              ),
-              tags$li(
-                a(
-                  href = "https://www2.gov.bc.ca/gov/content/home/copyright",
-                  "Copyright",
-                  style = "font-size:1em; font-weight:normal; color:white; padding-left:5px; padding-right:5px; border-right:1px solid #4b5e7e;"
-                )
-              ),
-              tags$li(
-                a(
-                  href = "https://www2.gov.bc.ca/StaticWebResources/static/gov3/html/contact-us.html",
-                  "Contact",
-                  style = "font-size:1em; font-weight:normal; color:white; padding-left:5px; padding-right:5px; border-right:1px solid #4b5e7e;"
-                )
-              )
+              "<h5><b>Disclaimer:</b></h5><p>This analysis utilizes ERA5-Land data. Any modifications to the dataset or discrepancies in the results due to data changes should be carefully considered by users.</p>"
             )
           )
         )
-      )
+      ),
+      bcgov_footer()
     ),
 
-    ## Report -----------------------------
+    ## Reports page -----------------------------
     tabPanel(
       title = "Reports",
       value = "report",
       column(
         width = 12,
-
         wellPanel(
-          HTML("<h3><b>BC climate summary and anomaly reports</b></h3>"),
           HTML(
-            "<h4>Monthly summaries, annual reports, and long-term trends (HTML)</h4>"
+            "<h3><b>BC climate summary and anomaly reports</b></h3>
+                <h4>Monthly summaries, annual reports, and long-term trends (HTML)</h4>"
           )
         ),
-
         fluidRow(
           box(
             width = 12,
             status = "primary",
-
             tags$div(
-              style = "
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-            gap: 24px;
-          ",
-
+              style = "display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 24px;",
               lapply(unique(report_years), function(yr) {
                 tags$div(
-                  style = "
-                border: 1px solid #ddd;
-                border-radius: 6px;
-                padding: 12px;
-                background-color: #fafafa;
-              ",
-
+                  style = "border: 1px solid #ddd; border-radius: 6px; padding: 12px; background-color: #fafafa;",
                   tags$h4(
                     style = "text-align: center; margin-bottom: 12px;",
                     yr
                   ),
-
                   uiOutput(paste0("reports_year_", yr))
                 )
               })
@@ -904,181 +1429,55 @@ ui <- fluidPage(
           )
         )
       ),
-
-      ###### footer ----------------------------
-      column(
-        width = 12,
-        style = "background-color:#003366; border-top:2px solid #fcba19;",
-        tags$footer(
-          class = "footer",
-          tags$div(
-            class = "container",
-            style = "display:flex; justify-content:center; flex-direction:column; text-align:center; height:46px;",
-            tags$ul(
-              style = "display:flex; flex-direction:row; flex-wrap:wrap; margin:0; list-style:none; align-items:center; height:100%;",
-              tags$li(
-                a(
-                  href = "https://www2.gov.bc.ca/gov/content/home",
-                  "Home",
-                  style = "font-size:1em; font-weight:normal; color:white; padding-left:5px; padding-right:5px; border-right:1px solid #4b5e7e;"
-                )
-              ),
-              tags$li(
-                a(
-                  href = "https://www2.gov.bc.ca/gov/content/home/disclaimer",
-                  "Disclaimer",
-                  style = "font-size:1em; font-weight:normal; color:white; padding-left:5px; padding-right:5px; border-right:1px solid #4b5e7e;"
-                )
-              ),
-              tags$li(
-                a(
-                  href = "https://www2.gov.bc.ca/gov/content/home/privacy",
-                  "Privacy",
-                  style = "font-size:1em; font-weight:normal; color:white; padding-left:5px; padding-right:5px; border-right:1px solid #4b5e7e;"
-                )
-              ),
-              tags$li(
-                a(
-                  href = "https://www2.gov.bc.ca/gov/content/home/accessibility",
-                  "Accessibility",
-                  style = "font-size:1em; font-weight:normal; color:white; padding-left:5px; padding-right:5px; border-right:1px solid #4b5e7e;"
-                )
-              ),
-              tags$li(
-                a(
-                  href = "https://www2.gov.bc.ca/gov/content/home/copyright",
-                  "Copyright",
-                  style = "font-size:1em; font-weight:normal; color:white; padding-left:5px; padding-right:5px; border-right:1px solid #4b5e7e;"
-                )
-              ),
-              tags$li(
-                a(
-                  href = "https://www2.gov.bc.ca/StaticWebResources/static/gov3/html/contact-us.html",
-                  "Contact",
-                  style = "font-size:1em; font-weight:normal; color:white; padding-left:5px; padding-right:5px; border-right:1px solid #4b5e7e;"
-                )
-              )
-            )
-          )
-        )
-      )
+      bcgov_footer()
     ),
-    ## Climate Stripes  -----------------------
+
+    ## Climate Stripes -----------------------
     tabPanel(
       title = "Climate stripes",
       value = "clm_stripes",
       column(
         width = 12,
-        wellPanel(
-          HTML(
-            "<h3><b>BC climate stripes </b> </h2>"
+        wellPanel(HTML("<h3><b>BC climate stripes</b></h3>")),
+        HTML(
+          "<h5>Inspired by the work of British climate scientist <a href='https://showyourstripes.info/' target='_blank'>Prof. Ed Hawkins</a>,
+           the climate stripes (also known as warming stripes) visually represent changes in annual temperatures relative to the long-term average.<br>
+           Below are the 'climate stripes' plots for British Columbia (BC) since 1950. Each stripe corresponds to a single year's temperature compared to the 1981–2010 average.
+           Red stripes indicate warmer-than-average years, while blue stripes represent cooler-than-average years. The intensity of the color reflects the magnitude of the difference from the average.<br><br>
+           Feel free to download and use these visuals!<br><br></h5>"
+        ),
+        fluidRow(
+          wellPanel(HTML(
+            "<h3><b>BC climate stripes (mean temperature): with title</b></h3>"
+          )),
+          box(
+            width = 12,
+            height = "100vh",
+            status = "primary",
+            downloadButton(
+              "clm_strp_plt_ttl_dnwld",
+              "Download climate stripe plot with title"
+            ),
+            imageOutput("bc_clm_strp_withtitle")
+          )
+        ),
+        fluidRow(
+          wellPanel(HTML(
+            "<h3><b>BC climate stripes (mean temperature): without title</b></h3>"
+          )),
+          box(
+            width = 12,
+            height = "100vh",
+            status = "primary",
+            downloadButton(
+              "clm_strp_plt_wttl_dnwld",
+              "Download climate stripe plot without title"
+            ),
+            imageOutput("bc_clm_strp_withouttitle")
           )
         )
       ),
-      HTML(
-        "<h5> Inspired by the work of British climate scientist <a href= 'https://showyourstripes.info/'> Prof. Ed Hawkins </a> ,
-            the climate stripes (also known as warming stripes) visually represent
-            changes in annual temperatures relative to the long-term average.
-            Below are the 'climate stripes' plots for British Columbia (BC) since 1950.
-            Each stripe corresponds to a single year's temperature compared to the 1981–2010 average.
-            Red stripes indicate warmer-than-average years, while blue stripes represent cooler-than-average years.
-            The intensity of the color reflects the magnitude of the difference from the average.
-            <br>
-            Feel free to download and use these visuals!
-            <br>
-            <br> </h5>"
-      ),
-      fluidRow(
-        wellPanel(HTML(
-          "<h3><b>  BC climate stripes (mean temperature): with title </b> </h3>"
-        )),
-        box(
-          width = 12,
-          height = "100vh",
-          status = "primary",
-          downloadButton(
-            outputId = "clm_strp_plt_ttl_dnwld",
-            label = "Download climate stripe plot with title"
-          ),
-          imageOutput("bc_clm_strp_withtitle")
-        )
-      ),
-      fluidRow(
-        wellPanel(HTML(
-          "<h3><b>  BC climate stripes (mean temperature): without title </b> </h3>"
-        )),
-        box(
-          width = 12,
-          height = "100vh",
-          status = "primary",
-          downloadButton(
-            outputId = "clm_strp_plt_wttl_dnwld",
-            label = "Download climate stripe plot wihtout title"
-          ),
-          imageOutput("bc_clm_strp_withouttitle")
-        )
-      ),
-      ###### footer ---------------------
-      column(
-        width = 12,
-        style = "background-color:#003366; border-top:2px solid #fcba19;",
-        column(
-          width = 12,
-          style = "background-color:#003366; border-top:2px solid #fcba19;",
-          tags$footer(
-            class = "footer",
-            tags$div(
-              class = "container",
-              style = "display:flex; justify-content:center; flex-direction:column; text-align:center; height:46px;",
-              tags$ul(
-                style = "display:flex; flex-direction:row; flex-wrap:wrap; margin:0; list-style:none; align-items:center; height:100%;",
-                tags$li(
-                  a(
-                    href = "https://www2.gov.bc.ca/gov/content/home",
-                    "Home",
-                    style = "font-size:1em; font-weight:normal; color:white; padding-left:5px; padding-right:5px; border-right:1px solid #4b5e7e;"
-                  )
-                ),
-                tags$li(
-                  a(
-                    href = "https://www2.gov.bc.ca/gov/content/home/disclaimer",
-                    "Disclaimer",
-                    style = "font-size:1em; font-weight:normal; color:white; padding-left:5px; padding-right:5px; border-right:1px solid #4b5e7e;"
-                  )
-                ),
-                tags$li(
-                  a(
-                    href = "https://www2.gov.bc.ca/gov/content/home/privacy",
-                    "Privacy",
-                    style = "font-size:1em; font-weight:normal; color:white; padding-left:5px; padding-right:5px; border-right:1px solid #4b5e7e;"
-                  )
-                ),
-                tags$li(
-                  a(
-                    href = "https://www2.gov.bc.ca/gov/content/home/accessibility",
-                    "Accessibility",
-                    style = "font-size:1em; font-weight:normal; color:white; padding-left:5px; padding-right:5px; border-right:1px solid #4b5e7e;"
-                  )
-                ),
-                tags$li(
-                  a(
-                    href = "https://www2.gov.bc.ca/gov/content/home/copyright",
-                    "Copyright",
-                    style = "font-size:1em; font-weight:normal; color:white; padding-left:5px; padding-right:5px; border-right:1px solid #4b5e7e;"
-                  )
-                ),
-                tags$li(
-                  a(
-                    href = "https://www2.gov.bc.ca/StaticWebResources/static/gov3/html/contact-us.html",
-                    "Contact",
-                    style = "font-size:1em; font-weight:normal; color:white; padding-left:5px; padding-right:5px; border-right:1px solid #4b5e7e;"
-                  )
-                )
-              )
-            )
-          )
-        )
-      )
+      bcgov_footer()
     ),
 
     ## Feedback and links --------------------------
@@ -1087,283 +1486,536 @@ ui <- fluidPage(
       value = "feed_link",
       column(
         width = 12,
-        wellPanel(HTML(
-          "<h3><b>Feedback</h3>"
-        )),
+        wellPanel(HTML("<h3><b>Feedback</b></h3>")),
         fluidRow(
-          box(
-            width = 12,
-            status = 'primary',
-            # title = "Note",
-            uiOutput("feedback_text"),
-          )
+          box(width = 12, status = "primary", uiOutput("feedback_text"))
         )
       ),
       column(
         width = 12,
-        wellPanel(HTML("<h4><b>Links to other app </h4>")),
+        wellPanel(HTML("<h4><b>Links to other apps</b></h4>")),
         HTML(
-          "<h5><b>Here are the links to other apps developed in FFEC.</b></h5>
-          <a href= 'https://bcgov-env.shinyapps.io/cmip6-BC/'> CMIP6-BC </a>
-                               <br>
-         <a href= 'https://bcgov-env.shinyapps.io/bc_climate_extremes_app/'> BC_climate_extremes_app </a>
-                               <br>
-          <br>"
+          "<h5><b>Here are the links to other apps developed in FFEC:</b></h5>
+           <a href='https://bcgov-env.shinyapps.io/cmip6-BC/' target='_blank'>CMIP6-BC</a><br>
+           <a href='https://bcgov-env.shinyapps.io/bc_climate_extremes_app/' target='_blank'>BC_climate_extremes_app</a><br><br>"
         )
       ),
-      ###### footer -----------------------
-      column(
-        width = 12,
-        style = "background-color:#003366; border-top:2px solid #fcba19;",
-        tags$footer(
-          class = "footer",
-          tags$div(
-            class = "container",
-            style = "display:flex; justify-content:center; flex-direction:column; text-align:center; height:46px;",
-            tags$ul(
-              style = "display:flex; flex-direction:row; flex-wrap:wrap; margin:0; list-style:none; align-items:center; height:100%;",
-              tags$li(
-                a(
-                  href = "https://www2.gov.bc.ca/gov/content/home",
-                  "Home",
-                  style = "font-size:1em; font-weight:normal; color:white; padding-left:5px; padding-right:5px; border-right:1px solid #4b5e7e;"
-                )
-              ),
-              tags$li(
-                a(
-                  href = "https://www2.gov.bc.ca/gov/content/home/disclaimer",
-                  "Disclaimer",
-                  style = "font-size:1em; font-weight:normal; color:white; padding-left:5px; padding-right:5px; border-right:1px solid #4b5e7e;"
-                )
-              ),
-              tags$li(
-                a(
-                  href = "https://www2.gov.bc.ca/gov/content/home/privacy",
-                  "Privacy",
-                  style = "font-size:1em; font-weight:normal; color:white; padding-left:5px; padding-right:5px; border-right:1px solid #4b5e7e;"
-                )
-              ),
-              tags$li(
-                a(
-                  href = "https://www2.gov.bc.ca/gov/content/home/accessibility",
-                  "Accessibility",
-                  style = "font-size:1em; font-weight:normal; color:white; padding-left:5px; padding-right:5px; border-right:1px solid #4b5e7e;"
-                )
-              ),
-              tags$li(
-                a(
-                  href = "https://www2.gov.bc.ca/gov/content/home/copyright",
-                  "Copyright",
-                  style = "font-size:1em; font-weight:normal; color:white; padding-left:5px; padding-right:5px; border-right:1px solid #4b5e7e;"
-                )
-              ),
-              tags$li(
-                a(
-                  href = "https://www2.gov.bc.ca/StaticWebResources/static/gov3/html/contact-us.html",
-                  "Contact",
-                  style = "font-size:1em; font-weight:normal; color:white; padding-left:5px; padding-right:5px; border-right:1px solid #4b5e7e;"
-                )
-              )
-            )
-          )
-        )
-      )
+      bcgov_footer()
     )
   )
 )
-
-
-# Define server and reactive contents from data
 
 # Server ----
 server <- function(session, input, output) {
   options(warn = -1)
 
-  # Maps and plots tab ---------------------
-  # Filters, selections, namings  -----------------------
-  ## Filter : Area ----------------------------
-  observeEvent(input$major_area, {
-    if (input$major_area == "Ecoprovinces") {
-      showElement("ecoprov_area")
-      hideElement("wtrshd_area")
-      hideElement("fwa_area")
-      hideElement("flp_area")
-      hideElement("ecorgn_area")
-      hideElement("ecosec_area")
-      hideElement("muni_area")
-    } else if (input$major_area == "Ecoregions") {
-      hideElement("ecoprov_area")
-      hideElement("wtrshd_area")
-      hideElement("fwa_area")
-      hideElement("flp_area")
-      showElement("ecorgn_area")
-      hideElement("ecosec_area")
-      hideElement("muni_area")
-    } else if (input$major_area == "Ecosections") {
-      hideElement("ecoprov_area")
-      hideElement("wtrshd_area")
-      hideElement("fwa_area")
-      hideElement("flp_area")
-      hideElement("ecorgn_area")
-      showElement("ecosec_area")
-      hideElement("muni_area")
-    } else if (input$major_area == "Major watersheds") {
-      hideElement("ecoprov_area")
-      showElement("wtrshd_area")
-      hideElement("fwa_area")
-      hideElement("flp_area")
-      hideElement("ecorgn_area")
-      hideElement("ecosec_area")
-      hideElement("muni_area")
-    } else if (input$major_area == "FWA watersheds") {
-      hideElement("ecoprov_area")
-      hideElement("wtrshd_area")
-      showElement("fwa_area")
-      hideElement("flp_area")
-      hideElement("ecorgn_area")
-      hideElement("ecosec_area")
-      hideElement("muni_area")
-    } else if (input$major_area == "Municipalities") {
-      hideElement("ecoprov_area")
-      hideElement("wtrshd_area")
-      hideElement("fwa_area")
-      hideElement("flp_area")
-      hideElement("ecorgn_area")
-      hideElement("ecosec_area")
-      showElement("muni_area")
-    } else if (input$major_area == "FLP boundaries") {
-      hideElement("ecoprov_area")
-      hideElement("wtrshd_area")
-      hideElement("fwa_area")
-      showElement("flp_area")
-      hideElement("ecorgn_area")
-      hideElement("ecosec_area")
-      hideElement("muni_area")
-    } else {
-      hideElement("muni_area")
-      hideElement("ecosec_area")
-      hideElement("ecorgn_area")
-      hideElement("ecoprov_area")
-      hideElement("wtrshd_area")
-      hideElement("fwa_area")
-      hideElement("flp_area")
-    }
-  })
+  ## User-defined location validation ------------------------------------------
 
-  ### Area (interactive shapefiles )
+  user_location <- reactiveVal(NULL)
+  user_location_error <- reactiveVal(NULL)
 
-  get_shapefile <- reactive({
-    if (input$major_area == "Western North America") {
-      sel_area_shpfl <- wna_shp
-    } else if (input$major_area == "BC") {
-      sel_area_shpfl <- bc_shp
-    } else if (input$major_area == "Ecoprovinces") {
-      if (input$ecoprov_area == "Ecoprovinces (select one)") {
-        sel_area_shpfl <- bc_shp
-      } else {
-        sel_area_shpfl <- bc_ecoprv_shp %>%
-          filter(name == input$ecoprov_area)
+  observeEvent(
+    list(
+      input$user_location_type,
+      input$user_shp,
+      input$user_lon,
+      input$user_lat
+    ),
+    {
+      user_location(NULL)
+      user_location_error(NULL)
+
+      # Do nothing until a location type has been selected
+      if (
+        is.null(input$user_location_type) ||
+          input$user_location_type == "none"
+      ) {
+        return()
       }
-    } else if (input$major_area == "Ecoregions") {
-      if (input$ecorgn_area == "Ecoregions (select one)") {
-        sel_area_shpfl <- bc_shp
-      } else {
-        sel_area_shpfl <- bc_ecorgn_shp %>%
-          filter(CRGNNM == input$ecorgn_area)
-      }
-    } else if (input$major_area == "Ecosections") {
-      if (input$ecosec_area == "Ecosections (select one)") {
-        sel_area_shpfl <- bc_shp
-      } else {
-        sel_area_shpfl <- bc_ecosec_shp %>%
-          filter(ECOSEC_NM == input$ecosec_area)
-      }
-    } else if (input$major_area == "Major watersheds") {
-      if (input$wtrshd_area == "Major watersheds (select one)") {
-        sel_area_shpfl <- bc_shp
-      } else {
-        sel_area_shpfl <- bc_wtrshd_shp %>%
-          filter(MJR_WTRSHM == input$wtrshd_area)
-      }
-    } else if (input$major_area == "FWA watersheds") {
-      if (input$fwa_area == "FWA watersheds (select one)") {
-        sel_area_shpfl <- bc_shp
-      } else {
-        sel_area_shpfl <- bc_fwa_shp %>%
-          filter(WATERSHE_2 == input$fwa_area)
-      }
-    } else if (input$major_area == "FLP boundaries") {
-      if (input$flp_area == "FLP boundaries (select one)") {
-        sel_area_shpfl <- bc_shp
-      } else {
-        sel_area_shpfl <- bc_flp_shp %>%
-          filter(flp_unit_nam == input$flp_area)
-      }
-    } else if (input$major_area == "Municipalities") {
-      if (input$muni_area == "Municipalities (select one)") {
-        sel_area_shpfl <- bc_shp
-      } else {
-        sel_area_shpfl <- bc_muni_shp %>%
-          filter(ABRVN == input$muni_area)
-      }
-    }
 
-    sel_area_shpfl
-  })
+      # =============================================================
+      # SHAPEFILE
+      # =============================================================
 
-  # Region name (interactive)
-  get_region <- reactive({
-    region <- NULL
+      # If Shapefile is selected, wait until a file is uploaded
+      if (
+        input$user_location_type == "shp" &&
+          (is.null(input$user_shp) || nrow(input$user_shp) == 0)
+      ) {
+        return()
+      }
 
-    if (input$major_area == "BC") {
-      region <- "BC"
-    } else if (input$major_area == "Western North America") {
-      region <- "Western North America"
-    } else if (input$major_area == "Ecoprovinces") {
-      region <- input$ecoprov_area
-    } else if (input$major_area == "Ecoregions") {
-      region <- input$ecorgn_area
-    } else if (input$major_area == "Ecosections") {
-      region <- input$ecosec_area
-    } else if (input$major_area == "Municipalities") {
-      region <- input$muni_area
-    } else if (input$major_area == "Major watersheds") {
-      region <- input$wtrshd_area
-    } else if (input$major_area == "FWA watersheds") {
-      region <- input$fwa_area
-    } else if (input$major_area == "FLP boundaries") {
-      region <- input$flp_area
-    }
+      ## ENTER POINT --------------------
 
-    region
-  })
+      if (input$user_location_type == "point") {
+        # IMPORTANT:
+        # Wait until BOTH longitude and latitude have been entered.
+        # Do not show an error while the user is still entering them.
 
-  ## Filter : variable ---------------------------------
+        if (
+          is.null(input$user_lon) ||
+            is.null(input$user_lat) ||
+            is.na(input$user_lon) ||
+            is.na(input$user_lat)
+        ) {
+          return()
+        }
 
-  output$par_picker <- renderUI({
-    par_choices <- parameters
-    par_choices <-
-      list(
-        "Minimum Temperature" = 'tmin',
-        "Maximum Temperature" = 'tmax',
-        "Mean Temperature" = 'tmean',
-        "Precipitation" = 'prcp',
-        "Vapor pressure deficit (vpd)" = 'vpd',
-        "Relative Humidity (RH)" = 'rh',
-        "Soil moisture (0-1m)" = 'soil_moisture'
+        # Get coordinates
+        lon <- as.numeric(input$user_lon)
+        lat <- as.numeric(input$user_lat)
+
+        # Check that coordinates are valid numbers
+        if (
+          !is.finite(lon) ||
+            !is.finite(lat)
+        ) {
+          user_location_error(
+            "Longitude and latitude must be valid numeric values."
+          )
+
+          showNotification(
+            "Longitude and latitude must be valid numeric values.",
+            type = "warning",
+            duration = 8
+          )
+
+          return()
+        }
+
+        # Check WNA domain
+        if (
+          lon < -140 ||
+            lon > -108 ||
+            lat < 39 ||
+            lat > 60
+        ) {
+          msg <- paste0(
+            "The point is outside the analysis domain. ",
+            "Longitude must be between -140 and -108°W, ",
+            "and latitude must be between 39 and 60°N."
+          )
+
+          user_location_error(msg)
+
+          showNotification(
+            msg,
+            type = "warning",
+            duration = 8
+          )
+
+          return()
+        }
+
+        # -----------------------------------------------------------
+        # Create spatial point
+        # -----------------------------------------------------------
+        result <- tryCatch(
+          {
+            point <- terra::vect(
+              data.frame(
+                longitude = lon,
+                latitude = lat
+              ),
+              geom = c("longitude", "latitude"),
+              crs = "EPSG:4326"
+            )
+
+            list(
+              type = "point",
+              data = point,
+              label = paste0(
+                "Point (",
+                round(lon, 4),
+                ", ",
+                round(lat, 4),
+                ")"
+              ),
+              message = paste0(
+                "Valid point: longitude ",
+                round(lon, 4),
+                ", latitude ",
+                round(lat, 4)
+              )
+            )
+          },
+
+          error = function(e) {
+            list(
+              error = conditionMessage(e)
+            )
+          }
+        )
+
+        # -----------------------------------------------------------
+        # Store point validation result
+        # -----------------------------------------------------------
+        if (!is.null(result$error)) {
+          user_location_error(result$error)
+
+          showNotification(
+            result$error,
+            type = "warning",
+            duration = 8
+          )
+        } else {
+          user_location(result)
+
+          showNotification(
+            result$message,
+            type = "message",
+            duration = 6
+          )
+        }
+
+        return()
+      }
+
+      # =============================================================
+      # SHAPEFILE PROCESSING
+      # =============================================================
+
+      result <- tryCatch(
+        {
+          if (input$user_location_type == "shp") {
+            shp <- read_user_shapefile(
+              input$user_shp,
+              target_crs = "EPSG:4326"
+            )
+
+            geom_types <- unique(
+              terra::geomtype(shp)
+            )
+
+            if (
+              !all(
+                geom_types %in%
+                  c(
+                    "polygons",
+                    "multipolygons",
+                    "points",
+                    "lines"
+                  )
+              )
+            ) {
+              stop(
+                "The uploaded shapefile contains unsupported geometry."
+              )
+            }
+
+            # -------------------------------------------------------
+            # Point shapefile
+            # -------------------------------------------------------
+            if (all(terra::geomtype(shp) == "points")) {
+              if (nrow(shp) != 1) {
+                stop(
+                  "The custom point shapefile must contain exactly one point."
+                )
+              }
+
+              loc <- list(
+                type = "point",
+                data = shp
+              )
+
+              list(
+                type = "point",
+                data = shp,
+                label = location_label(loc),
+                message = paste0(
+                  "Valid one-point shapefile. ",
+                  location_label(loc)
+                )
+              )
+
+              # -------------------------------------------------------
+              # Polygon shapefile
+              # -------------------------------------------------------
+            } else if (
+              all(
+                terra::geomtype(shp) %in%
+                  c(
+                    "polygons",
+                    "multipolygons"
+                  )
+              )
+            ) {
+              # -----------------------------------------------------
+              # Get uploaded shapefile name without .shp extension
+              # -----------------------------------------------------
+              shp_name <- input$user_shp$name[
+                tolower(
+                  tools::file_ext(input$user_shp$name)
+                ) ==
+                  "shp"
+              ][1]
+
+              shp_name <- tools::file_path_sans_ext(
+                basename(shp_name)
+              )
+
+              # -----------------------------------------------------
+              # Return validated polygon shapefile
+              # -----------------------------------------------------
+              list(
+                type = "polygon",
+                data = shp,
+                label = shp_name,
+                message = paste0(
+                  "Valid shapefile: ",
+                  shp_name
+                )
+              )
+            } else {
+              stop(
+                paste0(
+                  "The custom shapefile must contain polygon ",
+                  "features or exactly one point."
+                )
+              )
+            }
+          } else {
+            stop(
+              "Unknown user location type."
+            )
+          }
+        },
+
+        error = function(e) {
+          list(
+            error = conditionMessage(e)
+          )
+        }
       )
+
+      # -------------------------------------------------------------
+      # Show validation result
+      # -------------------------------------------------------------
+      if (!is.null(result$error)) {
+        user_location_error(
+          result$error
+        )
+
+        showNotification(
+          result$error,
+          type = "warning",
+          duration = 8
+        )
+      } else {
+        user_location(
+          result
+        )
+
+        showNotification(
+          result$message,
+          type = "message",
+          duration = 6
+        )
+      }
+    },
+
+    ignoreInit = TRUE
+  )
+
+  observeEvent(
+    input$user_location_type,
+    {
+      if (
+        is.null(input$user_location_type) || input$user_location_type == "none"
+      ) {
+        shinyjs::enable("major_area")
+        shinyjs::enable("ecoprov_area")
+        shinyjs::enable("ecorgn_area")
+        shinyjs::enable("ecosec_area")
+        shinyjs::enable("wtrshd_area")
+        shinyjs::enable("fwa_area")
+        shinyjs::enable("flp_area")
+        shinyjs::enable("muni_area")
+      } else {
+        shinyjs::disable("major_area")
+        shinyjs::disable("ecoprov_area")
+        shinyjs::disable("ecorgn_area")
+        shinyjs::disable("ecosec_area")
+        shinyjs::disable("wtrshd_area")
+        shinyjs::disable("fwa_area")
+        shinyjs::disable("flp_area")
+        shinyjs::disable("muni_area")
+      }
+    },
+    ignoreInit = FALSE
+  )
+
+  output$user_location_status <- renderUI({
+    err <- user_location_error()
+    loc <- user_location()
+
+    if (!is.null(err)) {
+      div(
+        style = "color:#a94442; background:#f2dede; border:1px solid #ebccd1; padding:8px; border-radius:4px;",
+        tags$b("Invalid user location: "),
+        err
+      )
+    } else if (!is.null(loc)) {
+      div(
+        style = "color:#155724; background:#d4edda; border:1px solid #c3e6cb; padding:8px; border-radius:4px;",
+        tags$b("Location accepted: "),
+        loc$message
+      )
+    } else if (
+      !is.null(input$user_location_type) &&
+        input$user_location_type == "shp"
+    ) {
+      div(
+        style = "color:#856404; background:#fff3cd; border:1px solid #ffeeba; padding:8px; border-radius:4px;",
+        "Upload the selected location file to validate it."
+      )
+    } else if (
+      !is.null(input$user_location_type) &&
+        input$user_location_type == "point"
+    ) {
+      div(
+        style = "color:#856404; background:#fff3cd; border:1px solid #ffeeba; padding:8px; border-radius:4px;",
+        "Enter longitude and latitude of the point of interest."
+      )
+    }
+  })
+
+  ## Resolve either the original region selection or the validated user location
+  get_analysis_location <- reactive({
+    if (
+      !is.null(input$user_location_type) &&
+        input$user_location_type != "none"
+    ) {
+      req(user_location())
+      return(user_location())
+    }
+
+    req(input$major_area)
+    list(type = "polygon", data = get_shapefile(), label = get_region())
+  })
+
+  # Maps and plots tab --------------------------------------------------------
+
+  ## Dynamic UI Visibility: Region Selectors ----------------------------------
+  observeEvent(input$major_area, {
+    area_map <- list(
+      "Ecoprovinces" = "ecoprov_area",
+      "Ecoregions" = "ecorgn_area",
+      "Ecosections" = "ecosec_area",
+      "Major watersheds" = "wtrshd_area",
+      "FWA watersheds" = "fwa_area",
+      "FLP boundaries" = "flp_area",
+      "Municipalities" = "muni_area"
+    )
+
+    target_id <- area_map[[input$major_area]]
+
+    # Hide all regional pickers first
+    lapply(area_map, hideElement)
+
+    # Show selected regional picker if applicable
+    if (!is.null(target_id)) {
+      showElement(target_id)
+    }
+  })
+
+  ## Shapefile Filtering Reactive --------------------------------------------
+  get_shapefile <- reactive({
+    req(input$major_area)
+
+    switch(
+      input$major_area,
+      "Western North America" = wna_shp,
+      "BC" = bc_shp,
+      "Ecoprovinces" = if (input$ecoprov_area == "Ecoprovinces (select one)") {
+        bc_shp
+      } else {
+        filter(bc_ecoprv_shp, name == input$ecoprov_area)
+      },
+      "Ecoregions" = if (input$ecorgn_area == "Ecoregions (select one)") {
+        bc_shp
+      } else {
+        filter(bc_ecorgn_shp, CRGNNM == input$ecorgn_area)
+      },
+      "Ecosections" = if (input$ecosec_area == "Ecosections (select one)") {
+        bc_shp
+      } else {
+        filter(bc_ecosec_shp, ECOSEC_NM == input$ecosec_area)
+      },
+      "Major watersheds" = if (
+        input$wtrshd_area == "Major watersheds (select one)"
+      ) {
+        bc_shp
+      } else {
+        filter(bc_wtrshd_shp, MJR_WTRSHM == input$wtrshd_area)
+      },
+      "FWA watersheds" = if (input$fwa_area == "FWA watersheds (select one)") {
+        bc_shp
+      } else {
+        filter(bc_fwa_shp, WATERSHE_2 == input$fwa_area)
+      },
+      "FLP boundaries" = if (input$flp_area == "FLP boundaries (select one)") {
+        bc_shp
+      } else {
+        filter(bc_flp_shp, flp_unit_nam == input$flp_area)
+      },
+      "Municipalities" = if (input$muni_area == "Municipalities (select one)") {
+        bc_shp
+      } else {
+        filter(bc_muni_shp, ABRVN == input$muni_area)
+      },
+      bc_shp
+    )
+  })
+
+  ## Region Name Extraction ---------------------------------------------------
+  get_region <- reactive({
+    if (
+      !is.null(input$user_location_type) &&
+        input$user_location_type != "none"
+    ) {
+      req(user_location())
+      return(user_location()$label)
+    }
+
+    req(input$major_area)
+
+    switch(
+      input$major_area,
+      "BC" = "BC",
+      "Western North America" = "Western North America",
+      "Ecoprovinces" = input$ecoprov_area,
+      "Ecoregions" = input$ecorgn_area,
+      "Ecosections" = input$ecosec_area,
+      "Municipalities" = input$muni_area,
+      "Major watersheds" = input$wtrshd_area,
+      "FWA watersheds" = input$fwa_area,
+      "FLP boundaries" = input$flp_area,
+      NULL
+    )
+  })
+
+  ## Parameter & UI Selection Renderers ---------------------------------------
+  output$par_picker <- renderUI({
+    par_choices <- c(
+      "Minimum Temperature" = 'tmin',
+      "Maximum Temperature" = 'tmax',
+      "Mean Temperature" = 'tmean',
+      "Precipitation" = 'prcp',
+      "Vapor pressure deficit (vpd)" = 'vpd',
+      "Relative Humidity (RH)" = 'rh',
+      "Soil moisture (0-1m)" = 'soil_moisture'
+    )
     pickerInput(
       "par_picker",
-      "Select climate variable",
+      NULL,
       choices = par_choices,
       selected = "tmean"
     )
   })
 
-  ## Filter : time  --------------------------------------
   output$month_picker <- renderUI({
-    mon_choices <- months_nam
-    mon_choices <- list(
+    mon_choices <- c(
       "Annual" = 'annual',
       "Summer" = 'summer',
       "Fall" = 'fall',
@@ -1384,14 +2036,15 @@ server <- function(session, input, output) {
     )
     pickerInput(
       "month_picker",
-      "Select month or season or annual",
+      NULL,
       choices = mon_choices,
       selected = "annual"
     )
   })
 
-  #interactive years choices
+  ## Interactive Year Selection State ---------------------------------------
   whichInput <- reactiveValues(type = "range")
+
   observeEvent(input$rng_years_choose, {
     showElement("year_range")
     hideElement("year_specific")
@@ -1404,64 +2057,47 @@ server <- function(session, input, output) {
     whichInput$type <- "specific"
   })
 
-  # Get values (variables name and unit )-------------------------
-  ### Years
+  ## Helper Reactives for Variable Metadata ---------------------------------
   get_years <- reactive({
     if (whichInput$type == "specific") {
-      sel_yrs <- input$year_specific
+      input$year_specific
     } else {
-      sel_yrs <- seq(input$year_range[1], input$year_range[2], 1)
+      seq(input$year_range[1], input$year_range[2], 1)
     }
   })
 
-  # Variables ( parameters) full name (interactive)
   get_par_full <- reactive({
     req(input$par_picker)
-    if (input$par_picker == 'tmin') {
-      parr_full = "minimum temperature"
-    } else if (input$par_picker == 'tmax') {
-      parr_full = "maximum temperature"
-    } else if (input$par_picker == 'tmean') {
-      parr_full = "mean temperature"
-    } else if (input$par_picker == 'prcp') {
-      parr_full = "total precipitation"
-    } else if (input$par_picker == 'rh') {
-      parr_full = "relative humidity (RH)"
-    } else if (input$par_picker == 'vpd') {
-      parr_full = "vapor pressure deficit (VPD)"
-    } else if (input$par_picker == 'soil_moisture') {
-      parr_full = "volumetric soil moisture (0-1m)"
-    }
-    parr_full
+    switch(
+      input$par_picker,
+      'tmin' = "minimum temperature",
+      'tmax' = "maximum temperature",
+      'tmean' = "mean temperature",
+      'prcp' = "total precipitation",
+      'rh' = "relative humidity (RH)",
+      'vpd' = "vapor pressure deficit (VPD)",
+      'soil_moisture' = "volumetric soil moisture (0-1m)",
+      "unknown variable"
+    )
   })
 
-  ## Units ( interactive)
   get_unit <- reactive({
     req(input$par_picker)
-    if (
-      input$par_picker == "tmax" |
-        input$par_picker == "tmin" |
-        input$par_picker == "tmean"
-    ) {
-      unt <- "°C"
-    } else if (input$par_picker == "prcp") {
-      unt <- "mm"
-    } else if (input$par_picker == "rh") {
-      unt <- "%"
-    } else if (input$par_picker == "vpd") {
-      unt <- "kPa"
-    } else if (input$par_picker == "soil_moisture") {
-      unt <- "m\U00B3/m"
-    } else {
-      unt <- " "
-    }
-    unt
+    switch(
+      input$par_picker,
+      "tmax" = ,
+      "tmin" = ,
+      "tmean" = "°C",
+      "prcp" = "mm",
+      "rh" = "%",
+      "vpd" = "kPa",
+      "soil_moisture" = "m\U00B3/m",
+      " "
+    )
   })
 
-  # Months/Seasons full name ( interactive)
   get_mon_full <- reactive({
     req(input$month_picker)
-
     month_lookup <- c(
       annual = "Annual",
       spring = "Spring",
@@ -1481,35 +2117,42 @@ server <- function(session, input, output) {
       Nov = "November",
       Dec = "December"
     )
-
-    mon_full <- month_lookup[[input$month_picker]]
-
-    if (is.null(mon_full)) {
-      mon_full <- "Unknown"
-    }
-    mon_full
+    month_lookup[[input$month_picker]] %||% "Unknown"
   })
 
-  # Reset  selection /filters -----
+  ## Reset Form ---------------------------------------------------------------
   observeEvent(input$reset_input, {
     shinyjs::reset("selection-panel")
+    updateRadioButtons(session, "user_location_type", selected = "none")
+    user_location(NULL)
+    user_location_error(NULL)
   })
 
-  # Location map plot -------------------------------------------
+  ## Interactive Location Map ------------------------------------------------
   output$loc_map <- renderLeaflet({
-    req(
-      input$ecoprov_area,
-      input$wtrshd_area,
-      input$major_area,
-      input$fwa_area,
-      input$flp_area
-    )
+    req(input$major_area)
 
-    # Default shape
-    sel_area_shpfl <- get_shapefile()
+    loc <- get_analysis_location()
+    sel_area_shpfl <- loc$data
     lyr_id <- NULL
 
-    # Select appropriate shapefile based on inputs
+    if (loc$type == "point") {
+      xy <- terra::crds(sel_area_shpfl)
+      return(
+        leaflet() %>%
+          addTiles() %>%
+          addCircleMarkers(
+            lng = xy[1, 1],
+            lat = xy[1, 2],
+            radius = 7,
+            color = "red",
+            fillColor = "red",
+            fillOpacity = 0.8,
+            popup = location_label(loc)
+          )
+      )
+    }
+
     if (
       input$major_area == "Major watersheds" &&
         input$wtrshd_area == "Major watersheds (select one)"
@@ -1548,16 +2191,13 @@ server <- function(session, input, output) {
       lyr_id <- "flp_unit_nam"
     }
 
-    # Render leaflet map
+    map_form <- if (!is.null(lyr_id)) as.formula(paste0("~", lyr_id)) else NULL
+
     leaflet(sel_area_shpfl) %>%
       addTiles() %>%
       addPolygons(
-        layerId = if (!is.null(lyr_id)) {
-          as.formula(paste0("~", lyr_id))
-        } else {
-          NULL
-        },
-        popup = if (!is.null(lyr_id)) as.formula(paste0("~", lyr_id)) else NULL,
+        layerId = map_form,
+        popup = map_form,
         color = "Red",
         weight = 1,
         opacity = 1,
@@ -1567,8 +2207,9 @@ server <- function(session, input, output) {
   })
 
   observeEvent(input$loc_map_shape_click, {
+    req(is.null(input$user_location_type) || input$user_location_type == "none")
     nm <- input$loc_map_shape_click$id
-    print(nm)
+    req(nm)
 
     switch(
       input$major_area,
@@ -1586,33 +2227,35 @@ server <- function(session, input, output) {
       ),
       "FLP boundaries" = updateSelectInput(session, "flp_area", selected = nm),
       "Municipalities" = updateSelectInput(session, "muni_area", selected = nm)
-      # "FWA watersheds" = updateSelectInput(session, "fwa_area", selected = nm)
     )
   })
 
-  #  Selected data for calculations and plotting -----------------
+  ## Main Calculation Reactive Trigger -------------------------------------
   ano_clm_trn_sel_dt_rct <- eventReactive(input$run_ana_button, {
-    req(input$month_picker)
-    req(input$par_picker)
-    req(input$major_area)
+    req(input$month_picker, input$par_picker, input$major_area)
 
-    ## For sample run ----
-    # monn = "Jun"
-    # parr = "tmean"
-    # sel_yrs <- seq(1951,2026,1)
-    # sel_yrs
-    # sel_area_shpfl <- bc_shp
-    # sel_area_shpfl
-    # region = "BC"
-    # ano_clm_trn_dt_fl %>%
-    #   filter(mon == monn &
-    #            par == parr) -> ano_clm_trn_dt_fl_mon
-    # ano_clm_trn_dt_fl_mon
-    # ano_dt_sel_rast <- rast(ano_clm_trn_dt_fl_mon$dt_pth)
-    # ano_dt_sel_rast
-    # terra::plot(ano_dt_sel_rast,70:nlyr(ano_dt_sel_rast))
+    # # For sample run -----------------
+    #     monn = "Jun"
+    #     parr = "tmean"
+    #     sel_yrs <- seq(1951, 2026, 1)
+    #     sel_yrs
+    #     sel_area_shpfl <- bc_shp
+    #     sel_area_shpfl
+    #     region = "BC"
+    #     ano_clm_trn_dt_fl %>%
+    #       filter(
+    #         mon == monn &
+    #           par == parr
+    #       ) -> ano_clm_trn_dt_fl_mon
+    #     ano_clm_trn_dt_fl_mon
+    #     ano_dt_sel_rast <- rast(ano_clm_trn_dt_fl_mon$dt_pth[[1]])
+    #     ano_dt_sel_rast
+    #     terra::plot(ano_dt_sel_rast, 70:nlyr(ano_dt_sel_rast))
     #
-    # end of sample run
+    #     ano_dt_sel_rast_trn <- rast(ano_clm_trn_dt_fl_mon$dt_pth[[3]])
+    #     plot(ano_dt_sel_rast_trn)
+    #
+    #     # end of sample run
 
     ano_clm_trn_dt_fl %>%
       filter(
@@ -1620,8 +2263,10 @@ server <- function(session, input, output) {
           par == input$par_picker
       ) -> ano_clm_trn_dt_fl_mon
 
-    # Clip by shapefile of the selected area
-    sel_area_shpfl <- get_shapefile()
+    # Apply either the selected built-in region or validated user location
+    location <- get_analysis_location()
+    # location <- bc_shp
+    sel_area_shpfl <- location$data
 
     # other requirements
     monn = unique(ano_clm_trn_dt_fl_mon$mon)
@@ -1641,10 +2286,7 @@ server <- function(session, input, output) {
     terra::time(ano_dt_sel_rast) <- yr_df$yr
 
     # crop mask for selected area
-    ano_dt_shp_rast <-
-      ano_dt_sel_rast |>
-      terra::crop(sel_area_shpfl, snap = "out") |>
-      terra::mask(sel_area_shpfl, touches = TRUE)
+    ano_dt_shp_rast <- apply_location_to_raster(ano_dt_sel_rast, location)
     # plot(ano_dt_shp_rast, 77)
 
     # Climatology
@@ -1655,10 +2297,7 @@ server <- function(session, input, output) {
     clm_dt_sel_rast
 
     #crop for selected area
-    clm_dt_shp_rast <-
-      clm_dt_sel_rast |>
-      terra::crop(sel_area_shpfl, snap = "out") |>
-      terra::mask(sel_area_shpfl, touches = TRUE)
+    clm_dt_shp_rast <- apply_location_to_raster(clm_dt_sel_rast, location)
 
     #calculate percentage for prcp and soil-moisture
     if (parr == 'prcp' | parr == 'soil_moisture') {
@@ -1684,11 +2323,9 @@ server <- function(session, input, output) {
     trn_dt_sel_rast50
     # plot(trn_dt_sel_rast50)
 
-    #crop for selected area
-    trn_dt_shp_rast50 <-
-      trn_dt_sel_rast50 |>
-      terra::crop(sel_area_shpfl, snap = "out") |>
-      terra::mask(sel_area_shpfl, touches = TRUE)
+    # crop for selected area
+    trn_dt_shp_rast50 <- apply_location_to_raster(trn_dt_sel_rast50, location)
+    # plot(trn_dt_shp_rast50)
 
     # trends80
     ano_clm_trn_dt_fl_mon %>%
@@ -1699,10 +2336,7 @@ server <- function(session, input, output) {
     # plot(trn_dt_sel_rast80)
 
     #crop for selected area
-    trn_dt_shp_rast80 <-
-      trn_dt_sel_rast80 |>
-      terra::crop(sel_area_shpfl, snap = "out") |>
-      terra::mask(sel_area_shpfl, touches = TRUE)
+    trn_dt_shp_rast80 <- apply_location_to_raster(trn_dt_sel_rast80, location)
 
     # Final return list
     result_lst <- return(list(
@@ -1764,7 +2398,7 @@ server <- function(session, input, output) {
 
       # Trend on average anomaly 1950 - now
       ano_shp_av_dt %<>%
-        filter(yr > 1950) %<>%
+        filter(yr > 1950) %>%
         mutate(
           # trnd =zyp.trend.vector(ano)[["trend"]],
           # incpt =zyp.trend.vector(ano)[["intercept"]],
@@ -2313,7 +2947,8 @@ server <- function(session, input, output) {
     parr <- unique(sel_dt_mtdt$par)
     monn <- unique(sel_dt_mtdt$mon)
 
-    sel_area_shpfl <- get_shapefile()
+    location <- get_analysis_location()
+    sel_area_shpfl <- location$data
 
     ano_dt_sel_rast <- ano_dt_shp_rast
     names(ano_dt_sel_rast)
@@ -2634,7 +3269,7 @@ server <- function(session, input, output) {
           size = 8
         )
       )
-    spatial_ano_plt
+    spatial_ano_plt <- add_user_point_marker(spatial_ano_plt, location)
 
     ### File name for download ------------
     fl_nam <-
@@ -2710,7 +3345,8 @@ server <- function(session, input, output) {
     parr <- unique(sel_dt_mtdt$par)
     monn <- unique(sel_dt_mtdt$mon)
 
-    sel_area_shpfl <- get_shapefile()
+    location <- get_analysis_location()
+    sel_area_shpfl <- location$data
 
     ## Climate normal plot title -----
     if (parr == "prcp") {
@@ -2925,7 +3561,7 @@ server <- function(session, input, output) {
         plot.title = element_text(size = 12, face = 'plain'),
         plot.subtitle = element_text(size = 10)
       )
-    spatial_clm_plt
+    spatial_clm_plt <- add_user_point_marker(spatial_clm_plt, location)
 
     ## Climate normal data and plot download ---------
     fl_nam <-
@@ -3043,20 +3679,41 @@ server <- function(session, input, output) {
       parr <- unique(sel_dt_mtdt$par)
       monn <- unique(sel_dt_mtdt$mon)
 
-      sel_area_shpfl <- get_shapefile()
+      location <- get_analysis_location()
+      sel_area_shpfl <- location$data
 
       # 1950s spatial trend ----------
       ano_clm_trn_sel_dt_rct()[[3]] -> ano_trn_mag_sig50
       # ano_trn_mag_sig50 <- trn_dt_shp_rast50
 
-      names(ano_trn_mag_sig50) <- c("trnmag", "pval")
-      # plot(ano_trn_mag_sig50
-      mn_trn_val50 <-
-        round(global(ano_trn_mag_sig50[[1]], 'mean', na.rm = T), digits = 3)
-      mi_trn_val50 <-
-        round(global(ano_trn_mag_sig50[[1]], 'min', na.rm = T), digits = 3)
-      mx_trn_val50 <-
-        round(global(ano_trn_mag_sig50[[1]], 'max', na.rm = T), digits = 3)
+      nm <- names(ano_trn_mag_sig50)
+
+      # Standardize layer names
+      names(ano_trn_mag_sig50) <- dplyr::case_when(
+        nm %in% c("trend_mag", "trnmag") ~ "trnmag",
+        nm == "pval" ~ "pval",
+        TRUE ~ nm
+      )
+
+      # Check that both required layers exist
+      stopifnot(all(c("trnmag", "pval") %in% names(ano_trn_mag_sig50)))
+
+      # Force consistent layer order
+      ano_trn_mag_sig50 <- ano_trn_mag_sig50[[c("trnmag", "pval")]]
+
+      # Now layer 1 is ALWAYS trnmag
+      mn_trn_val50 <- round(
+        global(ano_trn_mag_sig50[["trnmag"]], "mean", na.rm = TRUE),
+        3
+      )
+      mi_trn_val50 <- round(
+        global(ano_trn_mag_sig50[["trnmag"]], "min", na.rm = TRUE),
+        3
+      )
+      mx_trn_val50 <- round(
+        global(ano_trn_mag_sig50[["trnmag"]], "max", na.rm = TRUE),
+        3
+      )
 
       # Convert to point data
       ano_sp_mk_trn_sig_dt50 <- as_tibble(
@@ -3283,16 +3940,34 @@ server <- function(session, input, output) {
       ano_clm_trn_sel_dt_rct()[[4]] -> ano_trn_mag_sig80
       # ano_trn_mag_sig80 <- trn_dt_shp_rast80
 
-      names(ano_trn_mag_sig80) <- c("trnmag", "pval")
+      nm <- names(ano_trn_mag_sig80)
 
-      # plot(ano_trn_mag_sig80
-      mn_trn_val80 <-
-        round(global(ano_trn_mag_sig80[[1]], 'mean', na.rm = T), digits = 3)
-      mi_trn_val80 <-
-        round(global(ano_trn_mag_sig80[[1]], 'min', na.rm = T), digits = 3)
-      mx_trn_val80 <-
-        round(global(ano_trn_mag_sig80[[1]], 'max', na.rm = T), digits = 3)
+      # Standardize layer names
+      names(ano_trn_mag_sig80) <- dplyr::case_when(
+        nm %in% c("trend_mag", "trnmag") ~ "trnmag",
+        nm == "pval" ~ "pval",
+        TRUE ~ nm
+      )
 
+      # Check that both required layers exist
+      stopifnot(all(c("trnmag", "pval") %in% names(ano_trn_mag_sig80)))
+
+      # Force consistent layer order
+      ano_trn_mag_sig80 <- ano_trn_mag_sig80[[c("trnmag", "pval")]]
+
+      # Now layer 1 is ALWAYS trnmag
+      mn_trn_val80 <- round(
+        global(ano_trn_mag_sig80[["trnmag"]], "mean", na.rm = TRUE),
+        3
+      )
+      mi_trn_val80 <- round(
+        global(ano_trn_mag_sig80[["trnmag"]], "min", na.rm = TRUE),
+        3
+      )
+      mx_trn_val80 <- round(
+        global(ano_trn_mag_sig80[["trnmag"]], "max", na.rm = TRUE),
+        3
+      )
       # plot (1980-now)
       ano_sp_mk_trn_sig_dt80 <- as_tibble(
         ano_trn_mag_sig80,
@@ -3505,7 +4180,14 @@ server <- function(session, input, output) {
           plot.title = element_text(size = 12, face = 'plain'),
           plot.subtitle = element_text(size = 10)
         )
-      ano_dt_sp_trn_sig_plt80
+      ano_dt_sp_trn_sig_plt80 <- add_user_point_marker(
+        ano_dt_sp_trn_sig_plt80,
+        location
+      )
+      ano_dt_sp_trn_sig_plt50 <- add_user_point_marker(
+        ano_dt_sp_trn_sig_plt50,
+        location
+      )
 
       ### Plots titles --------------
       spl_trn_title_txt50 <- paste0(

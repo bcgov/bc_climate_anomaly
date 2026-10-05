@@ -27,7 +27,7 @@ sptl_trn_dt_pth <- ano_dt_pth
 min_year <- 1951
 max_year <- 2026
 
-update_month <- "May"
+update_month <- "August"
 update_year <- "2026"
 
 ## Months, parameters ----
@@ -315,8 +315,9 @@ ano_dt_fl
 plan(multisession, workers = 7) # adjust number of cores
 
 # Parallelized version over parameters
-# monns <- unique(ano_dt_fl$mon)
-monns <- c('Jun', 'spring')
+monns <- unique(ano_dt_fl$mon)
+monns
+monns <- c('Aug', 'summer')
 
 # Use future_walk to iterate in parallel (no return value needed)
 future_walk(parameters, function(par_j) {
@@ -329,6 +330,7 @@ future_walk(parameters, function(par_j) {
   )
 })
 
+plan(sequential)
 
 # Regular foor loop -----------------
 

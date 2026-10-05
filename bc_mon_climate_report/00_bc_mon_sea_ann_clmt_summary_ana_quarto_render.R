@@ -4,7 +4,7 @@ library(quarto)
 library(tictoc)
 
 #--- User Inputs ----
-update_month <- "June"
+update_month <- "August"
 update_year <- "2026"
 
 # Modify and run the R script for monthly plots --- ----
