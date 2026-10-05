@@ -41,12 +41,8 @@ results_pth <- './bc_mon_climate_report/mon_2mon_results_plots/'
 # Update month
 
 # read following values from render .r file
-
-min_year <- 1951
-max_year <- 2025
-
-update_month <- "December"
-update_year <- "2025"
+update_month <- "August"
+update_year <- "2026"
 
 # List of shape files
 # Shape files ----------------------------------------
@@ -121,9 +117,6 @@ months_nam
 parameters <- c("tmean", "tmax", "tmin", "prcp", "vpd", "rh", "soil_moisture")
 parameters
 
-years <- seq(min_year, max_year, 1)
-years
-length(years)
 curr_mon_yr <- as.Date(
   paste0(update_year, update_month, "15"),
   format = "%Y%B%d"
@@ -905,8 +898,9 @@ ano_mon_summary_plt_fun <- function(ano_dt_fl, current_month, parr) {
 
   # Clip for selected area :: BC
   ano_dt_shp_rast <-
-    terra::crop(ano_dt_rast, sel_area_shpfl, mask = T)
-  ano_dt_shp_rast
+    ano_dt_rast |>
+    terra::crop(sel_area_shpfl, snap = "out") |>
+    terra::mask(sel_area_shpfl, touches = TRUE)
 
   # Spatial trend --------------------------
   ano_dt_shp_rast
@@ -1537,7 +1531,10 @@ ano_mon_summary_plt_fun <- function(ano_dt_fl, current_month, parr) {
   cur_mon_ano_sum_tab$max_ano <- round(cur_mon_ano_rng[2], digits = 2)
 
   # Spatial Trend
-  ano_trn_mag_shp <- crop(ano_trn_mag, sel_area_shpfl, mask = T)
+  ano_trn_mag_shp <-
+    ano_trn_mag |>
+    terra::crop(sel_area_shpfl, snap = "out") |>
+    terra::mask(sel_area_shpfl, touches = TRUE)
   # plot(ano_trn_mag_shp)
   cur_mon_trn_rng <- terra::minmax(ano_trn_mag_shp, compute = T)
 
@@ -1674,7 +1671,6 @@ write_csv(
   clm_sum_tab_ff,
   paste0(results_pth, update_month, '_', update_year, '_bc_climate_summary.csv')
 )
-
 
 # Final plots save -----------------------------------------------
 ## Mean temperature and vapor pressure deficit (VPD) ---------------------------------
@@ -2323,8 +2319,10 @@ ano_sea_ann_lngtrn_plt_fun <- function(ano_dt_fl, sea, parr) {
 
   # Clip for selected area :: BC
   ano_dt_shp_rast <-
-    terra::crop(ano_dt_rast, sel_area_shpfl, mask = T)
-  ano_dt_shp_rast
+    ano_dt_rast |>
+    terra::crop(sel_area_shpfl, snap = "out") |>
+    terra::mask(sel_area_shpfl, touches = TRUE)
+
   # plot(ano_dt_shp_rast)
   ano_dt_shp_rast
 
@@ -2734,7 +2732,11 @@ ano_sea_ann_lngtrn_plt_fun <- function(ano_dt_fl, sea, parr) {
   cur_sea_ano_sum_tab$max_ano <- round(cur_sea_ano_rng[2], digits = 2)
 
   # Spatial Trend
-  ano_trn_mag_shp <- crop(ano_trn_mag, sel_area_shpfl, mask = T)
+  ano_trn_mag_shp <-
+    ano_trn_mag |>
+    terra::crop(sel_area_shpfl, snap = "out") |>
+    terra::mask(sel_area_shpfl, touches = TRUE)
+
   # plot(ano_trn_mag_shp)
   cur_sea_trn_rng <- terra::minmax(ano_trn_mag_shp, compute = T)
 
