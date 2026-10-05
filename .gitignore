@@ -7,6 +7,9 @@
 # Allow R files
 !*.R
 
+# Allow JavaScript files
+!*.js
+
 # Allow git files
 !.gitignore
 .Rproj.user
